@@ -6,6 +6,9 @@ import { claimsOf } from "@/lib/claims";
 import { msgTag, refOfTag } from "@/lib/refs";
 import { mapPool } from "@/lib/data/pool";
 import {
+
+// Waits between tries of one claim check; see the retry in verify().
+const CHECK_RETRY_MS = [1_000, 3_000, 8_000, 15_000];
   figuresIn,
   rateMismatches,
   sourcelessFigures,
@@ -52,7 +55,6 @@ export type Verification = {
   sourceless?: SourcelessFigure[];
 };
 
-
 // Production QA 2026-09-26: "some players like Rondo's terrain" passed on a message saying "The terrain leaves
 // something to be desired". The question asks for SUPPORT in so many words, and says that a message saying the
 // opposite, or only about the same subject, does not give it.
@@ -64,7 +66,7 @@ export const SUPPORT_QUESTION = (id: string, target: string) =>
   "attributes to it, with the same meaning? It supports the claim if it is one instance of what the claim describes. " +
   "A message that says the opposite, disagrees with it, or is only about the same subject without saying it, does NOT " +
   "support it. Nor does it when the claim changes what the message means or adds to it: a stronger or different " +
-  "judgement (\"too easy\" for \"not a fair challenge\"), a reason or detail the message does not give, or the meaning " +
+  'judgement ("too easy" for "not a fair challenge"), a reason or detail the message does not give, or the meaning ' +
   "of an abbreviation or a name the message does not spell out.";
 
 // Production QA 2026-09-27 (P2, P6): the check passed a frustrations answer whose pricing section cited #off-topic talk
@@ -128,27 +130,36 @@ export async function verify(
           evidence,
           ...(own ? { games: own } : {}),
         };
-        // Retried on a rate limit, a server error or a timeout, as corroboration is: a claim left unchecked because
-        // OpenRouter's shared pool was busy says nothing about the answer (v1.1 eval: 24 of 169 cited claims).
-        const res = await withRetry(() => decide({
-          state,
-          questions: Object.fromEntries([
-            ...asks.flatMap((a) => {
-              const target = clauses ? `clauses.c${a.side}` : "claim";
-              const q: [string, ReturnType<typeof noul>][] = [[a.key, noul(SUPPORT_QUESTION(a.id, target))]];
-              if (a.lists) q.push([`${a.key}_all`, noul(WHOLE_QUESTION(a.id, target))]);
-              return q;
+        // Retried on a rate limit, a server error or a timeout: a claim left unchecked because OpenRouter's shared
+        // pool was busy says nothing about the answer (v1.1 eval: 24 of 169 cited claims). The waits are longer than
+        // corroboration's, since the pool's per-minute limit outlasted a 5-second retry (18 claims in the next run).
+        const res = await withRetry(
+          () =>
+            decide({
+              state,
+              questions: Object.fromEntries([
+                ...asks.flatMap((a) => {
+                  const target = clauses ? `clauses.c${a.side}` : "claim";
+                  const q: [string, ReturnType<typeof noul>][] = [
+                    [a.key, noul(SUPPORT_QUESTION(a.id, target))],
+                  ];
+                  if (a.lists) q.push([`${a.key}_all`, noul(WHOLE_QUESTION(a.id, target))]);
+                  return q;
+                }),
+                ...(own ? valid.map((id) => [`off_${id}`, noul(ELSEWHERE_QUESTION(id))] as const) : []),
+              ]),
             }),
-            ...(own ? valid.map((id) => [`off_${id}`, noul(ELSEWHERE_QUESTION(id))] as const) : []),
-          ]),
-        }));
+          CHECK_RETRY_MS,
+        );
         const got = res.answers as Record<string, { noul: number } | undefined>;
         answers = Object.fromEntries([
           ...asks.flatMap((a) => [
             [a.key, got[a.key]!.noul],
             ...(a.lists && got[`${a.key}_all`] ? [[`${a.key}_all`, got[`${a.key}_all`]!.noul]] : []),
           ]),
-          ...(own ? valid.flatMap((id) => (got[`off_${id}`] ? [[`off_${id}`, got[`off_${id}`]!.noul]] : [])) : []),
+          ...(own
+            ? valid.flatMap((id) => (got[`off_${id}`] ? [[`off_${id}`, got[`off_${id}`]!.noul]] : []))
+            : []),
         ]);
       } catch (e) {
         // Said to the reader as "could not be checked"; the reason goes to the server log, never to the page.
@@ -194,7 +205,9 @@ export async function verify(
       for (const side of sides)
         if (!side.ids.length) notes.push(`The part "${side.claim}" has no citation of its own.`);
     for (const p of partial)
-      notes.push(`It lists several things, and its messages back only some of them: "${p}". Keep only what they say.`);
+      notes.push(
+        `It lists several things, and its messages back only some of them: "${p}". Keep only what they say.`,
+      );
     const off = valid.filter(elsewhere);
     if (off.length) {
       notes.push(
