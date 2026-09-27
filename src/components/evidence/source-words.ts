@@ -115,3 +115,16 @@ export function topicNamesOf(topics: string[] | undefined, names: Map<string, st
   }
   return out;
 }
+
+/**
+ * A conversation's title as the panel heads it. On Discord the title is made from the channel and the conversation's
+ * first line ("#off-topic: I can't believe..."); the channel is already said above it, and the line is only how the
+ * conversation opens, so it is headed as that: "Opens with ...". Headed bare, it read as the cited message when the
+ * cited one was another (QA P14, 2026-09-27). A real title (a post's) stays as it is.
+ */
+export function headingWords(title: string, channel: string | undefined): { lead: string | null; text: string } {
+  const prefix = channel ? `#${channel.replace(/^#/, "")}: ` : null;
+  if (!prefix || !title.startsWith(prefix)) return { lead: null, text: title };
+  const text = title.slice(prefix.length).trim();
+  return text ? { lead: "Opens with", text } : { lead: null, text: "" };
+}

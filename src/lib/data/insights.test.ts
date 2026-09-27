@@ -59,4 +59,10 @@ describe("a selection", () => {
     expect(SELECTION_SQL).toMatch(/SELECT DISTINCT c\.id,/); // two selected topics sharing a conversation count it once
     expect(SELECTION_SQL).toMatch(/'n', count\(\*\)[\s\S]*FROM conv\) AS totals/);
   });
+
+  // QA P1: a busiest row opens its conversations in the reply tree; it never asks the chat about a convN handle.
+  it("lists each session's conversations by id, in time order, and no handle", () => {
+    expect(SELECTION_SQL).toMatch(/array_agg\(id ORDER BY started_at, id\) AS "conversationIds"/);
+    expect(SELECTION_SQL).not.toMatch(/\bref\b/);
+  });
 });

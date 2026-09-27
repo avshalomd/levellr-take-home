@@ -173,13 +173,17 @@ export async function getGrid(res: Resolution): Promise<GridData> {
 export type SelectionRange = { topic: string; from: string; to: string }; // [from, to), YYYY-MM-DD
 
 /** A Discord session (the pieces of one 15-minute-gap session share it, D3) as the selection lists it: the export has
- *  no threads or titles, so a session is named by its channel and its first message. `ref` is its first piece inside
- *  the selection, the convN handle the chat's read_conversation tool takes. */
+ *  no threads or titles, so a session is named by its channel and its first message. `conversationIds` are its pieces
+ *  inside the selection, in time order: a row opens them in the evidence panel's reply tree. It used to carry the
+ *  first piece's convN handle and ask the chat about it, which put the handle in the question, the chat's title and
+ *  the sidebar, and drew an empty answer (QA P1, 2026-09-27). */
 export type Session = {
   sessionId: string;
-  ref: number;
+  conversationIds: string[];
   channel: string;
-  opening: string; // the session's first message
+  // The first message of its first conversation inside the selection: what the reply tree opens at. The session's own
+  // first message was named even when its part lay outside the selection, and the tree then opened elsewhere.
+  opening: string;
   started: string; // first conversation of the session inside the selection
   engagement: number;
   conversations: number;
@@ -207,7 +211,7 @@ export const rangeOf = (topic: string, start: string, res: Resolution): Selectio
  */
 export const SELECTION_SQL = `WITH sel AS (SELECT * FROM unnest($1::text[], $2::date[], $3::date[]) AS s(topic, lo, hi)),
      conv AS (
-       SELECT DISTINCT c.id, c.ref, c.session_id, c.channel, c.started_at, c.engagement AS eng, c.n_messages,
+       SELECT DISTINCT c.id, c.session_id, c.channel, c.started_at, c.engagement AS eng, c.n_messages,
               c.sentiment AS s
        FROM conversations c JOIN sel ON sel.topic = ANY(c.topics)
         AND c.started_at >= sel.lo::timestamp AT TIME ZONE 'UTC' AND c.started_at < sel.hi::timestamp AT TIME ZONE 'UTC')
@@ -218,8 +222,10 @@ export const SELECTION_SQL = `WITH sel AS (SELECT * FROM unnest($1::text[], $2::
           'people', (SELECT count(DISTINCT m.author) FROM messages m JOIN conv ON m.conversation_id = conv.id))
         FROM conv) AS totals,
        (SELECT json_agg(t) FROM (
-          SELECT session_id AS "sessionId", min(ref)::int AS ref, min(channel) AS channel,
-                 (SELECT left(m.text, 200) FROM messages m WHERE m.id = conv.session_id) AS opening,
+          SELECT session_id AS "sessionId", array_agg(id ORDER BY started_at, id) AS "conversationIds", min(channel) AS channel,
+                 (SELECT left(m.text, 200) FROM messages m
+                  WHERE m.conversation_id = (array_agg(conv.id ORDER BY conv.started_at, conv.id))[1]
+                  ORDER BY m.ts, m.id LIMIT 1) AS opening,
                  to_char(min(started_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS started,
                  sum(eng)::int AS engagement, count(*)::int AS conversations, sum(n_messages)::int AS messages,
                  round(avg(s)::numeric, 3)::float AS "moodAvg"
@@ -237,5 +243,6 @@ async function loadSelection(ranges: SelectionRange[]): Promise<SelectionDetail>
 export async function getSelection(ranges: SelectionRange[]): Promise<SelectionDetail> {
   const v = await cachedVersion();
   const key = JSON.stringify([...ranges].sort((a, b) => a.topic.localeCompare(b.topic) || a.from.localeCompare(b.from)));
-  return unstable_cache(() => loadSelection(ranges), ["insights-selection-3", v, key], { tags: [INSIGHTS_TAG], revalidate: 3600 })();
+  // "-4": a session carries its conversation ids, not a handle (QA P1), so no detail cached the old way is served.
+  return unstable_cache(() => loadSelection(ranges), ["insights-selection-4", v, key], { tags: [INSIGHTS_TAG], revalidate: 3600 })();
 }

@@ -18,8 +18,22 @@ import { focusablesIn, openerOf, returnTarget, wrapTarget, precedesInPage } from
 
 const spring = { type: "spring", bounce: 0, duration: 0.45 } as const;
 
-export function EvidenceSheet({ open, onClose, children }: { open: boolean; onClose: () => void; children: (handle: ReactNode) => ReactNode }) {
-  const wide = useMediaQuery("(min-width: 1280px)");
+// Explore opens a conversation here too (`overlay`): its page has no column for the panel to open beside, so it always
+// takes a sheet, and `label` names it for what it holds there (a conversation, not the source of an answer).
+export function EvidenceSheet({
+  open,
+  onClose,
+  children,
+  overlay = false,
+  label = "Where this comes from",
+}: {
+  open: boolean;
+  onClose: () => void;
+  children: (handle: ReactNode) => ReactNode;
+  overlay?: boolean;
+  label?: string;
+}) {
+  const wide = useMediaQuery("(min-width: 1280px)") && !overlay;
   const narrow = !useMediaQuery("(min-width: 768px)");
   const drag = useDragControls();
   const box = useRef<HTMLElement>(null);
@@ -54,7 +68,7 @@ export function EvidenceSheet({ open, onClose, children }: { open: boolean; onCl
             key="column"
             ref={box}
             tabIndex={-1}
-            aria-label="Where this comes from"
+            aria-label={label}
             data-evidence-panel
             className="h-full shrink-0 overflow-hidden outline-none"
             initial={{ width: 0 }}
@@ -107,7 +121,7 @@ export function EvidenceSheet({ open, onClose, children }: { open: boolean; onCl
               onKeyDown={trapTab}
               role="dialog"
               aria-modal="true"
-              aria-label="Where this comes from"
+              aria-label={label}
               data-evidence-panel
               className="outline-none fixed inset-x-0 bottom-0 z-50 flex h-[88dvh] flex-col overflow-hidden rounded-t-[22px] bg-background shadow-[0_-12px_40px_-12px_rgb(0_0_0/0.25)]"
               initial={{ y: "100%" }}
@@ -131,7 +145,7 @@ export function EvidenceSheet({ open, onClose, children }: { open: boolean; onCl
               onKeyDown={trapTab}
               role="dialog"
               aria-modal="true"
-              aria-label="Where this comes from"
+              aria-label={label}
               data-evidence-panel
               className="outline-none fixed top-2 right-2 bottom-2 z-50 flex w-[min(460px,calc(100vw-1rem))] flex-col overflow-hidden rounded-[20px] bg-background shadow-[0_20px_60px_-20px_rgb(0_0_0/0.35)]"
               initial={{ x: "calc(100% + 1rem)" }}
