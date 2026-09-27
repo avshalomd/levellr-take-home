@@ -26,8 +26,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <ThemeColor />
           <AppShell>{children}</AppShell>
-          {/* Top centre, clear of the composer, and below the phone header rather than over its title. A toast placed at
-              the bottom (a chat deleted from the drawer, below 1024px: Sidebar.tsx) sits above the composer. */}
+          {/* Top centre, clear of the composer and below the header. */}
           <Toaster position="top-center" offset={{ top: 16, bottom: 104 }} mobileOffset={{ top: 56, bottom: 104 }} />
         </ThemeProvider>
       </body>

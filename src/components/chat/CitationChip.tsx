@@ -114,7 +114,7 @@ export function CitationChip({
           e.currentTarget.focus({ preventScroll: true });
           onOpen(id);
         }}
-        aria-label={`Source ${n}: ${who}${level === "weak" ? ", only partly backs this sentence" : ""}. Show it in its thread.`}
+        aria-label={`Source ${n}: ${who}${level === "weak" ? ", only partly backs this sentence" : ""}. Show it in its conversation.`}
         className={cn("pressable focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pulse", chipClass(level, active), HIT_AREA)}
       >
         {n}

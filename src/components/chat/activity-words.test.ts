@@ -62,7 +62,7 @@ describe("stepWords", () => {
       },
       new Map([["cheating-bans", "Cheating & Bans"]]),
     );
-    expect(w.text).toBe("Read 118 complaint threads about Cheating & Bans, from 9 to 24 Sep");
+    expect(w.text).toBe("Read 118 complaints about Cheating & Bans, from 9 to 24 Sep");
     expect(w.detail).toBe("83 of them were about the ban waves");
     expect(`${w.text} ${w.detail}`).not.toMatch(/complaining|reporting bugs|asking for/);
   });
@@ -86,7 +86,7 @@ describe("stepWords", () => {
   it("phrases a search by what it looked for, never by its search string", () => {
     const find = (input: object) => stepWords({ type: "tool-find", state: "output-available", input, output: { hits: [1, 2, 3] } });
     expect(find({ query: "new Rondo map changes update 43.1 Rondo", about: "the Rondo changes", filters: { flag: "complaint" } })).toMatchObject({
-      text: "Looked for conversations about the Rondo changes in complaint threads",
+      text: "Looked for conversations about the Rondo changes in complaints",
       detail: "Found 3 matching conversations",
     });
     // an older step, saved before the agent said what it looked for
@@ -100,7 +100,7 @@ describe("stepWords", () => {
     expect(agg("avg_sentiment", "none", { topic: "performance-access", since: "2026-07-01", until: "2026-08-01" })).toBe(
       "Worked out the average mood in conversations about Performance & Access, from 1 to 31 Jul",
     );
-    expect(agg("conversations", "week", { flag: "complaint", since: "2026-09-09" })).toBe("Counted complaint threads from 9 Sep, week by week");
+    expect(agg("conversations", "week", { flag: "complaint", since: "2026-09-09" })).toBe("Counted complaints from 9 Sep, week by week");
     expect(agg("authors", "topic", {})).toBe("Counted people taking part in conversations, topic by topic");
     expect(stepWords({ type: "tool-aggregate", state: "output-available", input: { metric: "messages", group_by: "none" } }).detail).toBeUndefined();
   });
@@ -177,7 +177,7 @@ describe("activitySummary", () => {
       { type: "tool-aggregate", state: "output-available", output: { rows: [] } },
       { type: "tool-read_conversation", state: "output-available", output: { thread_title: "x" } },
     ];
-    expect(activitySummary(steps)).toEqual({ text: "Read 840 conversations, opened 1 thread in full, searched twice and counted conversations", running: false });
+    expect(activitySummary(steps)).toEqual({ text: "Read 840 conversations, opened 1 conversation in full, searched twice and counted conversations", running: false });
   });
   it("shows the step that is running while the agent works", () => {
     const steps = [scan(10), { type: "tool-scan", state: "input-available", input: { question: "Q?" } }];
@@ -199,10 +199,10 @@ describe("activitySummary", () => {
   it("says a slice read for two questions is the same conversations read twice", () => {
     const slice = { flag: "complaint", since: "2026-09-09" };
     const ask = (question: string) => ({ ...scan(118, slice), input: { question } });
-    expect(activitySummary([ask("Is the anti-cheat working?"), ask("Who do they blame?")]).text).toBe("Read the same 118 complaint threads twice, for two questions");
+    expect(activitySummary([ask("Is the anti-cheat working?"), ask("Who do they blame?")]).text).toBe("Read the same 118 complaints twice, for two questions");
     // the same question over the same slice is one line in the list, so one read in the summary (review 2026-09-26)
-    expect(activitySummary([ask("Q?"), ask("Q?")]).text).toBe("Read 118 complaint threads");
-    expect(activitySummary([scan(118, slice)]).text).toBe("Read 118 complaint threads");
+    expect(activitySummary([ask("Q?"), ask("Q?")]).text).toBe("Read 118 complaints");
+    expect(activitySummary([scan(118, slice)]).text).toBe("Read 118 complaints");
   });
   it("never says 'at least': reads that may share conversations are said as sets that may overlap", () => {
     const text = activitySummary([
@@ -214,13 +214,13 @@ describe("activitySummary", () => {
     expect(text).toBe("Read 118 and 90 conversations in two passes");
     expect(text).not.toMatch(/at least|208/);
   });
-  // QA 2026-09-26, round 5: "Read 1,232 complaint threads and counted once" left the reader asking what was counted.
+  // QA 2026-09-26, round 5: "Read 1,232 complaints and counted once" left the reader asking what was counted.
   it("says what was counted, never 'counted once'", () => {
     const agg = { type: "tool-aggregate", state: "output-available", output: { rows: [] } };
     const counting = (metric: string, group_by: string, filters = {}) => ({ ...agg, input: { metric, group_by, filters } });
     expect(activitySummary([agg]).text).toBe("Counted conversations");
     expect(activitySummary([scan(1232, { flag: "complaint" }), counting("conversations", "topic", { flag: "complaint" })]).text).toBe(
-      "Read 1,232 complaint threads and counted complaint threads by topic",
+      "Read 1,232 complaints and counted complaints by topic",
     );
     expect(activitySummary(Array.from({ length: 18 }, (_, i) => counting("conversations", "week", { topic: `t${i}` }))).text).toBe("Counted conversations by week 18 times");
     expect(activitySummary([counting("avg_sentiment", "week"), counting("conversations", "none")]).text).toBe("Worked out the average mood by week and counted conversations");
@@ -580,7 +580,7 @@ describe("a slice read again for another question", () => {
   });
   it("says it is the same conversations again, and keeps what this read found", () => {
     const lines = stepLines([read("a", "Are the bans working?", 83), read("b", "Who do they blame?", 88)]);
-    expect(lines.map((l) => l.words.text)).toEqual(["Read 118 complaint threads from 9 Sep", "Read the same 118 complaint threads again, for another question"]);
+    expect(lines.map((l) => l.words.text)).toEqual(["Read 118 complaints from 9 Sep", "Read the same 118 complaints again, for another question"]);
     expect(lines[1].words.detail).toBe("88 of them bear on “Who do they blame?”");
   });
   // Review 2026-09-26: the same question again (a different `top`) is not "another question".
@@ -590,7 +590,7 @@ describe("a slice read again for another question", () => {
     expect(lines).toHaveLength(1);
   });
   // Review 2026-09-26: with "Ran N times" gone the list folds repeats silently, and the summary counted every call:
-  // "Counted 3 times" beside "1 step", "Read the same 118 complaint threads twice" over one line.
+  // "Counted 3 times" beside "1 step", "Read the same 118 complaints twice" over one line.
   it("gives the summary the steps the list shows", () => {
     const agg = (id: string) => ({ type: "tool-aggregate", state: "output-available", toolCallId: id, input: { metric: "conversations", group_by: "none" }, output: { rows: [] } });
     const repeats = [agg("a"), agg("b"), agg("c")];
@@ -598,11 +598,11 @@ describe("a slice read again for another question", () => {
     expect(activitySummary(repeats).text).toBe("Counted conversations");
     const twins = [read("a", "Are the bans working?", 83), { ...read("b", "Are the bans working?", 83), input: { question: "Are the bans working?", filters: { flag: "complaint", since: "2026-09-09" }, top: 15 } }];
     expect(stepLines(twins)).toHaveLength(1);
-    expect(activitySummary(twins).text).toBe("Read 118 complaint threads");
+    expect(activitySummary(twins).text).toBe("Read 118 complaints");
     // two questions over one slice are two lines, and the summary says the same conversations twice
     const two = [read("a", "Are the bans working?", 83), read("b", "Who do they blame?", 88)];
     expect(stepLines(two)).toHaveLength(2);
-    expect(activitySummary(two).text).toBe("Read the same 118 complaint threads twice, for two questions");
+    expect(activitySummary(two).text).toBe("Read the same 118 complaints twice, for two questions");
   });
   it("reads a different slice as its own", () => {
     const lines = stepLines([read("a", "Q1?", 83), read("b", "Q2?", 40, { topic: "maps-modes" })]);
@@ -623,10 +623,10 @@ describe("sourceWords", () => {
 describe("what the reader was told", () => {
   it("takes the answer's first sentence after the last step, and waits while it is being written", () => {
     const tool = { type: "tool-scan" };
-    expect(answerLead([{ type: "text", text: "Let me look at complaints." }, tool, { type: "text", text: "Among the complaint threads, most are angry. Some" }], false)).toBe(
-      "Among the complaint threads, most are angry.",
+    expect(answerLead([{ type: "text", text: "Let me look at complaints." }, tool, { type: "text", text: "Among the complaints, most are angry. Some" }], false)).toBe(
+      "Among the complaints, most are angry.",
     );
-    expect(answerLead([tool, { type: "text", text: "Among the complaint threads, most" }], false)).toBeNull();
+    expect(answerLead([tool, { type: "text", text: "Among the complaints, most" }], false)).toBeNull();
     expect(answerLead([tool, { type: "text", text: "Most are angry [msg1].\n\n- One" }], false)).toBe("Most are angry [msg1].");
     expect(answerLead([tool, { type: "text", text: "Most are angry" }], true)).toBe("Most are angry");
     expect(answerLead([tool], true)).toBe("");
@@ -641,7 +641,7 @@ describe("what the reader was told", () => {
   });
 });
 
-// QA 2026-09-26: an answer about complaint threads charted the requests for help; "who is most active in discussions
+// QA 2026-09-26: an answer about complaints charted the requests for help; "who is most active in discussions
 // about lag" charted only the people reporting bugs.
 describe("pickChart draws only a slice the reader was told about", () => {
   const moodBy = (id: string, flag: string | undefined, since: string, until: string) => {
@@ -661,8 +661,8 @@ describe("pickChart draws only a slice the reader was told about", () => {
   const steps = [julyComplaints, sepComplaints, julyHelp, sepHelp];
 
   it("passes over a later count of a kind the answer does not name, for the one it does", () => {
-    const c = pickChart(steps, names, "How did July compare with September?\nAmong the complaint threads, the mood was lower in September.");
-    expect(c).toMatchObject({ groupBy: "period", title: "The average mood by period, in complaint threads" });
+    const c = pickChart(steps, names, "How did July compare with September?\nAmong the complaints, the mood was lower in September.");
+    expect(c).toMatchObject({ groupBy: "period", title: "The average mood by period, in complaints" });
   });
   it("draws nothing when every count is narrowed to a kind the reader was never told about", () => {
     expect(pickChart(steps, names, "How did the mood in July compare with September?\nThe mood fell in September.")).toBeNull();

@@ -15,10 +15,12 @@ type Filters = { topic?: string; channel?: string; since?: string; until?: strin
 export type StepLike = { type: string; state: string; input?: unknown; output?: unknown; errorText?: unknown };
 export type StepWords = { text: string; detail?: string; running: boolean; failed: boolean; kind: "look" | "read" | "search" | "count" };
 
-// A flag names a kind of conversation, and is said as one: "118 complaint threads", never "118 conversations,
-// complaining" (QA 2026-09-26).
+// A flag names a kind of conversation, and is said as one: "118 complaints", never "118 conversations, complaining"
+// (reference QA). On Discord a conversation is a chat session, not a thread, so none is called a thread.
 const KINDS: Record<string, [one: string, many: string]> = {
-  complaint: ["complaint thread", "complaint threads"],
+  complaint: ["complaint", "complaints"],
+  frustrated: ["frustrated conversation", "frustrated conversations"],
+  excited: ["excited conversation", "excited conversations"],
   bug: ["bug report", "bug reports"],
   feature: ["request for changes", "requests for changes"],
   help: ["request for help", "requests for help"],
@@ -40,10 +42,13 @@ const METRIC_WORDS: Record<string, string> = {
   share_feature: "the share of requests for changes",
   share_complaint: "the share of complaints",
   share_help: "the share of people asking for help",
+  share_frustrated: "the share of frustrated conversations",
+  share_excited: "the share of excited conversations",
   net_votes: "net votes",
+  reactions: "reactions",
 };
 // A count of things is counted; a mood or a share is worked out.
-const COUNTED = new Set(["conversations", "messages", "authors", "net_votes"]);
+const COUNTED = new Set(["conversations", "messages", "authors", "net_votes", "reactions"]);
 
 // A chart title's grouping ("The share of complaints by week"), and a step's, said after its slice ("..., week by
 // week"). A total is said too: two counts of one slice, one by week and one in total, read the same otherwise (QA
@@ -353,7 +358,7 @@ export function activitySummary(steps: StepLike[], topicNames: Map<string, strin
   }
   const bits = [
     readWords(reads),
-    full > 0 && `opened ${plural(full, "thread")} in full`,
+    full > 0 && `opened ${plural(full, "conversation")} in full`,
     searches > 0 && `searched ${times(searches)}`,
     countedWords(counts),
     voices > 0 && "looked at who is talking",

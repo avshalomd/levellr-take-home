@@ -47,8 +47,8 @@ const render = (settled?: boolean, steps: unknown[] = [scan, scan, weekly], told
 describe("Activity", () => {
   it("names the steps button for a screen reader, with the distinct count of conversations read", () => {
     // the same read twice is one step (stepLines), and the summary counts the steps shown: one read, not "the same 118
-    // complaint threads twice" over one line (review 2026-09-26)
-    expect(render()).toContain('aria-label="Show the 2 steps: Read 118 complaint threads and worked out the share of complaints by week"');
+    // complaints twice" over one line (review 2026-09-26)
+    expect(render()).toContain('aria-label="Show the 2 steps: Read 118 complaints and worked out the share of complaints by week"');
   });
   it("draws no chart until the steps are over, then the week rows by the days they hold", () => {
     expect(render(false)).not.toContain("<figure");
@@ -80,7 +80,7 @@ describe("Activity", () => {
   it("draws a count narrowed to one kind of conversation only when the reader was told about that kind", () => {
     const complaints = { ...weekly, input: { ...weekly.input, filters: { flag: "complaint" } }, output: { ...weekly.output, filters: { flag: "complaint", since: "2026-09-09" } } };
     expect(render(true, [complaints], "How do players feel about bans?\nMost are angry.")).not.toContain("<figure");
-    expect(render(true, [complaints], "How do players feel about bans?\nAmong the complaint threads, most are angry.")).toContain("<figure");
+    expect(render(true, [complaints], "How do players feel about bans?\nAmong the complaints, most are angry.")).toContain("<figure");
   });
   // QA 2026-09-26: at 1440px 5 of 12 topic names were cut ("Performance & Ac…") in a 7.5rem column of a 28rem card,
   // and "and 1 more" was a sentence with nothing behind it.
