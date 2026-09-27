@@ -1,33 +1,34 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import Link from "next/link";
+import type { Metadata, Viewport } from "next";
+import { Schibsted_Grotesk } from "next/font/google";
+import { ThemeProvider } from "next-themes";
+import { AppShell } from "@/components/shell/AppShell";
+import { ThemeColor } from "@/components/shell/ThemeToggle";
 import { Toaster } from "@/components/ui/sonner";
+import { APP_NAME, APP_TAGLINE, THEME_COLOR } from "@/lib/app";
 import "./globals.css";
 
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+const sans = Schibsted_Grotesk({ variable: "--font-schibsted", subsets: ["latin"] });
 
-import { APP_NAME } from "@/lib/app";
-
-export const metadata: Metadata = {
-  title: APP_NAME,
-  description: APP_NAME,
+export const metadata: Metadata = { title: { default: APP_NAME, template: `%s · ${APP_NAME}` }, description: APP_TAGLINE };
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: THEME_COLOR.light },
+    { media: "(prefers-color-scheme: dark)", color: THEME_COLOR.dark },
+  ],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-muted/30">
-        <header className="border-b bg-background">
-          <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-4">
-            <Link href="/" className="font-semibold">
-              {APP_NAME}
-            </Link>
-            <nav className="flex gap-4 text-sm text-muted-foreground">{/* task routes go here */}</nav>
-          </div>
-        </header>
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">{children}</main>
-        <Toaster />
+    // suppressHydrationWarning: the theme class is set on <html> before the page paints, from the stored choice or
+    // the system setting, so the server's HTML cannot know it (next-themes).
+    <html lang="en" className={`${sans.variable} h-full antialiased`} suppressHydrationWarning>
+      <body className="h-full bg-paper">
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <ThemeColor />
+          <AppShell>{children}</AppShell>
+          {/* Top centre, clear of the composer and below the header. */}
+          <Toaster position="top-center" offset={{ top: 16, bottom: 104 }} mobileOffset={{ top: 56, bottom: 104 }} />
+        </ThemeProvider>
       </body>
     </html>
   );
