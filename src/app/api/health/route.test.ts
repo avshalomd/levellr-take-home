@@ -7,6 +7,7 @@ const model = vi.hoisted(() => ({ current: null as unknown }));
 vi.mock("@/db", () => ({ db: { execute: async () => [] }, dbConfigured: true }));
 vi.mock("@/lib/ai", () => ({ aiProvider: () => "openrouter", getModel: () => model.current }));
 
+import { commitOf } from "./commit";
 import { GET } from "./route";
 
 describe("GET /api/health", () => {
@@ -32,5 +33,13 @@ describe("GET /api/health", () => {
     expect(body.ai.usable).toBe(false);
     expect(body.ai.error).toMatch(/unavailable for free/);
     expect(body.ai.error).not.toMatch(/Provider returned error/);
+  });
+});
+
+describe("the commit health reports (QA P16)", () => {
+  it("is the one the deploy set, else Vercel's own, else local", () => {
+    expect(commitOf({ APP_COMMIT: "abc1234", VERCEL_GIT_COMMIT_SHA: "ffffffffffff" })).toBe("abc1234");
+    expect(commitOf({ VERCEL_GIT_COMMIT_SHA: "0123456789abcdef" })).toBe("0123456");
+    expect(commitOf({ APP_COMMIT: "" })).toBe("local");
   });
 });
