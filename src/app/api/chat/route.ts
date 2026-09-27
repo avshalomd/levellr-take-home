@@ -1,5 +1,7 @@
 import { z } from "zod";
+import { after } from "next/server";
 import {
+  consumeStream,
   convertToModelMessages,
   createUIMessageStream,
   createUIMessageStreamResponse,
@@ -9,12 +11,14 @@ import { makeAgent } from "@/lib/agent/agent";
 import { corroborate } from "@/lib/agent/corroborate";
 import { afterAgent } from "@/lib/agent/finish";
 import type { ChatMessage } from "@/lib/agent/ui-types";
+import { finishTurn, startTurn } from "@/lib/data/chats";
+import { ownerId } from "@/lib/owner";
 import { friendly, modelIdOf } from "@/lib/llm/errors";
 
 // One chat turn: the agent streams (text, tool calls, tool results, scan progress), then the verification pass
 // streams its per-claim badges into the same message, then how many conversations back each claim. The client renders
-// all of it as it arrives. Chats are not saved on the server (docs/DESIGN.md decision 10): the browser sends the chat
-// so far with each question.
+// all of it as it arrives. The chat is saved under its id when the question arrives and again when its answer is done
+// (lib/data/chats.ts), so it survives a reload at /c/<id>.
 
 export const maxDuration = 300;
 
@@ -22,6 +26,7 @@ export const maxDuration = 300;
 // body is a 400 with one line, never a stream carrying a JavaScript error.
 const Body = z.object({
   id: z.string().max(100).optional(),
+  // useChat's own: "regenerate-message" is an "Ask again" (data/chats.ts startTurn).
   trigger: z.string().optional(),
   messages: z
     .array(
@@ -45,14 +50,34 @@ export async function POST(req: Request) {
       { error: "Send { messages: [...] } ending with the user's question." },
       { status: 400 },
     );
+  const { id } = parsed.data;
   const messages = parsed.data.messages as unknown as ChatMessage[];
   const startedAt = Date.now();
+  const owner = await ownerId();
+  // This request's own token, never the question's id: "Ask again" resends the same question while a stopped run of
+  // it may still be finishing on the server, and that run must not pass for this one when it saves (data/chats.ts).
+  const turn = crypto.randomUUID();
+
+  // The question is saved before anything streams, so the chat exists at /c/<id> from the first token and a reload
+  // while the answer is being written finds it (data/chats.ts). The write runs while the agent is being set up, and
+  // the stream waits for it. A save failure is logged, never a failed answer.
+  const saved =
+    id && owner
+      ? startTurn(id, owner, messages, turn, parsed.data.trigger !== "regenerate-message").catch((e) =>
+          console.error("chat save failed", id, e),
+        )
+      : undefined;
 
   const stream = createUIMessageStream<ChatMessage>({
     originalMessages: messages,
     onError: (e) => friendly(e),
+    // The whole chat is saved again once the answer (and its verification) is complete.
+    onFinish: async ({ messages: all }) => {
+      if (!id || !owner) return;
+      await finishTurn(id, owner, all, turn).catch((e) => console.error("chat save failed", id, e));
+    },
     execute: async ({ writer }) => {
-      const { agent, tools, model } = await makeAgent(writer);
+      const [{ agent, tools, model }] = await Promise.all([makeAgent(writer), saved]);
       // A step the reader stopped has a call and no result, which a provider rejects; it is left out.
       const input = await convertToModelMessages(messages.slice(-12), {
         tools,
@@ -60,8 +85,9 @@ export async function POST(req: Request) {
       });
       const result = await agent.stream({
         messages: input,
-        // It stops before the platform's 300 s limit: a stalled call otherwise hangs until the function is killed and
-        // the reader gets a cut stream instead of an error with a Retry.
+        // The answer is finished and saved even if the reader leaves (a reload, a closed tab), so it is waiting for
+        // them when they come back: no req.signal here. It still stops before the platform's 300 s limit: a stalled
+        // call otherwise hangs until the function is killed and the reader gets a cut stream instead of an error.
         abortSignal: AbortSignal.timeout(240_000),
       });
 
@@ -102,5 +128,10 @@ export async function POST(req: Request) {
       writer.write({ type: "finish" });
     },
   });
-  return createUIMessageStreamResponse({ stream });
+  // A copy of the stream is read to its end on the server, kept alive by after(): when the reader's connection goes,
+  // their copy is cancelled and this one keeps the answer running to onFinish, which saves it.
+  return createUIMessageStreamResponse({
+    stream,
+    consumeSseStream: ({ stream: copy }) => after(consumeStream({ stream: copy })),
+  });
 }
