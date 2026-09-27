@@ -38,6 +38,12 @@ uv run --env-file ../.env.local python enrich.py --concurrency 16        # Jev l
 uv run --env-file ../.env.local python embed.py                          # gemini-embedding-2, 768 dims
 uv run --env-file ../.env.local python load.py                           # COPY into Neon, build indexes
 cd ..
+npm run db:app                  # the app's tables: saved chats, topic edits, relabel jobs, spend
+npm run labels -- seed-spend    # once per build: ingest's cost counts against the same $3 cap as relabels
+
+# topics edited in Explore live in the taxonomies table; load.py labels from data/work/topics.json. Before a reload,
+# write the active set there, then run enrich.py and load.py as above (a changed set is asked again):
+npm run labels -- export
 
 npm run dev                     # http://localhost:3000
 npm run check                   # types, lint, unit tests
