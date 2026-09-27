@@ -31,3 +31,16 @@ describe("MessageCard", () => {
     expect(html).not.toMatch(/\bago\b/);
   });
 });
+
+describe("MessageCard as context", () => {
+  it("labels a parent from an earlier session as context, and links nowhere", () => {
+    const html = renderToStaticMarkup(<MessageCard node={node} num={0} level="backed" replies={0} top={false} context />);
+    expect(html).toContain("Context · earlier session");
+    expect(html).toContain("border-dashed");
+    expect(html).not.toContain("<a ");
+  });
+  it("leaves a message of the open conversation unlabelled", () => {
+    const html = renderToStaticMarkup(<MessageCard node={node} num={1} level="backed" replies={0} top={false} />);
+    expect(html).not.toContain("earlier session");
+  });
+});

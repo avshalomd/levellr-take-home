@@ -31,7 +31,7 @@ import {
   type Shape,
 } from "./thread-tree";
 
-// Where an answer comes from. At the top, fixed: where the conversation sits (r/<community>, #channel), its title and
+// Where an answer comes from. At the top, fixed: where the conversation sits (the community, #channel), its title and
 // size, and a picture of it (ThreadMap) - every message a dot, the cited ones numbered like their chips, the path to
 // the open message lit, a hovered claim's messages glowing. Below, scrolling: only what the reader needs to judge the
 // open message - the message itself and what it answers in full, anything further up as one-liners, its replies as
@@ -369,9 +369,13 @@ function ThreadView({
   // The open message's conversation keeps every topic it discusses (D46); they are shown primary first. A thread can
   // hold several conversations, so the line follows the open message rather than the thread.
   const topics = topicNamesOf(thread.nodes.find((n) => tagOf(n) === focusId)?.topics, topicNames ?? new Map());
+  // A message from another session than the open one was attached as context (a reply here answers it): shown, dimmed
+  // and labelled, never counted as this conversation's.
+  const focusConv = thread.nodes.find((n) => tagOf(n) === focusId)?.conversation_id ?? null;
   const props = (n: ThreadNode) => {
     const tag = tagOf(n);
-    return { node: n, source, num: citedNum.get(tag) ?? 0, level: levelOf(tag), replies: replies.get(n.id) ?? 0, top: n.id === topId, lit: lit.has(tag) };
+    const context = focusConv !== null && n.conversation_id !== focusConv;
+    return { node: n, source, num: citedNum.get(tag) ?? 0, level: levelOf(tag), replies: replies.get(n.id) ?? 0, top: n.id === topId, lit: lit.has(tag), context };
   };
 
   return (

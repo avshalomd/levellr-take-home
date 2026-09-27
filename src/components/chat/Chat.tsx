@@ -40,6 +40,8 @@ const loadOverview = (): Promise<Overview | null> =>
     .then((o: Overview | null) => (o ? (overviewLast = o) : overviewLast))
     .catch(() => overviewLast);
 
+const DISCORD: Source = { platform: "discord" };
+
 // When the free model's daily allowance is spent, retrying in a moment cannot help (api/chat, lib/llm/errors.ts).
 const OUT_OF_ALLOWANCE = /allowance is used up/i;
 
@@ -269,7 +271,8 @@ export function Chat({ id, initialQuestion }: { id: string; initialQuestion?: st
               onList={(list) => setFocus({ ...focus, list })}
               onClose={close}
               handle={handle}
-              source={overview?.meta.source as Source | undefined}
+              // Discord unless the overview says otherwise: reactions as engagement, #channel as the place.
+              source={(overview?.meta.source as Source | undefined) ?? DISCORD}
               topicNames={topicNames}
             />
           )

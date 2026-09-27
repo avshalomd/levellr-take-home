@@ -1,9 +1,8 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState } from "react";
-import { ArrowBigUp, ArrowUpRight, ChevronDown, ChevronRight, MessageSquare, SmilePlus, ThumbsUp } from "lucide-react";
+import { ArrowBigUp, ChevronDown, ChevronRight, MessageSquare, SmilePlus, ThumbsUp } from "lucide-react";
 import type { ThreadNode } from "@/lib/data/read";
-import { permalink } from "@/lib/data/types";
 import { cn } from "@/lib/utils";
 import { chipClass, type ChipLevel } from "@/components/chat/CitationChip";
 import { shortDate } from "@/components/chat/evidence";
@@ -15,6 +14,8 @@ import { engagement, type Source } from "./source-words";
 // it, when, and above all how much engagement it drew, because a reply with a thousand upvotes and one with
 // none read differently. The engagement badge leads every row so a column of them scans at a glance.
 // Two forms: a full card (the open message and what it answers) and a one-line row (everything around it).
+// A Discord export has no permalinks, so nothing links out. A message from an earlier session that a reply here answers
+// is context (`context`): it can be read, dimmed and labelled, but it is not part of the conversation that was counted.
 
 export type MessageProps = {
   node: ThreadNode;
@@ -24,7 +25,11 @@ export type MessageProps = {
   replies: number;
   top: boolean; // the most engaged reply in the conversation
   lit?: boolean; // a hovered claim cites it
+  context?: boolean; // from an earlier session, attached because a reply in this one answers it
 };
+
+/** What the context label says on a card. */
+const CONTEXT_WORDS = "Context · earlier session";
 
 const ICONS = { votes: ArrowBigUp, reactions: SmilePlus, score: ThumbsUp };
 
@@ -85,15 +90,16 @@ export function MessageCard({
   focused,
   label,
   clamp,
+  context,
 }: MessageProps & { fullText?: string; focused?: boolean; label?: string; clamp?: boolean }) {
   const text = removedText(node, fullText ?? node.text);
-  const link = focused ? permalink(node) : null;
   return (
     <article
       data-tag-card={focused ? "focus" : label ? "context" : undefined}
       className={cn(
         "rounded-2xl border bg-background p-4 transition-[box-shadow,border-color] duration-300",
         focused ? "border-foreground/[0.14] shadow-[0_0_0_1.5px_var(--foreground),0_8px_24px_-16px_rgb(0_0_0/0.35)]" : "border-foreground/[0.08]",
+        context && !focused && "border-dashed bg-foreground/[0.015] opacity-75",
         lit && "border-pulse/50 shadow-[0_0_0_3px_color-mix(in_oklch,var(--pulse)_22%,transparent)]",
       )}
     >
@@ -105,6 +111,7 @@ export function MessageCard({
             <span className="truncate text-[14px] font-semibold">{node.author}</span>
             {num > 0 && <span className={chipClass(level)}>{num}</span>}
             {node.kind === "post" && <Mark>Started the thread</Mark>}
+            {context && <Mark>{CONTEXT_WORDS}</Mark>}
             {node.removed && <Mark>Removed</Mark>}
             {node.is_bot && <Mark>Bot</Mark>}
           </div>
@@ -112,7 +119,6 @@ export function MessageCard({
               reader had to do the sum to see it was the same message, and "ago" counts from today, not from the data. */}
           <p className="text-[12px] text-muted-foreground" title={shortDate(node.ts, true)}>
             {shortDate(node.ts)}
-            {!node.in_window && " · before this period"}
           </p>
         </div>
         <Engagement node={node} source={source} top={top} />
@@ -125,7 +131,7 @@ export function MessageCard({
           {text ? <MessageText text={text} /> : <em className="text-muted-foreground">This message was removed.</em>}
         </div>
       )}
-      {(replies > 0 || top || link) && (
+      {(replies > 0 || top) && (
         <footer className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-muted-foreground">
           {replies > 0 && (
             <span className="inline-flex items-center gap-1">
@@ -133,11 +139,6 @@ export function MessageCard({
             </span>
           )}
           {top && <span className="font-medium text-pulse">Most engaged reply here</span>}
-          {link && (
-            <a href={link} target="_blank" rel="noreferrer" className="ml-auto inline-flex items-center gap-0.5 hover:text-pulse">
-              View the original <ArrowUpRight className="size-3" />
-            </a>
-          )}
         </footer>
       )}
     </article>
@@ -196,7 +197,7 @@ function Clamped({ text, whole }: { text: string; whole: string }) {
 }
 
 /** The one-line row: engagement first, then who, then the opening words. */
-export function MessageLine({ node, source, num, level, replies, top, lit, onClick, hint, current }: MessageProps & { onClick: () => void; hint: string; current?: boolean }) {
+export function MessageLine({ node, source, num, level, replies, top, lit, context, onClick, hint, current }: MessageProps & { onClick: () => void; hint: string; current?: boolean }) {
   const text = plainMessage(removedText(node, node.text)).split("\n").find((l) => l.trim()) ?? "";
   return (
     <button
@@ -208,12 +209,16 @@ export function MessageLine({ node, source, num, level, replies, top, lit, onCli
         "pressable group flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-colors hover:bg-foreground/[0.04]",
         lit && "bg-pulse-soft shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--pulse)_40%,transparent)]",
         current && "shadow-[inset_0_0_0_1.5px_var(--foreground)]",
+        context && !current && "opacity-60",
       )}
     >
       <Engagement node={node} source={source} size="sm" top={top} />
       {num > 0 && <span className={chipClass(level)}>{num}</span>}
       <span className="max-w-[38%] shrink-0 truncate text-[13px] font-medium">{node.author}</span>
-      <span className="min-w-0 flex-1 truncate text-[13px] text-muted-foreground">{text || "This message was removed."}</span>
+      <span className="min-w-0 flex-1 truncate text-[13px] text-muted-foreground">
+        {context && <span className="mr-1.5 rounded-full bg-foreground/[0.06] px-1.5 py-px text-[11px] font-medium text-foreground/70">context</span>}
+        {text || "This message was removed."}
+      </span>
       {replies > 0 && (
         <span className="tnum inline-flex shrink-0 items-center gap-0.5 text-[12px] text-muted-foreground">
           <MessageSquare className="size-3" aria-hidden /> {replies}
