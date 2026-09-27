@@ -94,7 +94,9 @@ export function toolOutputsForJudge(messages: ReadonlyArray<unknown>, total = 20
     if (m.role !== "tool" || !Array.isArray(m.content)) continue;
     for (const p of m.content as { type?: string; toolName?: string; output?: unknown }[]) {
       if (p.type !== "tool-result") continue;
-      const full = JSON.stringify(p.output, null, 1) ?? "";
+      // The model's own view of a result is text (toModelOutput): given as text, not a JSON-escaped string on one line.
+      const o = p.output as { type?: string; value?: unknown } | undefined;
+      const full = o?.type === "text" && typeof o.value === "string" ? o.value : (JSON.stringify(o?.type === "json" ? o.value : o, null, 1) ?? "");
       const body =
         used + full.length <= total
           ? full

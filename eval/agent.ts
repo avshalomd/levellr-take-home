@@ -9,7 +9,7 @@
 // (questions sharing `pair`) are reported as agreeing or not. Results -> eval/results/agent.json.
 //
 // It spends the agent model's quota (one question = up to 8 agent steps), so run it on purpose:
-// usage: npm run eval:agent [-- --only L01,A02] [-- --concurrency 2] [-- --note "why this run"] [-- --out path]
+// usage: npm run eval:agent [-- --only L01,A02] [-- --concurrency 2] [-- --note "why this run"] [-- --out path] [-- --dump dir]
 import { writeFileSync } from "node:fs";
 import { z } from "zod";
 import { makeAgent } from "@/lib/agent/agent";
@@ -48,13 +48,20 @@ async function citedMessages(answer: string): Promise<string> {
   const rows = await getMessagesByRef(refs);
   return rows
     .sort((a, b) => a.ref - b.ref)
-    .map((m) => `[msg${m.ref}] ${m.author}, #${m.channel}, ${m.ts.slice(0, 16)}Z: ${m.text.replace(/\s+/g, " ").slice(0, 500)}`)
+    // Whole messages: cut at 500 characters, a long news post (a 1,900-character list of Tides Remastered features)
+    // lost the very details the answer quoted from it, and the judge marked them invented.
+    .map((m) => `[msg${m.ref}] ${m.author}, #${m.channel}, ${m.ts.slice(0, 16)}Z: ${m.text.replace(/\s+/g, " ").slice(0, 4000)}`)
     .join("\n");
 }
 
 async function judge(q: Q, answer: string, truth: unknown, tools: string) {
   const cited = await citedMessages(answer);
   const who = await profile();
+  const input =
+    `QUESTION: ${q.question}\n\nRUBRIC: ${q.expect}\n\nTRUTH: ${truth === undefined ? "(none)" : JSON.stringify(truth)}` +
+    `\n\nTOOL OUTPUTS:\n${tools || "(none)"}\n\nCITED MESSAGES:\n${cited || "(none)"}\n\nANSWER:\n${answer}`;
+  // --dump <dir>: what the judge read, one file per question, to check a verdict of "invented" by hand.
+  if (arg("dump")) writeFileSync(`${arg("dump")}/${q.id}.judge.txt`, input);
   const { data } = await extract({
     schema: Verdict,
     model: judgeModel,
@@ -74,9 +81,7 @@ async function judge(q: Q, answer: string, truth: unknown, tools: string) {
       "values, dates, author activity) are the app's own measurements: when such a number appears in TOOL OUTPUTS, or " +
       "follows from them by rounding, summing or taking a share, it is not invented, even if no cited message states " +
       "it. 'invented' is for statements nothing here supports.",
-    input:
-      `QUESTION: ${q.question}\n\nRUBRIC: ${q.expect}\n\nTRUTH: ${truth === undefined ? "(none)" : JSON.stringify(truth)}` +
-      `\n\nTOOL OUTPUTS:\n${tools || "(none)"}\n\nCITED MESSAGES:\n${cited || "(none)"}\n\nANSWER:\n${answer}`,
+    input,
   });
   return data;
 }
@@ -95,9 +100,14 @@ async function main() {
         const ms = Date.now() - t0;
         const tools = r.steps.flatMap((s) => s.toolCalls.map((c) => ({ tool: c.toolName, input: c.input })));
         // What the reader sees: the chat route's own post-steps, not a copy of them.
-        const after = await afterAgent({ steps: r.steps, history: [...input, ...r.response.messages] });
+        // Every step's messages, as the chat route passes them: in AI SDK 7 `r.response.messages` is the last step's
+        // only, so the eval's cite pass and count checks ran without this turn's tool results, unlike production.
+        const turn = r.responseMessages;
+        const after = await afterAgent({ steps: r.steps, history: [...input, ...turn] });
         const v = after.checked ?? null;
-        const j = await judge(q, after.text, truth, toolOutputsForJudge(r.response.messages));
+        // The same messages for the judge: given the last step's only, it read "(none)" for tool outputs and marked
+        // tool-computed figures invented.
+        const j = await judge(q, after.text, truth, toolOutputsForJudge(turn));
         const citations = v?.claims.flatMap((c) => c.citations) ?? [];
         console.log(
           `${q.id.padEnd(4)} ${j.verdict.padEnd(8)} ${String(Math.round(ms / 1000)).padStart(3)}s ${tools.map((t) => t.tool).join(",")}  ${j.reason.slice(0, 110)}`,
