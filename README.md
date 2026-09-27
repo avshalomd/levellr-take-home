@@ -104,7 +104,18 @@ gold messages sit in many small pieces of update-night chat, and the arms return
 conversations instead (precision 100% in five arms).
 Six questions is a small sample: these show direction, not a benchmark.
 
-**End to end:** TODO-NUMBERS (answer score, cited claims supported, declined when it should, invented facts).
+**End to end** (18 questions in `eval/questions.jsonl`, agent on Gemini 2.5 Flash, judged by Flash-Lite; `npm run eval:agent`):
+
+| measure | result |
+|---|---|
+| answers correct | 11 of 18, 1 partial, 6 wrong (score 0.64) |
+| by type | lookup 0.92 (6), frustrated 1/1, what-to-post 1/1, aggregate 0.67 (3), temporal 0.5 (2), out-of-scope 0.5 (2), excited 0/1, false premise 0/2 |
+| declined when it should | 1 of 4 (false premise and out of scope): the weakest point |
+| declined when it should not | 0 of 14 |
+| cited claims supported by the message they cite | 68 of 72 (94%), 0 invalid citations |
+| latency | p50 8.1 s, p90 18.3 s |
+
+The run overlapped a relabel of the pricing topic, so a few answers read the older labels. The false-premise misses are the next thing to fix: asked about a "patch 1.2" that does not exist, the agent described reactions to it; asked why Ebontide was "cancelled" (it shipped), it explained the anger. The judge also marks tool-computed figures (engagement scores, mood) as invented because it does not see the tool results, so the "invented" count overstates.
 
 Full tables: `eval/results/report.md`.
 
