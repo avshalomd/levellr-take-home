@@ -6,9 +6,6 @@ import { claimsOf } from "@/lib/claims";
 import { msgTag, refOfTag } from "@/lib/refs";
 import { mapPool } from "@/lib/data/pool";
 import {
-
-// Waits between tries of one claim check; see the retry in verify().
-const CHECK_RETRY_MS = [1_000, 3_000, 8_000, 15_000];
   figuresIn,
   rateMismatches,
   sourcelessFigures,
@@ -16,6 +13,9 @@ const CHECK_RETRY_MS = [1_000, 3_000, 8_000, 15_000];
   type RateCheck,
   type SourcelessFigure,
 } from "./rates";
+
+// Waits between tries of one claim check; see the retry in verify().
+const CHECK_RETRY_MS = [1_000, 3_000, 8_000, 15_000];
 
 // After the answer is written, every cited claim is checked, and the result streams to the UI as a badge per claim.
 // Two checks, one in code and one by Jev:
