@@ -1,0 +1,771 @@
+{
+ "run_at": "2026-09-27T20:04:51.080Z",
+ "judge": "gemini-3.5-flash-lite",
+ "k": 8,
+ "questions": 6,
+ "summary": {
+  "kw": {
+   "precision_at_8": 0.4583333333333333,
+   "recall_at_8": 0.4863310708898944,
+   "ndcg_at_8": 0.4604454949409404,
+   "gold_hit_rate": 0.8333333333333334,
+   "gold_mrr": 0.47222222222222227,
+   "median_ms": 110
+  },
+  "vec": {
+   "precision_at_8": 0.375,
+   "recall_at_8": 0.2992081447963801,
+   "ndcg_at_8": 0.2877900132170647,
+   "gold_hit_rate": 0.6666666666666666,
+   "gold_mrr": 0.17222222222222225,
+   "median_ms": 378
+  },
+  "hybrid": {
+   "precision_at_8": 0.5416666666666666,
+   "recall_at_8": 0.5255467571644042,
+   "ndcg_at_8": 0.5937066610501917,
+   "gold_hit_rate": 0.8333333333333334,
+   "gold_mrr": 0.7083333333333334,
+   "median_ms": 498
+  },
+  "kw+jev": {
+   "precision_at_8": 0.6375000000000001,
+   "recall_at_8": 0.5672134238310709,
+   "ndcg_at_8": 0.7495607234026447,
+   "gold_hit_rate": 0.8333333333333334,
+   "gold_mrr": 0.6666666666666666,
+   "median_ms": 558
+  },
+  "vec+jev": {
+   "precision_at_8": 0.7535714285714286,
+   "recall_at_8": 0.5880467571644042,
+   "ndcg_at_8": 0.6926233663069942,
+   "gold_hit_rate": 0.8333333333333334,
+   "gold_mrr": 0.5833333333333334,
+   "median_ms": 870
+  },
+  "hybrid+jev": {
+   "precision_at_8": 0.736111111111111,
+   "recall_at_8": 0.5880467571644042,
+   "ndcg_at_8": 0.7754498260047914,
+   "gold_hit_rate": 0.8333333333333334,
+   "gold_mrr": 0.75,
+   "median_ms": 923
+  }
+ },
+ "per_question": [
+  {
+   "id": "L01",
+   "question": "What do players think of the Ebontide quest?",
+   "pool": 23,
+   "relevant_in_pool": 17,
+   "gold": 4,
+   "arms": {
+    "kw": {
+     "returned": 8,
+     "precision": 0.5,
+     "recall": 0.23529411764705882,
+     "ndcg": 0.3701324137706275,
+     "gold_hit": true,
+     "gold_rr": 0.5,
+     "ms": 110,
+     "ids": [
+      "msg_009708:w0:1",
+      "msg_007598:w2:1",
+      "msg_006434:w0:0",
+      "msg_008881:w1:0",
+      "msg_016933:w1:0",
+      "msg_012320:w0:2",
+      "msg_004752:w2:0",
+      "msg_007598:w3:2"
+     ]
+    },
+    "vec": {
+     "returned": 8,
+     "precision": 0.75,
+     "recall": 0.35294117647058826,
+     "ndcg": 0.5286649653135693,
+     "gold_hit": true,
+     "gold_rr": 0.3333333333333333,
+     "ms": 458,
+     "ids": [
+      "msg_007055:w18:1",
+      "msg_007598:w3:2",
+      "msg_007598:w2:1",
+      "msg_022062:w0:1",
+      "msg_010538:w1:0",
+      "msg_007055:w22:2",
+      "msg_009812:w0:0",
+      "msg_024791:w1:1"
+     ]
+    },
+    "hybrid": {
+     "returned": 8,
+     "precision": 1,
+     "recall": 0.47058823529411764,
+     "ndcg": 0.5294539464675027,
+     "gold_hit": true,
+     "gold_rr": 1,
+     "ms": 498,
+     "ids": [
+      "msg_007598:w2:1",
+      "msg_007598:w3:2",
+      "msg_007055:w23:1",
+      "msg_007055:w16:1",
+      "msg_015290:w0:1",
+      "msg_004909:w6:1",
+      "msg_007055:w18:1",
+      "msg_009708:w0:1"
+     ]
+    },
+    "kw+jev": {
+     "returned": 8,
+     "precision": 1,
+     "recall": 0.47058823529411764,
+     "ndcg": 0.8688665572592592,
+     "gold_hit": true,
+     "gold_rr": 0.5,
+     "ms": 677,
+     "ids": [
+      "msg_007598:w3:2",
+      "msg_009604:w1:2",
+      "msg_007055:w16:1",
+      "msg_014320:w0:1",
+      "msg_007598:w2:1",
+      "msg_023556:w0:2",
+      "msg_009708:w0:1",
+      "msg_012320:w0:2"
+     ]
+    },
+    "vec+jev": {
+     "returned": 8,
+     "precision": 1,
+     "recall": 0.47058823529411764,
+     "ndcg": 0.732491742051152,
+     "gold_hit": true,
+     "gold_rr": 0.5,
+     "ms": 1369,
+     "ids": [
+      "msg_007598:w3:2",
+      "msg_007055:w22:2",
+      "msg_007598:w2:1",
+      "msg_007055:w16:1",
+      "msg_022871:w0:1",
+      "msg_007055:w18:1",
+      "msg_007055:w21:1",
+      "msg_007055:w23:1"
+     ]
+    },
+    "hybrid+jev": {
+     "returned": 8,
+     "precision": 1,
+     "recall": 0.47058823529411764,
+     "ndcg": 0.7965430352177939,
+     "gold_hit": true,
+     "gold_rr": 1,
+     "ms": 1396,
+     "ids": [
+      "msg_007055:w22:2",
+      "msg_007598:w3:2",
+      "msg_007055:w16:1",
+      "msg_007598:w2:1",
+      "msg_022871:w0:1",
+      "msg_007055:w18:1",
+      "msg_009708:w0:1",
+      "msg_012320:w0:2"
+     ]
+    }
+   }
+  },
+  {
+   "id": "L02",
+   "question": "How hard is the new Domains mode?",
+   "pool": 29,
+   "relevant_in_pool": 26,
+   "gold": 5,
+   "arms": {
+    "kw": {
+     "returned": 8,
+     "precision": 1,
+     "recall": 0.3076923076923077,
+     "ndcg": 0.3865296923749655,
+     "gold_hit": false,
+     "gold_rr": 0,
+     "ms": 112,
+     "ids": [
+      "msg_007055:w34:1",
+      "msg_010884:w0:1",
+      "msg_016933:w2:1",
+      "msg_009449:w0:1",
+      "msg_011803:w0:1",
+      "msg_024791:w0:1",
+      "msg_011847:w2:1",
+      "msg_015070:w0:2"
+     ]
+    },
+    "vec": {
+     "returned": 8,
+     "precision": 0.625,
+     "recall": 0.19230769230769232,
+     "ndcg": 0.4558617582574951,
+     "gold_hit": false,
+     "gold_rr": 0,
+     "ms": 496,
+     "ids": [
+      "msg_020085:w0:2",
+      "msg_016749:w0:0",
+      "msg_021421:w0:1",
+      "msg_014181:w0:1",
+      "msg_023375:w0:2",
+      "msg_010833:w0:0",
+      "msg_010578:w0:0",
+      "msg_010925:w0:1"
+     ]
+    },
+    "hybrid": {
+     "returned": 8,
+     "precision": 1,
+     "recall": 0.3076923076923077,
+     "ndcg": 0.7842014333711799,
+     "gold_hit": false,
+     "gold_rr": 0,
+     "ms": 609,
+     "ids": [
+      "msg_010043:w2:2",
+      "msg_010971:w1:1",
+      "msg_010043:w1:2",
+      "msg_015667:w1:2",
+      "msg_010971:w2:2",
+      "msg_011566:w0:2",
+      "msg_015070:w1:1",
+      "msg_007055:w34:1"
+     ]
+    },
+    "kw+jev": {
+     "returned": 8,
+     "precision": 1,
+     "recall": 0.3076923076923077,
+     "ndcg": 0.7773311199779,
+     "gold_hit": false,
+     "gold_rr": 0,
+     "ms": 531,
+     "ids": [
+      "msg_016933:w1:2",
+      "msg_011803:w0:1",
+      "msg_010043:w1:2",
+      "msg_010971:w2:2",
+      "msg_010043:w2:2",
+      "msg_011847:w2:1",
+      "msg_007055:w34:1",
+      "msg_009773:w0:2"
+     ]
+    },
+    "vec+jev": {
+     "returned": 8,
+     "precision": 1,
+     "recall": 0.3076923076923077,
+     "ndcg": 0.9468036409583679,
+     "gold_hit": true,
+     "gold_rr": 0.5,
+     "ms": 1337,
+     "ids": [
+      "msg_010043:w2:2",
+      "msg_008450:w0:2",
+      "msg_015667:w1:2",
+      "msg_011566:w0:2",
+      "msg_010043:w0:2",
+      "msg_010043:w1:2",
+      "msg_012719:w0:2",
+      "msg_020872:w0:1"
+     ]
+    },
+    "hybrid+jev": {
+     "returned": 8,
+     "precision": 1,
+     "recall": 0.3076923076923077,
+     "ndcg": 0.8867369685234562,
+     "gold_hit": false,
+     "gold_rr": 0,
+     "ms": 1212,
+     "ids": [
+      "msg_010043:w2:2",
+      "msg_015667:w1:2",
+      "msg_011566:w0:2",
+      "msg_016933:w1:2",
+      "msg_010971:w2:2",
+      "msg_015070:w1:1",
+      "msg_010043:w1:2",
+      "msg_007055:w34:1"
+     ]
+    }
+   }
+  },
+  {
+   "id": "L03",
+   "question": "Does Tides Remastered have fall damage?",
+   "pool": 21,
+   "relevant_in_pool": 2,
+   "gold": 3,
+   "arms": {
+    "kw": {
+     "returned": 8,
+     "precision": 0.25,
+     "recall": 1,
+     "ndcg": 0.8065735963827292,
+     "gold_hit": true,
+     "gold_rr": 1,
+     "ms": 77,
+     "ids": [
+      "msg_000017:w0:2",
+      "msg_001431:w1:0",
+      "msg_020910:w0:0",
+      "msg_000276:w10:0",
+      "msg_016488:w0:0",
+      "msg_013056:w0:0",
+      "msg_010430:w0:0",
+      "msg_000059:w0:2"
+     ]
+    },
+    "vec": {
+     "returned": 8,
+     "precision": 0.125,
+     "recall": 0.5,
+     "ndcg": 0.3065735963827292,
+     "gold_hit": true,
+     "gold_rr": 0.3333333333333333,
+     "ms": 355,
+     "ids": [
+      "msg_002192:w0:0",
+      "msg_018889:w0:0",
+      "msg_000017:w0:2",
+      "msg_004166:w0:0",
+      "msg_000059:w1:0",
+      "msg_025267:w0:0",
+      "msg_008515:w0:0",
+      "msg_004272:w0:0"
+     ]
+    },
+    "hybrid": {
+     "returned": 8,
+     "precision": 0.25,
+     "recall": 1,
+     "ndcg": 0.9197207891481876,
+     "gold_hit": true,
+     "gold_rr": 1,
+     "ms": 529,
+     "ids": [
+      "msg_000017:w0:2",
+      "msg_016488:w0:0",
+      "msg_000059:w0:2",
+      "msg_024773:w0:0",
+      "msg_010430:w0:0",
+      "msg_004474:w0:0",
+      "msg_000276:w0:0",
+      "msg_003138:w0:0"
+     ]
+    },
+    "kw+jev": {
+     "returned": 4,
+     "precision": 0.5,
+     "recall": 1,
+     "ndcg": 1,
+     "gold_hit": true,
+     "gold_rr": 1,
+     "ms": 558,
+     "ids": [
+      "msg_000059:w0:2",
+      "msg_000017:w0:2",
+      "msg_007057:w0:0",
+      "msg_000276:w3:0"
+     ]
+    },
+    "vec+jev": {
+     "returned": 2,
+     "precision": 1,
+     "recall": 1,
+     "ndcg": 1,
+     "gold_hit": true,
+     "gold_rr": 1,
+     "ms": 795,
+     "ids": [
+      "msg_000059:w0:2",
+      "msg_000017:w0:2"
+     ]
+    },
+    "hybrid+jev": {
+     "returned": 2,
+     "precision": 1,
+     "recall": 1,
+     "ndcg": 1,
+     "gold_hit": true,
+     "gold_rr": 1,
+     "ms": 923,
+     "ids": [
+      "msg_000059:w0:2",
+      "msg_000017:w0:2"
+     ]
+    }
+   }
+  },
+  {
+   "id": "L04",
+   "question": "Why did some players lose the blacksmith and the forge?",
+   "pool": 22,
+   "relevant_in_pool": 2,
+   "gold": 2,
+   "arms": {
+    "kw": {
+     "returned": 8,
+     "precision": 0.125,
+     "recall": 0.5,
+     "ndcg": 0.38685280723454163,
+     "gold_hit": true,
+     "gold_rr": 0.5,
+     "ms": 103,
+     "ids": [
+      "msg_016933:w1:0",
+      "msg_007055:w8:1",
+      "msg_007776:w3:0",
+      "msg_004752:w2:0",
+      "msg_024155:w0:0",
+      "msg_010668:w0:0",
+      "msg_016933:w0:0",
+      "msg_005582:w1:0"
+     ]
+    },
+    "vec": {
+     "returned": 8,
+     "precision": 0,
+     "recall": 0,
+     "ndcg": 0,
+     "gold_hit": false,
+     "gold_rr": 0,
+     "ms": 354,
+     "ids": [
+      "msg_007463:w0:0",
+      "msg_018526:w0:0",
+      "msg_017430:w0:0",
+      "msg_021612:w0:0",
+      "msg_017937:w0:0",
+      "msg_014263:w0:0",
+      "msg_019567:w0:0",
+      "msg_003212:w0:0"
+     ]
+    },
+    "hybrid": {
+     "returned": 8,
+     "precision": 0.125,
+     "recall": 0.5,
+     "ndcg": 0.6131471927654584,
+     "gold_hit": true,
+     "gold_rr": 1,
+     "ms": 458,
+     "ids": [
+      "msg_007055:w8:1",
+      "msg_022510:w1:0",
+      "msg_016933:w1:0",
+      "msg_007463:w0:0",
+      "msg_018526:w0:0",
+      "msg_017430:w0:0",
+      "msg_007776:w3:0",
+      "msg_004752:w2:0"
+     ]
+    },
+    "kw+jev": {
+     "returned": 5,
+     "precision": 0.2,
+     "recall": 0.5,
+     "ndcg": 0.6131471927654584,
+     "gold_hit": true,
+     "gold_rr": 1,
+     "ms": 547,
+     "ids": [
+      "msg_007055:w8:1",
+      "msg_022403:w0:0",
+      "msg_024191:w1:0",
+      "msg_022510:w0:0",
+      "msg_024155:w0:0"
+     ]
+    },
+    "vec+jev": {
+     "returned": 5,
+     "precision": 0.2,
+     "recall": 0.5,
+     "ndcg": 0.23719771276929622,
+     "gold_hit": false,
+     "gold_rr": 0,
+     "ms": 767,
+     "ids": [
+      "msg_014263:w0:0",
+      "msg_019666:w0:0",
+      "msg_022510:w1:0",
+      "msg_017937:w0:0",
+      "msg_020441:w0:1"
+     ]
+    },
+    "hybrid+jev": {
+     "returned": 6,
+     "precision": 0.16666666666666666,
+     "recall": 0.5,
+     "ndcg": 0.6131471927654584,
+     "gold_hit": true,
+     "gold_rr": 1,
+     "ms": 722,
+     "ids": [
+      "msg_007055:w8:1",
+      "msg_024191:w1:0",
+      "msg_014263:w0:0",
+      "msg_022510:w1:0",
+      "msg_024155:w0:0",
+      "msg_017937:w0:0"
+     ]
+    }
+   }
+  },
+  {
+   "id": "L05",
+   "question": "Is the final Bushido update available on Switch 2?",
+   "pool": 25,
+   "relevant_in_pool": 8,
+   "gold": 6,
+   "arms": {
+    "kw": {
+     "returned": 8,
+     "precision": 0.5,
+     "recall": 0.5,
+     "ndcg": 0.3109308687624377,
+     "gold_hit": true,
+     "gold_rr": 0.3333333333333333,
+     "ms": 110,
+     "ids": [
+      "msg_009708:w0:0",
+      "msg_004909:w5:1",
+      "msg_007055:w9:1",
+      "msg_008881:w1:0",
+      "msg_007055:w16:1",
+      "msg_007055:w0:0",
+      "msg_004909:w4:1",
+      "msg_007055:w12:0"
+     ]
+    },
+    "vec": {
+     "returned": 8,
+     "precision": 0.375,
+     "recall": 0.375,
+     "ndcg": 0.1933097435161878,
+     "gold_hit": true,
+     "gold_rr": 0.2,
+     "ms": 378,
+     "ids": [
+      "msg_006665:w0:0",
+      "msg_004543:w0:0",
+      "msg_001716:w0:0",
+      "msg_007055:w16:1",
+      "msg_007055:w9:1",
+      "msg_006722:w0:0",
+      "msg_006686:w0:1",
+      "msg_007055:w28:0"
+     ]
+    },
+    "hybrid": {
+     "returned": 8,
+     "precision": 0.375,
+     "recall": 0.375,
+     "ndcg": 0.35793104129645015,
+     "gold_hit": true,
+     "gold_rr": 1,
+     "ms": 374,
+     "ids": [
+      "msg_007055:w9:1",
+      "msg_007055:w16:1",
+      "msg_004909:w5:1",
+      "msg_007055:w12:0",
+      "msg_007055:w11:0",
+      "msg_010538:w0:0",
+      "msg_007055:w23:0",
+      "msg_007055:w8:0"
+     ]
+    },
+    "kw+jev": {
+     "returned": 8,
+     "precision": 0.625,
+     "recall": 0.625,
+     "ndcg": 0.4862613419709192,
+     "gold_hit": true,
+     "gold_rr": 0.5,
+     "ms": 560,
+     "ids": [
+      "msg_007055:w16:1",
+      "msg_007055:w9:1",
+      "msg_004909:w5:1",
+      "msg_004909:w4:1",
+      "msg_004973:w0:0",
+      "msg_004909:w3:0",
+      "msg_007055:w7:1",
+      "msg_007055:w11:0"
+     ]
+    },
+    "vec+jev": {
+     "returned": 8,
+     "precision": 0.75,
+     "recall": 0.75,
+     "ndcg": 0.7550457167453322,
+     "gold_hit": true,
+     "gold_rr": 0.5,
+     "ms": 740,
+     "ids": [
+      "msg_007055:w16:1",
+      "msg_014275:w0:2",
+      "msg_004909:w5:1",
+      "msg_007055:w9:1",
+      "msg_007055:w8:0",
+      "msg_001678:w0:1",
+      "msg_007055:w11:0",
+      "msg_006686:w0:1"
+     ]
+    },
+    "hybrid+jev": {
+     "returned": 8,
+     "precision": 0.5,
+     "recall": 0.5,
+     "ndcg": 0.4302715342830536,
+     "gold_hit": true,
+     "gold_rr": 0.5,
+     "ms": 850,
+     "ids": [
+      "msg_007055:w16:1",
+      "msg_004909:w4:1",
+      "msg_007055:w9:1",
+      "msg_004909:w5:1",
+      "msg_007055:w11:0",
+      "msg_004909:w1:0",
+      "msg_007055:w8:0",
+      "msg_002070:w0:0"
+     ]
+    }
+   }
+  },
+  {
+   "id": "L06",
+   "question": "What crashes did people report after the final update?",
+   "pool": 23,
+   "relevant_in_pool": 8,
+   "gold": 4,
+   "arms": {
+    "kw": {
+     "returned": 8,
+     "precision": 0.375,
+     "recall": 0.375,
+     "ndcg": 0.5016535911203409,
+     "gold_hit": true,
+     "gold_rr": 0.5,
+     "ms": 110,
+     "ids": [
+      "msg_009708:w0:0",
+      "msg_007055:w12:2",
+      "msg_007055:w9:2",
+      "msg_007055:w1:0",
+      "msg_007055:w16:2",
+      "msg_017990:w16:0",
+      "msg_000644:w1:0",
+      "msg_007055:w0:0"
+     ]
+    },
+    "vec": {
+     "returned": 8,
+     "precision": 0.375,
+     "recall": 0.375,
+     "ndcg": 0.24233001583240715,
+     "gold_hit": true,
+     "gold_rr": 0.16666666666666666,
+     "ms": 350,
+     "ids": [
+      "msg_000163:w0:0",
+      "msg_001537:w0:1",
+      "msg_009548:w0:1",
+      "msg_003853:w0:0",
+      "msg_001270:w0:0",
+      "msg_009643:w0:2",
+      "msg_002294:w0:0",
+      "msg_010538:w1:0"
+     ]
+    },
+    "hybrid": {
+     "returned": 8,
+     "precision": 0.5,
+     "recall": 0.5,
+     "ndcg": 0.35778556325237165,
+     "gold_hit": true,
+     "gold_rr": 0.25,
+     "ms": 376,
+     "ids": [
+      "msg_009708:w0:0",
+      "msg_000163:w0:0",
+      "msg_001537:w0:1",
+      "msg_007055:w12:2",
+      "msg_009548:w0:1",
+      "msg_007055:w9:2",
+      "msg_003853:w0:0",
+      "msg_007055:w1:0"
+     ]
+    },
+    "kw+jev": {
+     "returned": 8,
+     "precision": 0.5,
+     "recall": 0.5,
+     "ndcg": 0.7517581284423313,
+     "gold_hit": true,
+     "gold_rr": 1,
+     "ms": 419,
+     "ids": [
+      "msg_007055:w12:2",
+      "msg_007055:w16:2",
+      "msg_007055:w9:2",
+      "msg_000644:w2:1",
+      "msg_007055:w11:0",
+      "msg_023897:w0:0",
+      "msg_022510:w0:0",
+      "msg_011642:w0:0"
+     ]
+    },
+    "vec+jev": {
+     "returned": 7,
+     "precision": 0.5714285714285714,
+     "recall": 0.5,
+     "ndcg": 0.4842013853178162,
+     "gold_hit": true,
+     "gold_rr": 1,
+     "ms": 870,
+     "ids": [
+      "msg_009643:w0:2",
+      "msg_006731:w0:1",
+      "msg_001270:w0:0",
+      "msg_009548:w0:1",
+      "msg_017685:w0:0",
+      "msg_000163:w0:0",
+      "msg_001537:w0:1"
+     ]
+    },
+    "hybrid+jev": {
+     "returned": 8,
+     "precision": 0.75,
+     "recall": 0.75,
+     "ndcg": 0.9260002252389872,
+     "gold_hit": true,
+     "gold_rr": 1,
+     "ms": 840,
+     "ids": [
+      "msg_007055:w16:2",
+      "msg_009643:w0:2",
+      "msg_007055:w12:2",
+      "msg_007055:w9:2",
+      "msg_000644:w2:1",
+      "msg_001270:w0:0",
+      "msg_009548:w0:1",
+      "msg_000163:w0:0"
+     ]
+    }
+   }
+  }
+ ]
+}

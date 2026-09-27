@@ -1,0 +1,574 @@
+{
+ "L01|msg_012320:w0": {
+  "relevance": 2,
+  "reason": "The conversation includes multiple players sharing their thoughts and opinions on the game's final quest and overall story."
+ },
+ "L01|msg_006434:w0": {
+  "relevance": 0,
+  "reason": "The conversation is about the 'A puzzlement' and 'Veil of Ages Bushido' quests, not the Ebontide quest."
+ },
+ "L01|msg_008881:w1": {
+  "relevance": 0,
+  "reason": "The conversation discusses various games in the VoA franchise and their features, but never mentions the Ebontide quest."
+ },
+ "L01|msg_007598:w3": {
+  "relevance": 2,
+  "reason": "Players discuss their opinions, thoughts, and critiques regarding the Ebontide quest in detail."
+ },
+ "L01|msg_004752:w2": {
+  "relevance": 0,
+  "reason": "The conversation is about RPG mechanics and level-locking in VoA games, not the Ebontide quest."
+ },
+ "L01|msg_007598:w2": {
+  "relevance": 1,
+  "reason": "The conversation mentions players discussing the Ebontide quest length and difficulty, but does not provide a general player consensus about it."
+ },
+ "L01|msg_016933:w1": {
+  "relevance": 0,
+  "reason": "The conversation discusses endgame domains and new game modes, but does not mention the Ebontide quest."
+ },
+ "L01|msg_009708:w0": {
+  "relevance": 1,
+  "reason": "Players discuss some issues with the Ebontide quest's final boss fight and plot holes, but not player opinions on the quest as a whole."
+ },
+ "L01|msg_010538:w1": {
+  "relevance": 0,
+  "reason": "The conversation does not discuss player opinions on the Ebontide quest."
+ },
+ "L01|msg_007055:w18": {
+  "relevance": 1,
+  "reason": "Players briefly discuss whether the Ebontide quest/missions are good."
+ },
+ "L01|msg_022062:w0": {
+  "relevance": 1,
+  "reason": "The conversation briefly mentions Ebontide positively regarding its story drops and rewards, but does not give a full overview of what players think of the quest."
+ },
+ "L01|msg_009812:w0": {
+  "relevance": 0,
+  "reason": "The conversation mentions the Ebontide quest briefly as a location for an item, but does not discuss player opinions about it."
+ },
+ "L01|msg_007055:w22": {
+  "relevance": 2,
+  "reason": "Players directly discuss their opinions on the Ebontide quest, calling it the best piece of content in the game and sharing experiences about its boss fights."
+ },
+ "L01|msg_024791:w1": {
+  "relevance": 1,
+  "reason": "The conversation mentions the length and narrative role of Ebontide, but doesn't directly share opinions on its quality."
+ },
+ "L01|msg_007055:w16": {
+  "relevance": 1,
+  "reason": "Players mention that the Ebontide quest is really cool and provide feedback on bugs related to it."
+ },
+ "L01|msg_007055:w23": {
+  "relevance": 1,
+  "reason": "The conversation mentions the Ebontide quest and a player expressing disappointment that it is the last update, but does not contain a general discussion of player opinions on it."
+ },
+ "L01|msg_015290:w0": {
+  "relevance": 1,
+  "reason": "The conversation mentions a game-breaking bug in the Ebontide quest rather than general opinions about it."
+ },
+ "L01|msg_009604:w1": {
+  "relevance": 2,
+  "reason": "Players discuss their opinions and experiences regarding the Ebontide quest in detail."
+ },
+ "L01|msg_004909:w6": {
+  "relevance": 1,
+  "reason": "The conversation mentions Ebontide's connection to lore and characters, but does not provide a general opinion on the Ebontide quest itself."
+ },
+ "L01|msg_023556:w0": {
+  "relevance": 2,
+  "reason": "Players discuss their mixed opinions on the Ebontide quest, with some liking the story continuation and others disliking the promotional ties."
+ },
+ "L01|msg_022871:w0": {
+  "relevance": 1,
+  "reason": "The player shares a brief opinion that the Ebontide quest is the hardest."
+ },
+ "L01|msg_007055:w21": {
+  "relevance": 1,
+  "reason": "A player mentions getting soft locked during the Ebontide quest, but there is no general discussion of player opinions about the quest itself."
+ },
+ "L01|msg_014320:w0": {
+  "relevance": 1,
+  "reason": "One player briefly mentions that they finished the Ebontide quest and thought it was great, but the conversation mostly discusses how to unlock quests."
+ },
+ "L02|msg_007055:w34": {
+  "relevance": 1,
+  "reason": "The conversation mentions that a player found a domain too hard at level 86 and couldn't win, providing partial insight into the difficulty."
+ },
+ "L02|msg_010884:w0": {
+  "relevance": 1,
+  "reason": "The conversation includes details about the difficulty and mechanics of the new Domains mode, such as level requirements and brutal multipliers."
+ },
+ "L02|msg_024791:w0": {
+  "relevance": 1,
+  "reason": "Users discuss completing L10 Domains and hitting a wall at domain 8, indicating difficulty details."
+ },
+ "L02|msg_016933:w2": {
+  "relevance": 1,
+  "reason": "Players mention doing level 10 domains and that some parts were hard, but do not provide a full overview of the mode's difficulty."
+ },
+ "L02|msg_011847:w2": {
+  "relevance": 1,
+  "reason": "The conversation discusses completing domain levels up to level 10 and facing bosses, giving some insight into the difficulty, but does not explicitly rate or describe the overall difficulty of the new mode."
+ },
+ "L02|msg_009449:w0": {
+  "relevance": 1,
+  "reason": "Players mention beating expert domains and highest level domains without dying, providing partial insight into the difficulty."
+ },
+ "L02|msg_015070:w0": {
+  "relevance": 2,
+  "reason": "The conversation discusses the difficulty and frustration of high-level domains (levels 8 to 10) and boss fights in the new mode."
+ },
+ "L02|msg_011803:w0": {
+  "relevance": 1,
+  "reason": "The conversation discusses the difficulty of the new domains mode, including specific details about level 10 and enemy strength, but does not provide a comprehensive overview."
+ },
+ "L02|msg_020085:w0": {
+  "relevance": 2,
+  "reason": "The user discusses the difficulty of the new Domains mode, describing it as soul crushing."
+ },
+ "L02|msg_016749:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses replaying and token costs for the new Domains mode, not its difficulty."
+ },
+ "L02|msg_021421:w0": {
+  "relevance": 1,
+  "reason": "The conversation mentions domain levels and grinding, which relates to the difficulty of the Domains mode."
+ },
+ "L02|msg_014181:w0": {
+  "relevance": 1,
+  "reason": "The user discusses the new Domains mode as a fun endgame mode, which partly relates to its difficulty."
+ },
+ "L02|msg_023375:w0": {
+  "relevance": 2,
+  "reason": "The conversation directly explains the difficulty levels and structure of the new Domains mode."
+ },
+ "L02|msg_010925:w0": {
+  "relevance": 1,
+  "reason": "The conversation mentions that the highest domain levels are for hardcore players and completing level 10 is considered an achievement."
+ },
+ "L02|msg_010578:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses farming points and gateway resources, but does not mention the difficulty of the new Domains mode."
+ },
+ "L02|msg_010833:w0": {
+  "relevance": 0,
+  "reason": "The conversation asks about level requirements and gold rewards, but does not discuss the difficulty of the new Domains mode."
+ },
+ "L02|msg_010043:w2": {
+  "relevance": 2,
+  "reason": "Players discuss the difficulty of the new domains mode, comparing it to nightmare mode and sharing specific challenges."
+ },
+ "L02|msg_010971:w1": {
+  "relevance": 1,
+  "reason": "The conversation discusses the new Domains mode, its mechanics, and strategies, but does not explicitly rate its overall difficulty."
+ },
+ "L02|msg_010043:w1": {
+  "relevance": 2,
+  "reason": "Players discuss the difficulty of the new Domains mode, mentioning one-shot mechanics, annoying modifiers, and comparing character viability."
+ },
+ "L02|msg_015070:w1": {
+  "relevance": 1,
+  "reason": "The conversation discusses the difficulty spike between domain 6 and 7, but does not give a full overview of the mode's difficulty."
+ },
+ "L02|msg_010971:w2": {
+  "relevance": 2,
+  "reason": "The conversation discusses the difficulty, boss fights, and intense mechanics of the new Domains mode."
+ },
+ "L02|msg_011566:w0": {
+  "relevance": 2,
+  "reason": "The conversation directly discusses the difficulty, modifiers, and unfair mechanics of the new Domains mode."
+ },
+ "L02|msg_015667:w1": {
+  "relevance": 2,
+  "reason": "The conversation directly discusses the difficulty of the new Domains mode, with players calling it insanely difficult and comparing it to Dark Souls."
+ },
+ "L02|msg_016933:w1": {
+  "relevance": 2,
+  "reason": "Players discuss how difficult the new Domains mode is, noting that bosses kill in 1-2 hits and require heavy grinding or cheesing."
+ },
+ "L02|msg_009773:w0": {
+  "relevance": 2,
+  "reason": "Users discuss that the domains are really tough and share tips on how to beat them."
+ },
+ "L02|msg_008450:w0": {
+  "relevance": 2,
+  "reason": "The conversation directly discusses the difficulty of the Domains mode and mentions specific tough aspects and debuffs."
+ },
+ "L02|msg_010043:w0": {
+  "relevance": 2,
+  "reason": "The conversation directly discusses the difficulty levels of the new Domains mode, including bosses and nightmare difficulty."
+ },
+ "L02|msg_020872:w0": {
+  "relevance": 1,
+  "reason": "The conversation discusses the difficulty of domains, mentioning that they are easier with Kano and can be a clusterfuck."
+ },
+ "L02|msg_012719:w0": {
+  "relevance": 2,
+  "reason": "CrimsonFox explicitly states that the new domains are very difficult unless players have OP builds."
+ },
+ "L03|msg_020910:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses Twitch drops, naval gameplay, legendary ships, and cutscenes, but does not mention fall damage."
+ },
+ "L03|msg_013056:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses boss fights and stealth mechanics in Tides Remastered, not fall damage."
+ },
+ "L03|msg_000276:w10": {
+  "relevance": 0,
+  "reason": "The conversation is about cutscenes, outfits, and characters in Tides Remastered, not fall damage."
+ },
+ "L03|msg_000017:w0": {
+  "relevance": 2,
+  "reason": "The conversation directly discusses whether Tides Remastered has fall damage."
+ },
+ "L03|msg_000059:w0": {
+  "relevance": 2,
+  "reason": "The conversation directly discusses whether Tides Remastered has fall damage based on previews."
+ },
+ "L03|msg_016488:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses parkour and gameplay mechanics in Tides Remastered, but never mentions fall damage."
+ },
+ "L03|msg_001431:w1": {
+  "relevance": 0,
+  "reason": "The conversation discusses parkour, world design, and animations in Tides Remastered, but never mentions fall damage."
+ },
+ "L03|msg_010430:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses graphics features, multiplayer, and preloading, but never mentions fall damage."
+ },
+ "L03|msg_004166:w0": {
+  "relevance": 0,
+  "reason": "The conversation only mentions looking forward to the game and does not discuss fall damage."
+ },
+ "L03|msg_018889:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses opinions on the original versus remastered version of Tides but does not mention fall damage."
+ },
+ "L03|msg_025267:w0": {
+  "relevance": 0,
+  "reason": "The conversation only mentions a remake of Tides but does not discuss fall damage."
+ },
+ "L03|msg_000059:w1": {
+  "relevance": 0,
+  "reason": "The conversation discusses Tides Remastered features like live service, armor perks, and transmog, but does not mention fall damage."
+ },
+ "L03|msg_004272:w0": {
+  "relevance": 0,
+  "reason": "The conversation mentions Tides briefly but does not discuss fall damage."
+ },
+ "L03|msg_002192:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses playing the original Tides and its replayability, but not fall damage in Tides Remastered."
+ },
+ "L03|msg_008515:w0": {
+  "relevance": 0,
+  "reason": "The conversation is about wanting to play the game and general opinions, but does not mention fall damage."
+ },
+ "L03|msg_024773:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses unlocks and release dates for Tides Remastered, but does not mention fall damage."
+ },
+ "L03|msg_004474:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses opinions on Tides Remastered versus the original, but does not mention fall damage."
+ },
+ "L03|msg_003138:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses game pricing, sales, and parkour details like traversal, but does not mention fall damage."
+ },
+ "L03|msg_000276:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses game movement and gravity during animations, but does not mention fall damage."
+ },
+ "L03|msg_007057:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses Bastion and other games, but not Tides Remastered or its fall damage."
+ },
+ "L03|msg_000276:w3": {
+  "relevance": 0,
+  "reason": "The conversation discusses parkour animations, weapons, and characters, but does not mention fall damage."
+ },
+ "L04|msg_007776:w3": {
+  "relevance": 0,
+  "reason": "The conversation is about single player and multiplayer games and does not mention the blacksmith or the forge."
+ },
+ "L04|msg_016933:w1": {
+  "relevance": 0,
+  "reason": "The conversation is about endgame domains and game difficulty, not about players losing the blacksmith and the forge."
+ },
+ "L04|msg_010668:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses game achievements and the game going gold, not a blacksmith or forge."
+ },
+ "L04|msg_016933:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses leveling up, XP gains, domains, and game difficulty, but never mentions the blacksmith or the forge."
+ },
+ "L04|msg_007055:w8": {
+  "relevance": 1,
+  "reason": "The conversation mentions that the blacksmith quest and forge disappeared from the game, but does not fully explain the root cause."
+ },
+ "L04|msg_024155:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses the minimap being replaced by a compass, not the blacksmith and the forge."
+ },
+ "L04|msg_004752:w2": {
+  "relevance": 0,
+  "reason": "The conversation discusses game design and RPG elements in the VoA series, but does not mention losing the blacksmith or the forge."
+ },
+ "L04|msg_005582:w1": {
+  "relevance": 0,
+  "reason": "The conversation discusses in-game items, outfits, and upcoming updates, but does not mention the blacksmith or the forge."
+ },
+ "L04|msg_007463:w0": {
+  "relevance": 0,
+  "reason": "The conversation is about engraving mechanics and does not mention players losing the blacksmith and the forge."
+ },
+ "L04|msg_018526:w0": {
+  "relevance": 0,
+  "reason": "The conversation is about an engraving removed from Hana's head gear, not about players losing the blacksmith and the forge."
+ },
+ "L04|msg_017430:w0": {
+  "relevance": 0,
+  "reason": "The conversation is about the Riddle Scroll Beacon and glyphs mission, not the blacksmith and the forge."
+ },
+ "L04|msg_017937:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses upgrading the forge and looting mythical items, but not why players lost the blacksmith or forge."
+ },
+ "L04|msg_021612:w0": {
+  "relevance": 0,
+  "reason": "The conversation is about the orichalcum store reset, not the blacksmith and forge."
+ },
+ "L04|msg_014263:w0": {
+  "relevance": 0,
+  "reason": "The conversation is about an engraving bug in a storage chest, not about losing the blacksmith and the forge."
+ },
+ "L04|msg_003212:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses knowledge ranks and food for characters, not the blacksmith and the forge."
+ },
+ "L04|msg_019567:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses a bug with an engraving and general complaints, but does not mention the blacksmith or the forge."
+ },
+ "L04|msg_022510:w1": {
+  "relevance": 0,
+  "reason": "The conversation does not discuss why players lost the blacksmith and the forge."
+ },
+ "L04|msg_022403:w0": {
+  "relevance": 0,
+  "reason": "The conversation is about finishing the story/Legion and losing the background music or last mission, not about losing the blacksmith and the forge."
+ },
+ "L04|msg_019666:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses submitting a bug report about missing content, but does not explain why players lost the blacksmith and the forge."
+ },
+ "L04|msg_024191:w1": {
+  "relevance": 0,
+  "reason": "The conversation discusses DLC combat difficulty and gear upgrading, but not why players lost the blacksmith and the forge."
+ },
+ "L04|msg_022510:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses combat allies, bugs with horses and mastery pages, but does not mention the blacksmith and the forge."
+ },
+ "L04|msg_020441:w0": {
+  "relevance": 1,
+  "reason": "The conversation mentions that the forge and mod elements are missing regarding a specific weapon, bearing partially on the issue."
+ },
+ "L05|msg_007055:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses the final update for Bushido but does not mention the Switch 2 platform."
+ },
+ "L05|msg_009708:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses the Ebontide update and gameplay details, but contains no mention of the Switch 2."
+ },
+ "L05|msg_004909:w5": {
+  "relevance": 1,
+  "reason": "The conversation discusses the final Bushido update and mentions that part of it (TR) is not coming to the Switch 2, but does not explicitly state the availability of the entire update on Switch 2."
+ },
+ "L05|msg_007055:w12": {
+  "relevance": 0,
+  "reason": "The conversation discusses the Bushido final update and game bugs, but does not mention the Switch 2 platform."
+ },
+ "L05|msg_007055:w16": {
+  "relevance": 1,
+  "reason": "The conversation mentions the latest update and briefly touches upon switch 2 compatibility, but does not directly answer whether the final Bushido update is available there."
+ },
+ "L05|msg_008881:w1": {
+  "relevance": 0,
+  "reason": "The conversation discusses various games in the VoA franchise and their features, but never mentions the Bushido update or the Switch 2."
+ },
+ "L05|msg_004909:w4": {
+  "relevance": 1,
+  "reason": "The conversation discusses the final Bushido update and mentions that parts of it or related content may not be coming to Switch 2, but it lacks a definitive final answer."
+ },
+ "L05|msg_007055:w9": {
+  "relevance": 1,
+  "reason": "The conversation discusses the Bushido update on Switch and mentions Switch 2 performance, but doesn't definitively confirm availability."
+ },
+ "L05|msg_006665:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses requirements for crossover items in the Bushido update, but does not mention the Switch 2 platform."
+ },
+ "L05|msg_004543:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses the release timing of the final Bushido update but does not mention the Switch 2."
+ },
+ "L05|msg_001716:w0": {
+  "relevance": 0,
+  "reason": "The conversation mentions the Bushido update on PC and Switch, but does not discuss the Switch 2."
+ },
+ "L05|msg_010538:w0": {
+  "relevance": 0,
+  "reason": "The conversation includes a question about the final update on Switch 2, but no one answers it."
+ },
+ "L05|msg_006722:w0": {
+  "relevance": 0,
+  "reason": "The conversation only mentions playing Bushido to finish the last quest and does not mention the Switch 2 or the final update's availability on it."
+ },
+ "L05|msg_006686:w0": {
+  "relevance": 1,
+  "reason": "The conversation discusses the final Bushido update and a Switch 2 release, but does not definitively confirm if the update is available on Switch 2."
+ },
+ "L05|msg_007055:w28": {
+  "relevance": 0,
+  "reason": "The conversation discusses the contents of the Bushido update but does not mention the Switch 2 console."
+ },
+ "L05|msg_007055:w11": {
+  "relevance": 0,
+  "reason": "The conversation discusses bugs in the Bushido update, but does not mention the Switch 2 platform."
+ },
+ "L05|msg_007055:w23": {
+  "relevance": 0,
+  "reason": "The conversation discusses the Bushido update and gameplay, but does not mention the Switch 2 console."
+ },
+ "L05|msg_004973:w0": {
+  "relevance": 0,
+  "reason": "The conversation mentions patch notes for Veil of Ages Bushido and a separate game TR not releasing on Switch 2, but it does not state whether the final Bushido update is available on Switch 2."
+ },
+ "L05|msg_007055:w8": {
+  "relevance": 0,
+  "reason": "The conversation discusses a blacksmith quest bug and an update, but does not mention the Switch 2."
+ },
+ "L05|msg_014275:w0": {
+  "relevance": 2,
+  "reason": "BraveStag explicitly mentions that the final update for Bushido is not yet available on the Switch 2 version because Nintendo is still reviewing it."
+ },
+ "L05|msg_007055:w7": {
+  "relevance": 1,
+  "reason": "The conversation discusses the update rolling out for the Switch, though it does not explicitly mention the 'Switch 2' or whether it is the final 'Bushido' update."
+ },
+ "L05|msg_004909:w3": {
+  "relevance": 0,
+  "reason": "The conversation discusses the final Bushido update and features a passing mention of the Switch 2, but does not provide information on whether the update is available on it."
+ },
+ "L05|msg_004909:w1": {
+  "relevance": 0,
+  "reason": "The conversation mentions Bushido and Switch 2 briefly but does not answer if the update is available on it."
+ },
+ "L05|msg_001678:w0": {
+  "relevance": 1,
+  "reason": "The conversation mentions playing Bushido on Switch 2, bearing on its availability there."
+ },
+ "L05|msg_002070:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses the final Bushido update and content/outfits, but does not mention the Switch 2 platform."
+ },
+ "L06|msg_009708:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses bugs in the final boss fight and new gear, but contains no reports of game crashes."
+ },
+ "L06|msg_017990:w16": {
+  "relevance": 0,
+  "reason": "The conversation is about game lore and ethics of killing guards, not about game crashes or updates."
+ },
+ "L06|msg_007055:w1": {
+  "relevance": 0,
+  "reason": "The conversation discusses the timing and details of the final update, but contains no reports of any crashes."
+ },
+ "L06|msg_007055:w9": {
+  "relevance": 2,
+  "reason": "Users reported that the game keeps crashing on boot up / launch after the update."
+ },
+ "L06|msg_000644:w1": {
+  "relevance": 0,
+  "reason": "The conversation is about game storytelling and social media opinions on video games, not about crashes after an update."
+ },
+ "L06|msg_007055:w16": {
+  "relevance": 2,
+  "reason": "Users discuss a specific game crash caused by new gear added in the update."
+ },
+ "L06|msg_007055:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses the final update and game content, but it does not mention any game crashes."
+ },
+ "L06|msg_007055:w12": {
+  "relevance": 2,
+  "reason": "A user specifically reports that the game crashes upon reaching 100% on checking memory add-ons during every update due to the Kuroshima DLC."
+ },
+ "L06|msg_001537:w0": {
+  "relevance": 1,
+  "reason": "One user mentions experiencing a crash during the Hana v Kano duel."
+ },
+ "L06|msg_009643:w0": {
+  "relevance": 2,
+  "reason": "The conversation directly lists specific crashes reported by users after the final update."
+ },
+ "L06|msg_001270:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses the lack of information about the final update and does not mention any reported crashes."
+ },
+ "L06|msg_000163:w0": {
+  "relevance": 0,
+  "reason": "The conversation is about a pre-update startup crash, not crashes after the final update."
+ },
+ "L06|msg_009548:w0": {
+  "relevance": 1,
+  "reason": "The conversation mentions a glitch/bug in the final update, but it is not specifically about crashes."
+ },
+ "L06|msg_002294:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses keeping save files and achievements, but does not mention any crash reports following the final update."
+ },
+ "L06|msg_003853:w0": {
+  "relevance": 0,
+  "reason": "The conversation is about an upcoming release and does not mention any crash reports."
+ },
+ "L06|msg_010538:w1": {
+  "relevance": 0,
+  "reason": "The conversation is about level requirements and Etta's body armor, not about crashes after the final update."
+ },
+ "L06|msg_000644:w2": {
+  "relevance": 1,
+  "reason": "The conversation mentions game crashes in Fjord, but does not discuss crashes after a final update."
+ },
+ "L06|msg_007055:w11": {
+  "relevance": 0,
+  "reason": "The conversation discusses bugs and issues with the final update, but no specific crashes are reported."
+ },
+ "L06|msg_023897:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses account issues and game lore, but does not mention any update-related crashes."
+ },
+ "L06|msg_011642:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses bugs and unreleased items in an update, but does not report any specific game crashes."
+ },
+ "L06|msg_006731:w0": {
+  "relevance": 1,
+  "reason": "The user reports a game freeze and having to force close after the new release, which partially relates to crashes."
+ },
+ "L06|msg_022510:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses combat allies, bugs with horses losing saddles, and mastery pages, but does not mention any crashes."
+ },
+ "L06|msg_017685:w0": {
+  "relevance": 0,
+  "reason": "The conversation discusses a progression bug in certain missions, not crashes reported after the final update."
+ }
+}

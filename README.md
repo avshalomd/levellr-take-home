@@ -82,16 +82,25 @@ All with alternatives and reasons in [DECISIONS.md](DECISIONS.md). The short ver
 temporal, 1 excited, 1 frustrated, 1 what-to-post, 3 aggregates graded against SQL, 2 false premises, 2 out of scope.
 The judge is Gemini Flash-Lite, a different model from the agent and from Jev.
 
-**Retrieval** (lookups, top 8, relevance pooled across arms and judged blind):
+**Retrieval** (run 2026-09-27 on the 6 lookups, 2,362 conversations; top 8; relevance pooled across the six arms and
+judged blind by Flash-Lite; "gold found" = a conversation holding a hand-picked gold message is in the top 8):
 
-| arm | precision@8 | recall@8 | nDCG@8 | gold found |
-|---|---|---|---|---|
-| keyword | TODO-NUMBERS | | | |
-| vector | TODO-NUMBERS | | | |
-| hybrid | TODO-NUMBERS | | | |
-| keyword + Jev rerank | TODO-NUMBERS | | | |
-| vector + Jev rerank | TODO-NUMBERS | | | |
-| hybrid + Jev rerank (production) | TODO-NUMBERS | | | |
+| arm | precision@8 | recall@8 | nDCG@8 | gold found | MRR | median time |
+|---|---|---|---|---|---|---|
+| keyword | 46% | 49% | 0.46 | 5/6 | 0.47 | 0.1 s |
+| vector | 38% | 30% | 0.29 | 4/6 | 0.17 | 0.4 s |
+| hybrid | 54% | 53% | 0.59 | 5/6 | 0.71 | 0.5 s |
+| keyword + Jev rerank | 64% | 57% | 0.75 | 5/6 | 0.67 | 0.6 s |
+| vector + Jev rerank | 75% | 59% | 0.69 | 5/6 | 0.58 | 0.9 s |
+| **hybrid + Jev rerank (production)** | **74%** | **59%** | **0.78** | 5/6 | **0.75** | 0.9 s |
+
+Reading it: fusion beats either retriever alone (nDCG 0.59 vs 0.46 and 0.29), and the Jev rerank adds the most
+(precision 54% to 74%, nDCG 0.59 to 0.78) for about 0.4 s. Vectors alone are the weakest arm here: short Discord
+lines carry little meaning per message, and names like "Ebontide" are exact keyword hits. They stay because hybrid
+beats keyword on every quality column (gold found ties). L02 (Domains difficulty) is the gold miss in five arms: its
+gold messages sit in many small pieces of update-night chat, and the arms returned other relevant Domains
+conversations instead (precision 100% in five arms).
+Six questions is a small sample: these show direction, not a benchmark.
 
 **End to end:** TODO-NUMBERS (answer score, cited claims supported, declined when it should, invented facts).
 
