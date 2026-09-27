@@ -23,7 +23,10 @@ describe("Answer", () => {
     const out = html(evidence("It scored 25/100 [scan], and 12 posts [aggregate] say so.", []));
     expect(out.match(/-mr-\[3px\]/g)).toHaveLength(1);
     expect(out.match(/mx-0\.5/g)).toHaveLength(1);
-    expect(out).toContain("</button>, and 12 posts");
+    expect(out).toContain("</button>,</span> and 12 ");
+    // QA 2026-09-27: the word, the glyph and the punctuation after it never wrap apart.
+    expect(out).toContain('<span class="whitespace-nowrap">25/100<button');
+    expect(html(evidence("It fell to 12 [aggregate].", []))).toMatch(/<span class="whitespace-nowrap">12<button[^]*<\/button>\.<\/span>/);
   });
 
   // QA 2026-09-26: a chip's margin before a "." read as a space, and "+N more" sat past the full stop.
