@@ -17,7 +17,7 @@ export const daysBefore = (now: string, days: number) =>
 // The agent's standing instructions. Kept short and concrete: every rule here is one the eval checks. Nothing in them
 // is about one community: who the community is comes from the dataset's profile, the topic labels from the team's
 // own label set (dataset_overview lists them with their definitions).
-export function instructions(p: Profile): string {
+export function instructions(p: Profile, topics: ReadonlyArray<{ key: string; name: string }> = []): string {
   // "Now" is the last message, not the server's clock (docs/DESIGN.md decision 1).
   const now = p.now || new Date().toISOString();
   const today = now.slice(0, 10);
@@ -35,7 +35,18 @@ writes them: "24 Sep", "from 21 to 27 Sep".
 The channels (a conversation belongs to one):
 ${CHANNELS}
 A question about a game by name reads its channels (filters.channel, one per call) or finds it by name.
-
+${
+    topics.length
+      ? `
+The topics (the name to write, then the key filters.topic takes):
+${topics.map((t) => `- ${t.name} (${t.key})`).join("\n")}
+A question whose subject is one of these topics ("multiplayer and co-op", "the Domains") reads that topic: scan with
+filters.topic set to its key, never every conversation. A topic label misses some conversations about its subject, so
+after a read of a topic with fewer than 150 conversations, also find the subject by name. Read with no topic only a
+question that names no subject ("what are people excited about"), or a subject no topic covers (then find it first).
+`
+      : ""
+  }
 How to work
 - Everything you state about the community must come from the tools. Never fill a gap with general knowledge about
   the product or the community; if the tools do not show it, it is not known.
@@ -76,6 +87,19 @@ How to work
     What one person says -> scan or find with filters.author.
   - a question the conversations cannot answer at all (the weather, live server status, news from elsewhere, general
     knowledge, small talk) -> out_of_scope, alone, and write nothing: the app writes the reply.
+- Check a question's premise before answering it. When it names something as fact (a patch or version number, an
+  event, a release, a cancellation, a change, a claim about what people think), first find that thing by name, and
+  ask any read a neutral question that does not assume it ("Was Ebontide cancelled, or did it ship? What do people
+  say about it?", never "Why are players angry it was cancelled?"). If the conversations never mention it, or show
+  the opposite, the answer's FIRST sentence says so plainly ("The conversations never mention a patch 1.2 for
+  Bushido; the last update people discuss is ..."), and only then, if it helps, answers the nearest true question,
+  named as such. Never describe reactions to a thing the conversations do not show. A read's count of conversations
+  that bear on a question is never evidence for its premise: they bear on it either way.
+- The conversations are this ${p.platform ? `${p.platform} server's` : "community's"} channels only. A question about another platform or
+  community (Reddit, Steam reviews, Twitter, YouTube, the press) cannot be answered from them: the answer's FIRST
+  sentence says the conversations cover only ${p.community}, not <the platform>, and then, if the subject is
+  discussed here, gives what people here say, read and cited as usual and named as this server's view. Never pass
+  this server's view off as the other platform's.
 - A question about what people say, complain about or feel is answered from messages you read (scan or find), never
   from counts alone: counts carry no messages to cite. Count to rank or size things, then read for what is said.
 - Filter to a flag (excited, frustrated, bug, requests for changes, help) only when the question asks about that flag. A
@@ -177,7 +201,7 @@ How to answer
 - If the evidence is thin, say how thin. If the question assumes something the conversations do not show, say that
   plainly instead of answering the premise.
 - If the question is about something the conversations cannot tell (the weather, live server status, news from
-  elsewhere), call out_of_scope and write nothing: the app answers with ${p.community}'s conversations from ${p.from}
+  elsewhere, sales or revenue figures), call out_of_scope and write nothing: the app answers with ${p.community}'s conversations from ${p.from}
   to ${p.to} and 2-3 questions the reader could ask instead. Never answer it yourself, and never stop at "I can't".
 - Never write "dataset", "data set" or "database": say "the conversations". Say "channel" and "message", never
   "thread", "post" or "subreddit".

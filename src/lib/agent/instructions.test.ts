@@ -60,3 +60,19 @@ describe("daysBefore", () => {
     expect(daysBefore("2026-09-27T19:30:00.000Z", 7)).toBe("2026-09-20");
   });
 });
+
+// QA 2026-09-27: "What are people saying about multiplayer and co-op?" read every conversation; "patch 1.2" and a
+// "cancelled" Ebontide were answered as if true; "sentiment on Reddit" was answered from Discord unsaid.
+describe("instructions, subjects and premises", () => {
+  it("lists the topics by name and key, and reads a topic's subject as that topic", () => {
+    const t = instructions(veil, [{ key: "multiplayer-and-co-op", name: "Multiplayer and co-op" }]);
+    expect(t).toContain("- Multiplayer and co-op (multiplayer-and-co-op)");
+    expect(t).toMatch(/scan with\s+filters\.topic set to its key, never every conversation/);
+  });
+  it("checks a premise before answering, and says when another platform is asked about", () => {
+    expect(text).toMatch(/Check a question's premise before answering it/);
+    expect(text).toMatch(/Never describe reactions to a thing the conversations do not show/);
+    expect(text).toMatch(/A question about another platform or\s+community \(Reddit/);
+  });
+});
+

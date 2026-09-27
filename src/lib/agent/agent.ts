@@ -1,6 +1,7 @@
 import "server-only";
 import { generateText, isStepCount, ToolLoopAgent, type ModelMessage, type UIMessageStreamWriter } from "ai";
 import { profile } from "@/lib/data/profile";
+import { topicLabels } from "@/lib/data/read";
 import { instructions } from "./instructions";
 import { answerModel, chatModel } from "./model";
 import { msgTag } from "@/lib/refs";
@@ -28,7 +29,10 @@ export const scopeTurnedDown = (steps: ReadonlyArray<StepLike>) =>
 
 export async function makeAgent(writer?: UIMessageStreamWriter) {
   const p = await profile();
-  const brief = instructions(p);
+  // The topics by name and key, so a question about a topic is read as that topic (QA 2026-09-27: "What are people
+  // saying about multiplayer and co-op?" read all 2,362 conversations). Without them the brief still stands.
+  const topics = await topicLabels().catch(() => []);
+  const brief = instructions(p, topics);
   const tools = makeTools(writer, p);
   const toolNames = Object.keys(tools) as (keyof typeof tools)[];
   const model = chatModel();

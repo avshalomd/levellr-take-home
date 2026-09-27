@@ -54,8 +54,9 @@ const filters = z
       .string()
       .optional()
       .describe(
-        "one topic label key, as dataset_overview lists them: every conversation touching that topic (a conversation " +
-          "can have several topics); omit for all topics",
+        "one topic, by its key or its name as the instructions list them: every conversation touching that topic (a " +
+          "conversation can have several topics). Set it whenever the question's subject is a topic; omit only for a " +
+          "question about everything",
       ),
     channel: z
       .string()
@@ -245,7 +246,10 @@ export function makeTools(writer?: UIMessageStreamWriter, p?: Profile) {
       inputSchema: z.object({
         question: z
           .string()
-          .describe("a precise relevance question, e.g. 'Does anyone report stutter or FPS drops?'"),
+          .describe(
+            "a precise, neutral relevance question that does not assume the reader's premise, e.g. 'Does anyone " +
+              "report stutter or FPS drops?', 'Was Ebontide cancelled, or did it ship?'",
+          ),
         about,
         filters: filters.optional(),
         top: z
@@ -394,7 +398,8 @@ export function makeTools(writer?: UIMessageStreamWriter, p?: Profile) {
         "Call this INSTEAD of answering when the question is not about the community's conversations at all: the " +
         "weather, live server status, news from elsewhere, general knowledge, small talk. Call it alone and write " +
         "nothing: the app writes the reply (what the conversations cover, and questions to ask). Never for a question " +
-        "the conversations bear on, however thinly.",
+        "the conversations bear on, however thinly: a question about another platform (Reddit, Steam) on a subject " +
+        "discussed here is answered from these conversations, saying first that they cover only this community.",
       // No input: the reply names no subject (off-topic.ts), so the model is asked for none.
       inputSchema: z.object({}),
       execute: async (_, { messages }): Promise<OffTopic | InScope> => {
