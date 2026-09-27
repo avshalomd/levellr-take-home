@@ -67,7 +67,16 @@ describe("instructions, subjects and premises", () => {
   it("lists the topics by name and key, and reads a topic's subject as that topic", () => {
     const t = instructions(veil, [{ key: "multiplayer-and-co-op", name: "Multiplayer and co-op" }]);
     expect(t).toContain("- Multiplayer and co-op (multiplayer-and-co-op)");
-    expect(t).toMatch(/scan with\s+filters\.topic set to its key, never every conversation/);
+    expect(t).toMatch(/scan with\s+filters\.topic set to its key, never every\s+conversation/);
+  });
+  // Eval 2026-09-27: with every topic subject sent to a topic scan, lookups ("How hard is the new Domains mode?", "What
+  // crashes did people report?") read a whole topic and led with its mood; find answers them from the messages.
+  it("sends a specific question inside a topic to find, and gives a mood only when asked", () => {
+    const t = instructions(veil, [{ key: "domains", name: "Domains" }]);
+    expect(t).toMatch(/A specific question inside a topic is not a broad one/);
+    expect(t).toMatch(/Those go to find first, with no topic filter/);
+    expect(text).toMatch(/-> find, even when a topic covers it/);
+    expect(text).toMatch(/Give a mood only when the question asks how people feel/);
   });
   it("checks a premise before answering, and says when another platform is asked about", () => {
     expect(text).toMatch(/Check a question's premise before answering it/);

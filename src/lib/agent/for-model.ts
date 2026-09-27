@@ -166,7 +166,7 @@ export function aggregateForModel(
       inAll +
       (rated || inAll
         ? " To compare periods of different lengths, compare the per-day rates, never the raw counts, and give the " +
-          'rate with its days ("4.6 per day over 31 days").'
+          'rate with its days ("4.6 per day over 11 days").'
         : "")
     : "";
   return (

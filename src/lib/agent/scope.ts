@@ -45,5 +45,9 @@ export const isInScope = (o: unknown): o is InScope =>
 
 export const IN_SCOPE_WORDS =
   "Not out of scope: the community's conversations bear on this question, since its members share experiences, " +
-  "opinions and advice on it. Answer it from them: search or read first, then answer with citations. out_of_scope " +
-  "is not available again this turn.";
+  "opinions and advice on it. Answer it from them. Nothing has been read yet, so nothing is known about what people " +
+  "said: call scan or find now, before writing a word, then answer with citations. A number or mood with no tool " +
+  "result behind it is invented. If it asks " +
+  "about another platform or community (Reddit, Steam, Twitter, the press), the answer's FIRST sentence says the " +
+  "conversations cover only this community, not that platform, and what follows is named as this community's view. " +
+  "out_of_scope is not available again this turn.";
