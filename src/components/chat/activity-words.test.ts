@@ -215,8 +215,9 @@ describe("activitySummary", () => {
     ]).text;
     // QA 2026-09-26: "Read two sets of conversations, 25 and 224, that may overlap" read awkwardly. Never their sum:
     // a conversation in both would be counted twice.
-    expect(text).toBe("Read 118 and 90 conversations in two passes");
-    expect(text).not.toMatch(/at least|208/);
+    // QA 2026-09-27: four sizes in the headline were four numbers to add up; one total, the passes in the steps.
+    expect(text).toBe("Read 208 conversations in two passes");
+    expect(text).not.toMatch(/at least/);
   });
   // QA 2026-09-26, round 5: "Read 1,232 complaints and counted once" left the reader asking what was counted.
   it("says what was counted, never 'counted once'", () => {

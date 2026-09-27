@@ -326,9 +326,10 @@ export function readWords(reads: Read[]): string | null {
   }
   const read = conversationsRead(reads);
   if (read.exact) return `read ${plural(read.n, "conversation")}`;
-  // Slices that may share conversations: each size, never their sum (a conversation in both would count twice) and
-  // never "at least". "Read two sets of conversations, 25 and 224, that may overlap" read awkwardly (QA 2026-09-26).
-  return `read ${listWords(read.sets.map(count))} conversations in ${inWords(read.sets.length)} passes`;
+  // Slices that may share conversations: one total of what the passes read, each pass's own size in the steps below.
+  // "Read 241, 222, 198 and 133 conversations in four passes" was four numbers to add up (QA 2026-09-27); the total
+  // counts a conversation twice if two passes read it, which "in four passes" says.
+  return `read ${count(read.sets.reduce((t, n) => t + n, 0))} conversations in ${inWords(read.sets.length)} passes`;
 }
 
 /** "Read 840 conversations, searched twice and counted 3 times"; while a step runs, that step's own words. It counts
