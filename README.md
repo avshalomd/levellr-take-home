@@ -4,7 +4,7 @@ A chatbot for a game studio's Community & Marketing Manager: ask what the Veil o
 frustrated by, or saying about an update, and get an answer grounded in the messages, each claim linked to the
 message behind it and checked, or a plain "the data cannot answer that".
 
-**Live:** TODO-URL
+**Live:** https://levellr-take-home.vercel.app (public; every question spends the brief's capped Gemini key)
 
 ## The unit, and what it cannot count
 
