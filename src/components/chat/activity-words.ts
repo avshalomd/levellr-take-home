@@ -339,7 +339,7 @@ type Read = { filters: Filters; scanned: number; question: string; relevant?: nu
 
 /** The reads as the summary line says them, one true sentence the steps under it bear out (QA 2026-09-26: "Read at
  *  least 118 conversations" over two steps that each said 118 read). One slice read once: "read 118 complaint threads".
- *  One slice read for several questions: "read the same 118 complaint threads twice, for two questions". Slices that
+ *  One slice read for several questions: "read 118 complaint threads for two questions". Slices that
  *  nest or cannot overlap: their total. Slices that may share conversations: each size, as passes ("read 25 and 224
  *  conversations in two passes"), since no single number would be true. */
 export function readWords(reads: Read[]): string | null {
@@ -351,8 +351,10 @@ export function readWords(reads: Read[]): string | null {
     // verification note saying "of the 219 found to bear on it" read as two counts of one thing (QA 2026-09-27).
     const bore = reads[0].relevant;
     if (reads.length === 1) return `read ${what}${bore === undefined || Number.isNaN(bore) || bore === n ? "" : ` (${count(bore)} bore on the question)`}`;
+    // "Read the same 210 conversations twice, for two questions and searched once" was hard to parse (QA P17,
+    // 2026-09-27): a slice read for several questions is said once, with the questions.
     const questions = new Set(reads.map((r) => r.question)).size;
-    return `read the same ${what} ${times(reads.length)}${questions > 1 ? `, for ${inWords(questions)} questions` : ""}`;
+    return questions > 1 ? `read ${what} for ${inWords(questions)} questions` : `read the same ${what} ${times(reads.length)}`;
   }
   const read = conversationsRead(reads);
   if (read.exact) return `read ${plural(read.n, "conversation")}`;
@@ -411,7 +413,10 @@ export function activitySummary(steps: StepLike[], topicNames: Map<string, strin
     if (stopped) bits.push(bits.length ? "stopped before the next step finished" : "stopped before the first step finished");
     else if (unfinished) bits.push(`${inWords(unfinished)} ${unfinished === 1 ? "step" : "steps"} did not finish`);
   }
-  const text = bits.length ? listWords(bits) : "checked the data";
+  // A comma before the last "and" when an earlier part has its own "for": "Read 210 conversations for two questions,
+  // and searched once", not "... for two questions and searched once", which read as two questions and a search.
+  const serial = bits.slice(0, -1).some((b) => / for /.test(b));
+  const text = !bits.length ? "checked the data" : serial ? `${bits.slice(0, -1).join(", ")}, and ${bits.at(-1)}` : listWords(bits);
   return { text: text[0].toUpperCase() + text.slice(1), running: false };
 }
 
