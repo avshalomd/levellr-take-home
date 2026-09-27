@@ -9,14 +9,17 @@ grouping, retrieval, grounded answers with citations, and saying when the data c
 ## The reference app, and how to use it
 
 A full rehearsal of this task was built beforehand on real community data: **Community Pulse**, at
-`~/projects/community-pulse`, frozen at commit `90f193d`. It is a reference, not a template.
+`~/projects/community-pulse`, frozen at commit `90f193d`.
 
-- **Take its decisions by reference, then re-make them against tonight's brief and data.** The brief may ask for
-  something else, and the data may have different fields, platforms or size. Read the decision, check that its
-  reason still holds, and write the decision for this repo in `DECISIONS.md` in your own words.
-- **Code may be ported when it fits.** Where the brief and the data shape match, port a file from the reference and
-  adapt it rather than writing it again. It must still be code you can explain line by line: plain, readable,
-  with its reasons in comments or in `DECISIONS.md`.
+- **Copy its code freely, exactly as it is, wherever it fits.** Nothing in the task rules this out, and it is the
+  fastest route to a working build. Copy whole files (data layer, tools, agent, verification, components, ingest
+  scripts) and change only what tonight's brief and data require. Two conditions: the result does what *their*
+  brief asks, and every copied piece is explained in `DECISIONS.md`.
+- **Re-check its decisions against tonight's brief and data.** The brief may ask for something else, and the data
+  may have different fields, platforms or size. For each decision you carry over, check that its reason still
+  holds, and write it for this repo in `DECISIONS.md`.
+- **Copy only what the build uses.** Leave out code for features that are not built tonight, so the repo holds no
+  dead code nobody can explain.
 - **Never copy its numbers.** Every figure in its docs (counts, costs, eval scores, audit results) describes the
   rehearsal data. In this repo, each number is measured again on their data, or left out.
 
@@ -73,14 +76,22 @@ numbers, even a small one.
 | agent | `gemini-3.8-flash` | `GOOGLE_GENERATIVE_AI_API_KEY` (the key from the brief) |
 | bulk text work, if any | no higher than `gemini-3.5-flash-lite` | same |
 | embeddings | `gemini-embedding-2`, 768 dimensions | same |
-| closed judgments: labels, rerank, scan relevance, claim support | Jev (`jev-1.13.0`) | `TYPESAFE_API_KEY` |
+| closed judgments: labels, rerank, scan relevance, claim support | Jev (`typesafe/jev-1.13` via OpenRouter) | `OPENROUTER_API_KEY` (TypeSafe direct is out of credit) |
 
 Keys live in `.env.local` and in the Vercel project's environment, never in git. Check `git diff --cached` for a
 key before every commit.
 
 ## Setting up the Vercel project and the database
 
-About two minutes; run it before the clock where possible, since nothing here depends on the brief.
+**Done on 2026-09-27, before the clock:** the private GitHub repo, the Vercel project (linked), Neon in fra1
+(pgvector 0.8.6 enabled), and `.env.local` with the database URLs, `TYPESAFE_API_KEY`, `OPENROUTER_API_KEY`,
+`AI_GATEWAY_API_KEY` and `AI_MODEL`. The same keys are set on Vercel for production and development.
+**Left for 21:30:** paste the Gemini key into `GOOGLE_GENERATIVE_AI_API_KEY` in `.env.local` and add it on Vercel
+(the `vercel env add` line below). **Jev route:** direct TypeSafe has no credits left (HTTP 402), and Jev
+through OpenRouter answers (`typesafe/jev-1.13` at `https://openrouter.ai/api/alpha/decisions`). The reference's
+`src/lib/llm/decide.ts` already tries OpenRouter first.
+
+The commands, for the record:
 
 ```bash
 cd ~/projects/levellr-take-home
