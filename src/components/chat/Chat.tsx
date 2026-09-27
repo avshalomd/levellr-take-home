@@ -11,22 +11,28 @@ import { EvidencePanel } from "@/components/evidence/EvidencePanel";
 import { EvidenceSheet } from "@/components/evidence/EvidenceSheet";
 import type { Source } from "@/components/evidence/source-words";
 import { questionInContext } from "@/lib/agent/flags";
+import { CHATS_CHANGED } from "@/components/shell/Sidebar";
+import { noteAddressMoved, takeFocusAsk } from "@/components/shell/new-chat";
 import { Activity } from "./Activity";
 import { answerLead, haltSteps, stepsSettled } from "./activity-words";
 import { corroborationWords, answeredIn } from "./verification-words";
 import { Answer } from "./Answer";
-import { centredTop, clearStopped, markStopped, turnEnd } from "./chat-state";
+import { afterDrop, centredTop, clearStopped, markStopped, pageTitle, turnEnd } from "./chat-state";
 import { evidenceOf } from "./evidence";
 import { VerificationBar } from "./VerificationBar";
 import { Welcome } from "./Welcome";
-import { chatErrorWords } from "./error-words";
+import { chatErrorWords, DROPPED_LOADING, isDropped } from "./error-words";
 
 type ToolPart = Extract<ChatMessage["parts"][number], { type: `tool-${string}` }>;
 const isToolPart = (p: ChatMessage["parts"][number]): p is ToolPart => p.type.startsWith("tool-");
 
-// One conversation with the agent. `id` is the chat's id: useChat sends it with every request (the body's `id`). Chats
-// are not saved (history is cut tonight), so a reload starts a new one. Clicking a citation - or a claim - opens the
-// evidence sheet on that message; hovering a claim lights its messages there.
+// One conversation with the agent. `id` is the chat's id: useChat sends it with every request (the body's `id`), and
+// api/chat saves the chat under it when a question arrives and again when its answer is done. A new chat takes its
+// address, /c/<id>, as its first answer starts streaming - the chat exists on the server by then, so a reload of that
+// address finds it, and an answer still being written is finished on the server and shown when it lands. One stopped
+// or failed before its first word moves there too once the server confirms it has the chat, so the sidebar entry and
+// the address always name the same chat. A saved chat arrives with its messages (app/c/[id]). Clicking a citation - or
+// a claim - opens the evidence sheet on that message; hovering a claim lights its messages there.
 
 const transport = new DefaultChatTransport<ChatMessage>({ api: "/api/chat" });
 
@@ -55,18 +61,84 @@ const END_WORDS = {
   unfinished: "This answer was not finished.",
 } as const;
 
-export function Chat({ id, initialQuestion }: { id: string; initialQuestion?: string }) {
-  // Only a press of Stop marks the answer stopped; an abort because the page went needs no note.
+// How often a reopened chat whose answer is still being written asks the server whether it has landed.
+const WAIT_POLL_MS = 3000;
+
+// The address moves without a navigation, so Next never renders the saved chat's <title>; the tab would keep the app's
+// name until a reload. The title is the server's own (GET /api/chats/<id>), set as its page sets it.
+const showTitle = (chat: { title?: string } | null) => {
+  if (chat?.title) document.title = pageTitle(chat.title);
+};
+type Saved = { title?: string; messages: ChatMessage[]; answering: boolean };
+const savedChat = (id: string): Promise<Saved | null> =>
+  fetch(`/api/chats/${id}`)
+    .then((r) => (r.ok ? r.json() : null))
+    .catch(() => null);
+
+/** A new chat whose answer never streamed (stopped, or failed before its first word) takes its address once the server
+ *  confirms it saved the question; a chat the server never got stays on the new-chat page, with nothing in the list.
+ *  Only while its page is still up: a reader who has gone on to a new chat keeps that one's address. */
+async function adoptAddress(id: string, alive: () => boolean) {
+  if (!alive() || window.location.pathname !== "/") return;
+  const chat = await savedChat(id);
+  if (!chat || !alive() || window.location.pathname !== "/") return;
+  window.history.replaceState(null, "", `/c/${id}`);
+  noteAddressMoved(true);
+  showTitle(chat);
+}
+
+export function Chat({
+  id,
+  initialMessages,
+  initialQuestion,
+  answering = false,
+}: {
+  id: string;
+  initialMessages?: ChatMessage[];
+  initialQuestion?: string;
+  answering?: boolean;
+}) {
+  // The chat also aborts its stream when this page goes (useChat stops on unmount): leaving mid-answer is not a Stop,
+  // the server finishes and saves that answer (api/chat), so only a press of Stop is kept as one.
   const stopPressed = useRef(false);
-  const { messages, setMessages, sendMessage, status, stop, error, regenerate } = useChat<ChatMessage>({
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      noteAddressMoved(false);
+    };
+  }, []);
+  const alive = useCallback(() => mounted.current, []);
+  const { messages, setMessages, sendMessage, status, stop, error, clearError, regenerate } = useChat<ChatMessage>({
     id,
+    messages: initialMessages,
     transport,
-    onFinish: ({ messages: all, isAbort }) => {
+    onFinish: ({ messages: all, isAbort, isError }) => {
+      const changed = () => window.dispatchEvent(new Event(CHATS_CHANGED));
       const pressed = stopPressed.current;
       stopPressed.current = false;
-      if (isAbort && pressed) setMessages(markStopped(all));
+      if (isAbort && !pressed) return changed(); // the page went; the server finishes and saves the answer
+      if (isAbort) {
+        // A Stop: the chat as the screen shows it is what gets kept, marked stopped so a reopened chat says so and
+        // offers to ask again; the answer still running on the server is not saved over it (data/chats.ts keepChat).
+        const kept = markStopped(all);
+        setMessages(kept);
+        void fetch(`/api/chats/${id}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ messages: kept }) })
+          .catch(() => {})
+          .then(() => adoptAddress(id, alive))
+          .then(changed);
+      } else if (isError) void adoptAddress(id, alive).then(changed);
+      else {
+        changed();
+        // The chat's name can change once an answer is saved (data/chats.ts titleOf); the tab follows it.
+        void savedChat(id).then((chat) => alive() && window.location.pathname === `/c/${id}` && showTitle(chat));
+      }
     },
   });
+  // Reopened while its answer was still being written (a reload mid-answer): the server finishes and saves it, and
+  // this page waits for it.
+  const [waiting, setWaiting] = useState(answering);
   const [input, setInput] = useState("");
   const [overview, setOverview] = useState<Overview | null>(overviewLast);
   const [focus, setFocus] = useState<Focus | null>(null);
@@ -77,9 +149,10 @@ export function Chat({ id, initialQuestion }: { id: string; initialQuestion?: st
   const sentInitial = useRef(false);
   const busy = status === "submitted" || status === "streaming";
 
-  // Ready to type on arrival. Not on a touch screen, where it would open the keyboard over the suggestions.
+  // A chat opened by New chat is ready to type (the reference's QA: focus stayed on the link). Not on a first page
+  // load, where the skip link keeps the first Tab stop, nor on a touch screen, where it would open the keyboard.
   useEffect(() => {
-    if (window.matchMedia("(pointer: fine)").matches) inputRef.current?.focus();
+    if (takeFocusAsk() && window.matchMedia("(pointer: fine)").matches) inputRef.current?.focus();
   }, []);
 
   useEffect(() => {
@@ -95,6 +168,7 @@ export function Chat({ id, initialQuestion }: { id: string; initialQuestion?: st
       const t = text.trim();
       if (!t || busy) return;
       stick.current = true;
+      setWaiting(false); // a new question: the one still being written lands in the chat, not on this screen
       sendMessage({ text: t });
       // A question an answer offers is asked with a tap; whatever the reader was typing stays theirs (review 2026-09-26).
       if (!keepDraft) setInput("");
@@ -121,6 +195,68 @@ export function Chat({ id, initialQuestion }: { id: string; initialQuestion?: st
     }, 0);
     return () => clearTimeout(t);
   }, [initialQuestion, ask]);
+
+  // The chat is saved on the server before its first token streams (api/chat), so from then on it has its address:
+  // a reload mid-answer reopens it instead of landing on an empty new chat, and the sidebar lists it at once.
+  useEffect(() => {
+    if (status !== "streaming" || window.location.pathname === `/c/${id}`) return;
+    window.history.replaceState(null, "", `/c/${id}`);
+    noteAddressMoved(true);
+    window.dispatchEvent(new Event(CHATS_CHANGED));
+    void savedChat(id).then((chat) => window.location.pathname === `/c/${id}` && showTitle(chat));
+  }, [status, id]);
+
+  // A dropped connection is not a lost answer: the server finishes and saves it (api/chat). The page reads the saved
+  // chat and shows its answer, or waits for one still being written; only when there is neither does the error stay,
+  // with its "Try again" (chat-state.ts afterDrop). `checked` is the dropped error already looked into: until then
+  // the error line says it is loading the answer.
+  const [checked, setChecked] = useState<Error | null>(null);
+  const recovering = Boolean(error && isDropped(error.message) && checked !== error);
+  // The chat as it was when the connection dropped, read once per error (a ref, so the effect does not re-run on it).
+  const onScreen = useRef(messages);
+  useEffect(() => {
+    onScreen.current = messages; // declared before the effect below, so it is current when that one runs
+  }, [messages]);
+  useEffect(() => {
+    if (!error || !isDropped(error.message)) return;
+    let live = true;
+    void savedChat(id).then((chat) => {
+      if (!live) return;
+      const found = afterDrop(chat, onScreen.current);
+      if (found.show !== "retry") {
+        if (found.messages !== onScreen.current) setMessages(found.messages);
+        setWaiting(found.show === "wait");
+        clearError();
+        if (found.show === "saved" && window.location.pathname === `/c/${id}`) showTitle(chat);
+      }
+      setChecked(error);
+    });
+    return () => {
+      live = false;
+    };
+  }, [error, id, setMessages, clearError]);
+
+  // Waiting on an answer the server is still writing: ask every few seconds until it has landed.
+  useEffect(() => {
+    if (!waiting) return;
+    let live = true;
+    const t = setInterval(async () => {
+      const res = await fetch(`/api/chats/${id}`).catch(() => null);
+      if (!live || !res) return; // offline for a moment: try again next time
+      if (!res.ok) return setWaiting(false); // deleted meanwhile: nothing will land
+      const chat = await res.json();
+      if (!live) return;
+      if (chat.messages.at(-1)?.role === "assistant") setMessages(chat.messages);
+      if (!chat.answering) {
+        setWaiting(false);
+        if (window.location.pathname === `/c/${id}`) showTitle(chat);
+      }
+    }, WAIT_POLL_MS);
+    return () => {
+      live = false;
+      clearInterval(t);
+    };
+  }, [waiting, id, setMessages]);
 
   // Follows the answer down only once there is a conversation. On an empty chat it pinned the welcome page to its
   // bottom, so Home opened with its heading and suggestions scrolled out of view (QA 2026-09-26).
@@ -166,7 +302,7 @@ export function Chat({ id, initialQuestion }: { id: string; initialQuestion?: st
   // The claim under the pointer outranks the claim that was clicked, while it belongs to the same answer.
   const highlight = focus ? (hovered?.messageId === focus.messageId ? hovered.tags : focus.tags) : [];
   const last = messages.at(-1);
-  const ended = turnEnd(messages, { busy, failed: Boolean(error) });
+  const ended = turnEnd(messages, { busy, waiting, failed: Boolean(error) });
   const askAgain = () => {
     setMessages(clearStopped(messages));
     void regenerate();
@@ -219,6 +355,16 @@ export function Chat({ id, initialQuestion }: { id: string; initialQuestion?: st
                 Working out where to look…
               </p>
             )}
+            {/* After a dropped connection the words already streamed stay on screen while the rest is written, so the
+                note also shows under a partial answer. */}
+            {!busy && waiting && (
+              <p className="mb-8 flex items-center gap-2.5 text-[14px] text-muted-foreground" aria-live="polite">
+                <span className="breathe size-1.5 rounded-full bg-pulse" aria-hidden />
+                {last?.role === "user"
+                  ? "Still writing this answer. It will appear here when it is done."
+                  : "Still writing the rest of this answer. It will appear here when it is done."}
+              </p>
+            )}
             {ended && (
               <div className="mb-8 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-foreground/[0.08] bg-foreground/[0.02] px-4 py-3 text-[14px] text-foreground/80" role="status">
                 <span className="min-w-0 flex-1">{END_WORDS[ended]}</span>
@@ -227,7 +373,13 @@ export function Chat({ id, initialQuestion }: { id: string; initialQuestion?: st
                 </button>
               </div>
             )}
-            {error && (
+            {error && recovering && (
+              <p className="mb-8 flex items-center gap-2.5 text-[14px] text-muted-foreground" role="status">
+                <span className="breathe size-1.5 rounded-full bg-pulse" aria-hidden />
+                {DROPPED_LOADING}
+              </p>
+            )}
+            {error && !recovering && (
               <div className="mb-8 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-foreground/[0.08] bg-foreground/[0.02] px-4 py-3 text-[14px] text-foreground/80" role="status">
                 <span className="min-w-0 flex-1">{chatErrorWords(error.message)}</span>
                 {!OUT_OF_ALLOWANCE.test(error.message) && (

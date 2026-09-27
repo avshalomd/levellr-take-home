@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { ChatMessage } from "@/lib/agent/ui-types";
-import { centredTop, clearStopped, markStopped, turnEnd } from "./chat-state";
+import { afterDrop, centredTop, clearStopped, markStopped, pageTitle, turnEnd } from "./chat-state";
 
 const user = (id = "u1"): ChatMessage => ({ id, role: "user", parts: [{ type: "text", text: "How do players feel about the anti-cheat?" }] });
 const answer = (text: string, metadata?: ChatMessage["metadata"]): ChatMessage => ({ id: "a1", role: "assistant", metadata, parts: text ? [{ type: "text", text }] : [] });
-const idle = { busy: false, failed: false };
+const idle = { busy: false, waiting: false, failed: false };
 
 describe("turnEnd", () => {
   it("says nothing under an answered question, or while an answer is being written or has failed", () => {
@@ -21,9 +21,13 @@ describe("turnEnd", () => {
     expect(turnEnd([user(), answer("   ")], idle)).toBe("unfinished");
   });
 
-  it("says a stopped turn was stopped", () => {
+  it("says a stopped turn was stopped, and after a reload", () => {
     expect(turnEnd(markStopped([user(), answer("Mostly")]), idle)).toBe("stopped");
     expect(turnEnd(markStopped([user()]), idle)).toBe("stopped");
+  });
+
+  it("leaves a reopened chat whose answer is still being written to its own note", () => {
+    expect(turnEnd([user()], { ...idle, waiting: true })).toBeNull();
   });
 });
 
@@ -61,6 +65,47 @@ describe("markStopped and clearStopped", () => {
   });
 });
 
+describe("pageTitle", () => {
+  // QA 2026-09-26: a new chat's tab said "Community Pulse" until a reload; it now reads as the server renders it.
+  it("puts the chat's title through the layout's template", () => {
+    expect(pageTitle("How do players feel about the anti-cheat?")).toBe("How do players feel about the anti-cheat? · Community Pulse");
+  });
+});
+
+// QA 2026-09-26: a dropped stream showed "network error" and a "Try again" that asked (and paid) again, though the
+// server had finished and saved the answer, which a reload showed.
+describe("afterDrop", () => {
+  const saved = (messages: ChatMessage[], answering = false) => ({ messages, answering });
+  it("shows the answer the server saved for the question on screen", () => {
+    const chat = [user(), answer("Mostly angry.")];
+    expect(afterDrop(saved(chat), [user()])).toEqual({ show: "saved", messages: chat });
+    expect(afterDrop(saved(chat), [user(), answer("Most")])).toEqual({ show: "saved", messages: chat }); // replaces a partial one
+  });
+  it("waits for an answer the server is still writing", () => {
+    expect(afterDrop(saved([user()], true), [user()])).toEqual({ show: "wait", messages: [user()] });
+    expect(afterDrop(saved([user(), answer("")], true), [user()])).toMatchObject({ show: "wait" });
+  });
+  // Review 2026-09-26: the wait showed the saved question-only chat, so the answer the reader was reading vanished.
+  it("keeps the words already on screen while it waits", () => {
+    const onScreen = [user(), answer("Mostly angry about the")];
+    expect(afterDrop(saved([user()], true), onScreen)).toEqual({ show: "wait", messages: onScreen });
+  });
+  it("waits on the saved chat when the screen has no words of the answer yet", () => {
+    expect(afterDrop(saved([user()], true), [user(), answer("")])).toEqual({ show: "wait", messages: [user()] });
+    expect(afterDrop(saved([user()], true), [user(), answer("   ")])).toEqual({ show: "wait", messages: [user()] });
+  });
+  it("offers to ask again only when nothing was saved for this question", () => {
+    expect(afterDrop(null, [user()])).toEqual({ show: "retry" }); // no chat at all
+    expect(afterDrop(saved([user()]), [user()])).toEqual({ show: "retry" }); // the server gave up on it
+    expect(afterDrop(saved([user()]), [user(), answer("Most")])).toEqual({ show: "retry" }); // gave up, even mid-answer
+    expect(afterDrop(saved([user(), answer("")]), [user()])).toEqual({ show: "retry" }); // an answer with no words
+    // the saved chat ends on an earlier question: this one never reached the server
+    expect(afterDrop(saved([user("u0"), answer("Earlier.")]), [user()])).toEqual({ show: "retry" });
+    expect(afterDrop(saved([user(), answer("Mostly angry.")]), [])).toEqual({ show: "retry" }); // no question on screen
+  });
+});
+
+// QA 2026-09-26: the step a number's glyph opens was brought into view with scrollIntoView, which scrolls the page too.
 describe("centredTop", () => {
   const box = (top: number, height: number) => ({ getBoundingClientRect: () => ({ top, height }) });
   it("centres the element in the scroller it is scrolled in", () => {
