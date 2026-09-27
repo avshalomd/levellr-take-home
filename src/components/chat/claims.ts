@@ -17,6 +17,14 @@ export function citedIn(text: string): string[] {
 
 export type Claim<T> = { pieces: (string | T)[]; tags: string[] };
 
+/** Whether a claim's text closes on a citation that is shown: the "+N more" beside a claim sits right after that
+ *  chip, and one after a claim whose chips are elsewhere (or all hidden) stood alone with no number beside it (QA
+ *  2026-09-27). */
+export function endsWithShownCitation(text: string, shown: ReadonlyArray<string>): boolean {
+  const m = /\[(msg\d+(?:, msg\d+)*)\]\s*[.!?;:,]*\s*$/.exec(text);
+  return Boolean(m && tagsIn(m[1]).some((t) => shown.includes(t)));
+}
+
 /**
  * Group a block's inline pieces (strings, and elements such as bold text whose text `textOf` reads) into claims.
  * Strings are cut at sentence ends; an element always joins the sentence it sits in. Every piece lands in exactly

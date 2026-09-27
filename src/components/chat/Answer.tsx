@@ -8,7 +8,7 @@ import { CITE_RE, tagsIn } from "@/lib/refs";
 import { cn } from "@/lib/utils";
 import { sourceWords } from "./activity-words";
 import { CitationChip, HIT_AREA } from "./CitationChip";
-import { groupClaims, lastWord, morePillWords, offeredQuestion, splitClosing } from "./claims";
+import { endsWithShownCitation, groupClaims, lastWord, morePillWords, offeredQuestion, splitClosing } from "./claims";
 import type { CorroboratedClaim } from "@/lib/agent/corroborate";
 import { beforeDroppedCitation, corroborationFor, PUNCTUATION_NEXT, splitToolTags as toolTagPieces, supportLevel, type Evidence } from "./evidence";
 
@@ -218,7 +218,9 @@ export function Answer({
       if (!tags.length) return <Fragment key={i}>{withChips(c.pieces)}</Fragment>;
       // The chips shown and the sentence's own words: two sentences citing the same message are two claims (review
       // 2026-09-26).
-      const backing = corroborationFor(evidence, tags, c.pieces.map((p) => (typeof p === "string" ? p : textOf(p))).join(""));
+      const said = c.pieces.map((p) => (typeof p === "string" ? p : textOf(p))).join("");
+      // The "+N more" rides only right after a numbered chip, never on its own (claims.ts endsWithShownCitation).
+      const backing = endsWithShownCitation(said, evidence.cited) ? corroborationFor(evidence, tags, said) : undefined;
       const [body, mark, space] = backing && backing.moreTotal > 0 ? splitClosing(c.pieces) : [c.pieces, "", ""];
       return (
         <span

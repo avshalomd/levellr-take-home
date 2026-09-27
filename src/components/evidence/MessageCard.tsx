@@ -36,6 +36,8 @@ const ICONS = { votes: ArrowBigUp, reactions: SmilePlus, score: ThumbsUp };
 /** The engagement badge: the platform's own measure, loud when the message was loud. */
 export function Engagement({ node, source, size = "md", top }: { node: Pick<ThreadNode, "score">; source?: Source; size?: "sm" | "md"; top?: boolean }) {
   const e = engagement(source, node.score);
+  // No reactions is not news: a "0" badge on most Discord messages was noise. Net votes of 0 still say something.
+  if (e.kind !== "votes" && node.score <= 0) return null;
   const Icon = ICONS[e.kind];
   return (
     <span
