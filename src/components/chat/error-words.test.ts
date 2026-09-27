@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chatErrorWords } from "./error-words";
+import { chatErrorWords, isDropped } from "./error-words";
 
 describe("chatErrorWords", () => {
   it("turns each browser's network failure into words about the connection", () => {
@@ -13,5 +13,14 @@ describe("chatErrorWords", () => {
   });
   it("never shows an error page's HTML", () => {
     expect(chatErrorWords("<!DOCTYPE html><html><body>404</body></html>")).toBe("The server could not answer. Try again in a moment.");
+  });
+});
+
+describe("isDropped", () => {
+  it("is a lost connection, never an error the server wrote", () => {
+    expect(isDropped("network error")).toBe(true);
+    expect(isDropped("Failed to fetch")).toBe(true);
+    expect(isDropped("The free model is busy right now. Try again in a few seconds.")).toBe(false);
+    expect(isDropped(undefined)).toBe(false);
   });
 });
