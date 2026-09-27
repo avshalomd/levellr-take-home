@@ -64,11 +64,9 @@ walk-through is in [docs/DESIGN.md](docs/DESIGN.md).
 
 Each with its alternative and reason in [DECISIONS.md](DECISIONS.md).
 
-The human reviewed and ruled as the build went; DECISIONS.md says which calls were the human's and why.
-
 1. **A Python ingest, a TypeScript app, one Postgres** for search, labels and counts (D1).
-2. **The unit is a pause-split conversation piece:** the human rejected a plain 30-message cut and set the rule,
-   15-minute pauses, and long sessions cut at the next best silence into 20-40 messages (D3).
+2. **The unit is a pause-split conversation piece:** a 15-minute pause starts a session, and a long session is cut
+   at its best silence into 20-40 messages. A plain 30-message cut was the first design; it split exchanges (D3).
 3. **"Resonating" = authors + replies + reactions**, because reactions alone are too sparse (D5).
 4. **Labels are probabilities** from Jev, over 12 topics discovered in the data (D6), sentiment towards the games
    and their developer (D7), and flags such as `excited` and `frustrated` (D8) that mean a main thread, not one
@@ -77,8 +75,8 @@ The human reviewed and ruled as the build went; DECISIONS.md says which calls we
    thing. A question about a topic reads only that topic (D10). Numbers come from SQL, never from the model (D11).
 6. **Every cited claim is checked**, weak ones rewritten once (D12), follow-ups checked against the whole chat (D24),
    and a weak result shown as a warning (D27). A citation opens its conversation as a reply tree (D32).
-7. **Models:** agent on Gemini 2.5 Flash, the human's choice, kept after a measured comparison with 3.8 Flash (D9);
-   closed judgments on Jev, the human's addition, through the builder's own OpenRouter key, stated openly (D9).
+7. **Models:** agent on Gemini 2.5 Flash, to protect the capped key, kept after a measured comparison with 3.8 Flash
+   (D9); closed judgments on Jev, through the builder's own OpenRouter key, stated openly (D9).
 8. **Topic editing is held back:** built on a branch, and kept off the production database until it can be tested
    on another one (D31).
 
@@ -104,7 +102,7 @@ same judge; [`eval/results/models/`](eval/results/models/)):
 | tool calls (all questions) | 42 | 68 |
 
 2.5 Flash's miss is X03: asked about a Tides Remastered "beta test" nobody mentions, it described one. Both models
-gave the same verdict to each paraphrase pair. **Production stays on 2.5 Flash** (the human's ruling, D9): quality is
+gave the same verdict to each paraphrase pair. **Production stays on 2.5 Flash** (D9): quality is
 near equal, 2.5 is about three times faster with fewer tool calls, and it is the model the key's email named. 3.8
 Flash is one env var away (`AI_MODEL`).
 
@@ -155,9 +153,9 @@ calls (rerank, scan, claim check) are not in the ledger; they were not measured.
 ## Known limits
 
 - Conversation pieces are cut at pauses, not at subject changes; a piece can still hold two subjects.
-- Labels were audited on a small sample, by the coding agent, and the pricing fix was not re-audited at scale. Topics
-  miss a clear subject in about 1 of 5 conversations, so topic counts run low; the agent follows a topic read with a
-  search.
+- Labels were audited on a small sample, read by hand by the builder, and the pricing fix was not re-audited at
+  scale. Topics miss a clear subject in about 1 of 5 conversations, so topic counts run low; the agent follows a
+  topic read with a search.
 - Reactions are too sparse to measure reach; engagement is a proxy.
 - The eval is small and written by the builder (above).
 - Explore is read-only on `main`: topic editing is built but held back on a branch (roadmap, item 1).

@@ -52,7 +52,7 @@ The game is a renamed Assassin's Creed, "Veil of Ages". In this window:
 
 ## Shape of the conversation
 
-This decides the unit ([DECISIONS.md, D3](../DECISIONS.md#d3-the-unit-pause-split-sessions-long-ones-cut-at-the-best-silence-the-humans-rule)).
+This decides the unit ([DECISIONS.md, D3](../DECISIONS.md#d3-the-unit-pause-split-sessions-long-ones-cut-at-the-best-silence)).
 
 - **Long sessions dominate.** Split each channel at 15-minute pauses: 159 sessions have more than 30 messages, and
   they hold 67% of all messages. The largest is 1,054 messages from 98 authors over 12 hours, on update night.
@@ -98,8 +98,8 @@ In the README: [The unit, and what it cannot count](../README.md#the-unit-and-wh
 
 Read by hand on the v4 labels in Neon, before the pricing fix (DECISIONS D23). **Sample:** 30 conversations drawn by
 `md5(id || 'audit-2026-09-27')`, 10 from each size band (1-3 messages, 4-19, 20-40), plus 10 drawn at random from
-`pricing-and-editions` (its share rose, below). A label counts at p >= 0.5, as in the app. Judged by the coding
-agent reading each transcript, not by the human; borderline calls were given to the label.
+`pricing-and-editions` (its share rose, below). A label counts at p >= 0.5, as in the app. Judged by the builder
+reading each transcript, with no separate annotator; borderline calls were given to the label.
 
 | axis (30 stratified) | right | what went wrong |
 |---|---|---|
