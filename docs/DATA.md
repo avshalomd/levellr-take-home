@@ -45,7 +45,7 @@ The game is a renamed Assassin's Creed, "Veil of Ages". In this window:
 
 ## Shape of the conversation
 
-This decides the unit (DECISIONS.md, the unit).
+This decides the unit ([DECISIONS.md, D3](../DECISIONS.md#d3-the-unit-pause-split-sessions-long-ones-cut-into-pieces-chosen-by-the-human)).
 
 - **Long sessions dominate.** Split each channel at 15-minute pauses: 159 sessions have more than 30 messages, and
   they hold 67% of all messages. The largest is 1,054 messages from 98 authors over 12 hours, on update night.
@@ -58,20 +58,11 @@ This decides the unit (DECISIONS.md, the unit).
 
 ## What one row is, and what the agent cannot count
 
-- A **message** row is one Discord message, with its channel, author, UTC time, reactions and reply parent. It is the
-  unit of citation.
-- A **conversation** row is a piece of a channel session (15-minute pauses; a session over 40 messages is cut at the
-  longest pause 20-40 messages in, again and again; the last piece holds the remainder, so 51 of the 553 cut pieces
-  are under 20). It is the unit of retrieval, labels and counts. It carries the time of its first and last
-  message.
-- The agent **cannot count**: anything outside these 11 channels (Reddit, Steam, sales, revenue), anything before
-  09-13 19:44Z, people who read without writing, reactions as a measure of reach (too sparse), or what people intend
-  beyond their words. A count over conversations is not a count of people or of messages, and the answer says which
-  one it is.
+In the README: [The unit, and what it cannot count](../README.md#the-unit-and-what-it-cannot-count).
 
 ## Label audit
 
-Read by hand on the final labels (v4 wording) in Neon. **Sample:** 30 conversations drawn by
+Read by hand on the v4 labels in Neon, before the pricing fix (DECISIONS D23). **Sample:** 30 conversations drawn by
 `md5(id || 'audit-2026-09-27')`, 10 from each size band (1-3 messages, 4-19, 20-40), plus 10 drawn at random from
 `pricing-and-editions` (its share rose, below). A label counts at p >= 0.5, as in the app. Judged by the coding
 agent reading each transcript, not by the human; borderline calls were given to the label.
@@ -100,10 +91,51 @@ purchases, sales, DLC value or store items". Of the 375 pricing conversations, 2
 (1 dropped). The 95 new ones are long (median 20 messages, against 4 overall), 76 of them hold a buying word in a
 member message ("buy" in 25, "store" 15, "DLC" 13, "bought" 13, "shop" 12), 7 only in a context message, 12 none at
 all. Jev reads the list as trigger words: naming "purchases" and "store items" made any purchase or in-game store
-count, and a long conversation almost always has one. A fix would say what does not count (in-game currency, hardware,
-other franchises, passing mentions); not relabelled tonight, so pricing counts should be read as an upper bound.
+count, and a long conversation almost always has one.
+
+**Fixed after the audit** (DECISIONS D23): the description now says the price or value must itself be the subject and
+names what does not count, and every conversation was relabelled. Pricing fell to 7.3%. On a 40-conversation check,
+about 10 of the 13 it kept are right; the new labels were not re-audited at scale.
 
 **What this means for the agent.** Counts by topic lean on labels that are right about 7 times in 10 at the set
 level; flag slices are sharper (9 in 10 of fired flags right). `scan` re-reads every conversation in a slice with Jev
 against the question, so a wrong label costs a read, not a wrong answer; the counts `aggregate` returns are label
-counts, and the pricing one runs high.
+counts, and topic counts run low where a clear topic is missed.
+
+## Label set
+
+Final labels, 2,362 conversations, a label counting at p >= 0.5. Every conversation is labelled once by Jev
+(DECISIONS D6): a yes/no probability per topic, sentiment, and six flags. Shares are measured in Neon after the
+pricing fix (D23). A conversation can carry several topics and flags, so the shares do not sum to 100%; "other" means
+no topic reached 0.5.
+
+**Topics** (`data/work/topics.json`)
+
+| topic | key | description | share |
+|---|---|---|---|
+| Lore and story | `lore-and-story` | The series' narrative, characters, historical settings and modern-day plot, discussed as story. Not gameplay, builds or difficulty that happen to name a character (Kano and Hana are playable characters). | 17.7% |
+| Other games | `other-games-off-topic` | Other franchises (GTA, Witcher, etc.), general gaming news, and gaming or PC-hardware talk that is not about Veil of Ages. | 17.1% |
+| Series direction | `series-direction` | Only when people argue about where the franchise is going or compare the games as a whole (stealth versus RPG, rankings, tier lists, the studio's choices). Not every mention of an older game. | 13.1% |
+| Classic games | `classic-games` | Playing the older titles such as Bastion, Legion, Requiem, Empire and the original Tides. | 10.7% |
+| Tides Remastered | `tides-remastered` | The upcoming Tides Remastered: reveals, trailers, changes from the original Tides, release date, pre-orders, the Twitch drop. | 10.0% |
+| Domains | `domains` | Bushido's rogue-lite Domains mode: difficulty tiers, domain bosses, runs, builds, perks and gear for Domains. | 9.4% |
+| Pricing, editions and monetisation | `pricing-and-editions` | Only when the price or value of something is itself the subject: what it costs, whether it is worth the money, which edition, pack or DLC to buy and what it includes, sales and discounts, microtransactions and the real-money store. Not a passing mention of buying or owning something, not 'DLC' used as a name, not in-game currency earned by playing, not money idioms, and not when the money talk is only in a (context) message. | 7.3% |
+| Bushido final update | `bushido-final-update` | The final content update for Veil of Ages Bushido (the current game): what it adds, rewards, patch notes, platform availability such as Switch; not Domains or Ebontide specifically, which have their own topics. | 6.1% |
+| RPG-era games | `rpg-era-games` | Playing the RPG-era titles Sands, Hellas and Fjord: levelling, gear, builds, exploration. | 4.3% |
+| Multiplayer and co-op | `multiplayer-and-co-op` | Looking for group, co-op sessions and multiplayer in any Veil of Ages game. | 4.1% |
+| Ebontide and new quests | `ebontide-and-new-quests` | The Ebontide quest and other new story quests or missions added to Bushido. | 1.2% |
+| Hollow and future titles | `hollow-and-future-titles` | Only conversations that name Veil of Ages: Hollow or speculate about games after it. Not Tides Remastered or any other upcoming release that has its own topic. | 0.8% |
+| Other | `other` | None of the other topics fits. | 36.4% |
+
+**Flags** (`ingest/flags.py`, the question Jev answers for each)
+
+| flag | question | share |
+|---|---|---|
+| excited | Is excitement, hype or enthusiasm about the games, an update, an announcement or an event a main thread of this conversation (more than a passing remark; in a one- or two-message conversation, the message itself)? | 10.2% |
+| frustrated | Is frustration or dissatisfaction with the games, an update, or the company or people behind them a main thread of this conversation (more than a passing remark; in a one- or two-message conversation, the message itself)? | 19.4% |
+| bug | Does anyone report a defect, crash or performance problem (something broken or behaving wrongly), as opposed to disliking a design choice or finding something hard? | 14.0% |
+| feature | Does anyone ask for a change or an addition to a game (a feature request or a concrete suggestion)? | 13.3% |
+| help | Is asking the community for help, advice or an explanation a main thread of this conversation? A practical question about playing, fixing or finding something that someone answers counts, even in a longer chat; opinion questions, rhetorical questions and banter do not; in a one- or two-message conversation, the message itself. | 36.3% |
+| noise | Is this conversation noise for a community manager: jokes, memes, one-word reactions or off-topic chat with no feedback, question or information about the games? | 35.2% |
+
+**Sentiment** is measured towards "the Veil of Ages games and their developer" (D7), 0 to 1.
