@@ -24,9 +24,43 @@ def test_sessions_split_on_a_gap_over_15_minutes_per_channel():
     assert members(group_by_time_gap(ms)) == [["m1", "m2"], ["m4"], ["m3"]]
 
 
-def test_long_sessions_are_cut_into_windows_of_30():
-    ms = [msg(i, i) for i in range(1, 66)]
-    assert [len(c.member_ids) for c in group_by_time_gap(ms)] == [30, 30, 5]
+def at_seconds(n, second):
+    m = msg(n)
+    m.ts = f"2026-09-20T10:{second // 60:02d}:{second % 60:02d}+00:00"
+    return m
+
+
+def session_with_pauses(n, long_before):
+    """n messages 10 s apart, except a 5-minute pause before each message number in long_before (1-based)."""
+    t, out = 0, []
+    for k in range(1, n + 1):
+        t += 300 if k in long_before else 10
+        out.append(at_seconds(k, t))
+    return out
+
+
+def test_a_long_session_is_cut_before_its_longest_pauses():
+    # 90 messages; the longest pauses fall before message 34 (after 33 messages) and before message 71.
+    convs = group_by_time_gap(session_with_pauses(90, {34, 71}))
+    assert [len(c.member_ids) for c in convs] == [33, 37, 20]
+    assert convs[1].member_ids[0] == "m34" and convs[2].member_ids[0] == "m71"
+    assert [(c.piece, c.n_pieces, c.session_id) for c in convs] == [(0, 3, "m1"), (1, 3, "m1"), (2, 3, "m1")]
+
+
+def test_equal_pauses_cut_at_the_earliest_allowed_point():
+    convs = group_by_time_gap(session_with_pauses(90, set()))
+    assert [len(c.member_ids) for c in convs] == [20, 20, 20, 30]
+
+
+def test_a_pause_outside_20_to_40_is_not_a_cut_point():
+    convs = group_by_time_gap(session_with_pauses(60, {10, 50}))  # neither is within [21, 41] of the start
+    assert [len(c.member_ids) for c in convs] == [20, 40]
+
+
+def test_a_session_of_40_or_fewer_stays_whole():
+    convs = group_by_time_gap(session_with_pauses(40, {20}))
+    assert [len(c.member_ids) for c in convs] == [40]
+    assert (convs[0].piece, convs[0].n_pieces, convs[0].session_id) == (0, 1, "m1")
 
 
 def test_every_message_is_a_member_of_exactly_one_conversation():
@@ -36,6 +70,7 @@ def test_every_message_is_a_member_of_exactly_one_conversation():
 
 
 def test_a_parent_in_an_earlier_window_is_context_not_member(monkeypatch):
+    monkeypatch.setattr(group, "MIN_MSGS", 2)
     monkeypatch.setattr(group, "MAX_MSGS", 2)
     ms = [msg(1, 0), msg(2, 1), msg(3, 2, reply_to="m1"), msg(4, 3, reply_to="m3")]
     convs = group_by_time_gap(ms)

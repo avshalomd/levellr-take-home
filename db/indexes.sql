@@ -7,6 +7,7 @@ CREATE INDEX conv_tsv_idx        ON conversations USING gin (tsv);
 CREATE INDEX conv_started_idx    ON conversations (started_at);
 CREATE INDEX conv_topic_idx      ON conversations (topic, started_at);
 CREATE INDEX conv_topics_idx     ON conversations USING gin (topics);   -- membership: $1 = ANY(topics)
+CREATE INDEX conv_session_idx    ON conversations (session_id, piece);  -- neighbouring pieces
 CREATE INDEX conv_channel_idx    ON conversations (channel, started_at);
 CREATE INDEX conv_embedding_idx  ON conversations USING hnsw (embedding vector_cosine_ops);
 ANALYZE messages;

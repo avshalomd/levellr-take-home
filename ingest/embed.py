@@ -30,7 +30,7 @@ from build import WORK
 
 MODEL = os.environ.get("EMBED_MODEL") or "gemini-embedding-2"
 DIMS = 768
-MAX_CHARS = 8000  # ~2,000 tokens, inside the model's input limit; the longest embed_text here is ~5,300 chars
+MAX_CHARS = 8000  # ~2,000 tokens, inside the model's input limit; the longest embed_text here is ~5,400 chars
 URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:batchEmbedContents"
 
 

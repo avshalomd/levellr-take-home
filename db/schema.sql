@@ -22,12 +22,15 @@ CREATE TABLE messages (
   tsv             tsvector GENERATED ALWAYS AS (to_tsvector('english', text)) STORED
 );
 
--- The retrieval and judgement unit: a 15-minute session inside one channel, windowed when long.
+-- The retrieval and judgement unit: a 15-minute session inside one channel, cut into pieces of 20-40 when long.
 CREATE TABLE conversations (
-  id              text PRIMARY KEY,          -- <first message id>:w<window>
+  id              text PRIMARY KEY,          -- <first message id>:w<piece>
   ref             integer NOT NULL UNIQUE,   -- short handle for the agent, conv<ref>
   channel         text NOT NULL,
   kind            text NOT NULL,             -- session
+  session_id      text NOT NULL,             -- the session's first message id: the pieces of one session share it
+  piece           integer NOT NULL,          -- 0-based position of this piece in its session
+  n_pieces        integer NOT NULL,          -- pieces in the session (1 when it was not cut)
   started_at      timestamptz NOT NULL,
   ended_at        timestamptz NOT NULL,
   n_messages      integer NOT NULL,

@@ -7,8 +7,12 @@ point at single messages; a conversation is only the unit of search, of judgemen
 Rules (the alternatives, measured on this data, are in DECISIONS.md):
 
 1. Per channel, in time order, a new session starts wherever two messages are more than GAP_MINUTES apart.
-2. A session longer than MAX_MSGS messages (or WINDOW_CHARS characters of text) is cut into windows in time order.
-   Each window is one conversation, and every message is a member of exactly one.
+2. A session longer than MAX_MSGS (40) messages is cut into pieces of MIN_MSGS..MAX_MSGS (20..40) messages. From the
+   piece's start i, while more than MAX_MSGS messages remain, the cut goes before the message j in [i+20, i+40] with
+   the longest pause since its previous message (ties: the earliest), so a piece ends where the talk paused most; the
+   last piece holds the remainder (<= 40). Each piece is one conversation, every message is a member of exactly one,
+   and each piece carries its session_id (the session's first message id), its piece index and n_pieces, so a
+   reader can open the neighbouring pieces.
 3. A reply whose parent is not a member of its conversation (the parent sits in an earlier window, or in an earlier
    session) gets that parent attached as *context*: it is shown in the transcript so the reply can be read, but it
    is not a member, so it is never counted or cited from two conversations.
@@ -28,11 +32,10 @@ from datetime import datetime
 from normalize import Message
 
 GAP_MINUTES = 15
-MAX_MSGS = 30
+MIN_MSGS = 20
+MAX_MSGS = 40
 # A single message longer than this is cut in the transcript. The full text stays on the message row.
 MSG_CHARS = 1500
-# A window also closes on size, so a transcript fits one embedding input and one Jev state without truncation.
-WINDOW_CHARS = 8000
 TITLE_CHARS = 80
 
 
@@ -45,6 +48,9 @@ class Conversation:
     title: str  # the first thing said in it: what a reader would call the conversation
     member_ids: list[str]  # messages that belong here (counted and citable here)
     context_ids: list[str] = field(default_factory=list)  # parents from outside, shown for context only
+    session_id: str = ""  # the session's first message id: pieces of one session share it
+    piece: int = 0  # 0-based position of this piece in its session
+    n_pieces: int = 1
     started_at: str = ""
     ended_at: str = ""
     n_messages: int = 0
@@ -104,16 +110,19 @@ def _finish(conv: Conversation, by_id: dict[str, Message]) -> Conversation:
     return conv
 
 
-def _windows(ms: list[Message]) -> list[list[Message]]:
-    out: list[list[Message]] = [[]]
-    chars = 0
-    for m in ms:
-        size = min(len(m.text), MSG_CHARS) + 60
-        if out[-1] and (len(out[-1]) >= MAX_MSGS or chars + size > WINDOW_CHARS):
-            out.append([])
-            chars = 0
-        out[-1].append(m)
-        chars += size
+def _pause(a: Message, b: Message) -> float:
+    return (datetime.fromisoformat(b.ts) - datetime.fromisoformat(a.ts)).total_seconds()
+
+
+def pieces(ms: list[Message], lo: int = MIN_MSGS, hi: int = MAX_MSGS) -> list[list[Message]]:
+    """Cut a session into pieces of lo..hi messages at the longest pause (ties: the earliest); see rule 2."""
+    out: list[list[Message]] = []
+    i = 0
+    while len(ms) - i > hi:
+        j = max(range(i + lo, i + hi + 1), key=lambda k: (_pause(ms[k - 1], ms[k]), -k))
+        out.append(ms[i:j])
+        i = j
+    out.append(ms[i:])
     return out
 
 
@@ -141,8 +150,10 @@ def group_by_time_gap(msgs: list[Message], gap_minutes: int = GAP_MINUTES) -> li
     for ses in sessions(msgs, gap_minutes):
         opener = next((m for m in ses if _visible(m) and m.text.strip()), ses[0])
         title = " ".join(opener.text.split())[:TITLE_CHARS] or ses[0].channel
-        for w, win in enumerate(_windows(ses)):
-            conv = Conversation(f"{ses[0].id}:w{w}", 0, ses[0].channel, "session", title, [m.id for m in win])
+        parts = pieces(ses, MIN_MSGS, MAX_MSGS)
+        for w, win in enumerate(parts):
+            conv = Conversation(f"{ses[0].id}:w{w}", 0, ses[0].channel, "session", title, [m.id for m in win],
+                                session_id=ses[0].id, piece=w, n_pieces=len(parts))
             convs.append(_finish(conv, by_id))
     convs.sort(key=lambda c: (c.started_at, c.channel))
     for i, c in enumerate(convs, 1):

@@ -39,7 +39,7 @@ from flags import FLAGS
 
 URL = "https://openrouter.ai/api/alpha/decisions"
 MODEL = "typesafe/jev-1.13"  # pinned: "latest" could move under the thresholds the app is tuned to
-STATE_CHARS = 8000  # the longest transcript here is ~6,700 chars; Jev reads 32K tokens
+STATE_CHARS = 12000  # the longest transcript here is ~8,400 chars; Jev reads 32K tokens
 
 # The one per-topic question (the reference's topic-question.json). load.py writes it into dataset_meta so the app's
 # relabel, if built, asks the same question and a topic means the same thing to both.

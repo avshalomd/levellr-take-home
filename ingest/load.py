@@ -114,13 +114,13 @@ def main() -> None:
                               m["author_id"], m["ts"], m["text"], json.dumps(m["reactions"], ensure_ascii=False),
                               m["n_reactions"]))
 
-        with cur.copy("COPY conversations (id, ref, channel, kind, started_at, ended_at, n_messages, n_authors,"
+        with cur.copy("COPY conversations (id, ref, channel, kind, session_id, piece, n_pieces, started_at, ended_at, n_messages, n_authors,"
                       " n_replies, n_reactions, engagement, context_ids, transcript, topic_p, sentiment, p_excited,"
                       " p_frustrated, p_bug, p_feature, p_help, p_noise, labels, label_model, embedding) FROM STDIN") as cp:
             for c in convs:
                 lab = labels.get(c["id"])
                 cp.write_row((
-                    c["id"], c["ref"], c["channel"], c["kind"], c["started_at"], c["ended_at"], c["n_messages"],
+                    c["id"], c["ref"], c["channel"], c["kind"], c["session_id"], c["piece"], c["n_pieces"], c["started_at"], c["ended_at"], c["n_messages"],
                     c["n_authors"], c["n_replies"], c["n_reactions"], c["engagement"], c["context_ids"], c["transcript"],
                     *((json.dumps(lab["topic_p"]), lab["sentiment"], *(lab[f"p_{f}"] for f in FLAGS),
                        json.dumps({"sentiment": lab["raw"]["sentiment"], "sentiment_conf": lab["sentiment_conf"]}),
