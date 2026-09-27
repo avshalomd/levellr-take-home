@@ -124,3 +124,78 @@ drop any leading assistant messages before `convertToModelMessages`, with a test
 input whose first message is the user's. Better, and it also removes the size risk: send only the new question and
 the chat id, and read the history from the saved chat on the server. Also drop an empty failed answer from the
 history, and show a plain line for a provider error instead of its text.
+
+## v1.1 release candidate QA
+
+End-to-end QA of branch `release-v1.1` at `f5767a1`, on localhost (`next dev`, port 3070) against the production
+Neon database and the brief's Gemini key, 2026-09-28. The run asked 17 questions that called the model, in three
+chats: one long chat of 12 turns, a second chat of 4, and a fresh chat. It also made two requests that never reached
+the model: a stubbed error stream, to exercise the retry buttons, and a question over 2,000 characters. The run
+covered Explore, desktop (1280 px) and mobile (375 px) widths, and dark and light mode. Nothing was relabelled or
+deleted.
+
+**Verdict: BLOCKED, one item (B1).** Every P finding that was exercised is fixed or mostly fixed. B1 is a new
+failure: a follow-up states a wrong count and marks it as counted by code.
+
+**Test setup.** Turbopack refused to start: the checkout's `node_modules` is a symlink that points outside the
+project root. The run used `next dev --webpack` instead. On the first visit to `/c/[id]`, webpack compiled the route
+and reloaded the page, which aborted the stream of question 3. The page recovered on its own: it showed "Still
+writing this answer" and then the saved answer. This comes from the dev server, not the app. `next dev` also wrote an
+untracked `AGENTS.md`, which was removed afterwards.
+
+### The fixes, checked
+
+| id | status | evidence |
+|---|---|---|
+| P18 | **fixed** | One chat of 12 questions, every one answered: frustrated, a bugs follow-up, excited, post, Domains, "tell me more about the second one", Tides Remastered (7th, where v1.0 failed), pricing last month, weather, false premise, Ebontide, and a second bugs follow-up. No "function call turn" error, no provider text. The reloaded chat holds all 12 answers with their checks, and none is empty. To exercise the retry path, an error stream was stubbed in the page (`The model could not answer this turn. Try again, or start a new chat.`): "Try again" was offered once, and after the same failure "New chat" replaced it. "New chat" opened a clean page with the input focused. Remaining risk: the client still sends the whole chat with each question. The 12-turn chat is 1,264 KB saved, so Vercel's 4.5 MB request limit is about 40 such turns away. That case now offers a new chat, by code; it was not exercised. |
+| P1 | **fixed** | Explore > Domains 21-27 Sep > Details > the top "Busiest sessions" row opens the session in the reply tree ("Conversation 1 of 4 in this session"), with the conversation handle nowhere in the page. Next showed 2 of 4 and previous went back to 1 of 4. Esc closed it. |
+| P2 | **fixed** | "What are the top frustrations players have right now?": no pricing section and no GTA 6. Every section is about the community's own games. The last-few-days frustrations answer had no other games either. |
+| P6 | **fixed** | "What are people most excited about this week?" ends its lead with "(Conversations about other games were left out.)". No Xenoverse or GTA 6. |
+| P3 | **fixed** | "Which of those are bugs?" after the frustrations answer ran a tool ("Read 56 bug reports (51 bore on the question)", 1 step), cited 12 messages and checked them: "all 9 claims are backed". The same follow-up after Ebontide ran a search, and all 4 claims were backed. Note: the first run read every bug report since 24 Sep, not only the frustrations listed before it. |
+| P4 | **partly fixed** | The post answer counts engagement by topic in code, draws the "Engagement by topic, from 20 Sep" chart (without "Other games" or "other") and gives four ideas. Two of the ideas rest on one message each: the sleeper stars (1) and the Hana build ("One player shared ..."). The Veil of Ages 3 lore idea cites two messages from one conversation. None of them is marked as thin in its own text. Only the footer says it: "No other conversation among them repeats any claim." Each idea quotes a topic's engagement score beside a single item (for example, the sleeper stars idea cites "261", which is the score of the whole Bushido topic). |
+| P5 | **not exercised** | Neither frustrations answer drew a by-topic chart. The post chart had no raw "other" row. The post answer's text says `The "Other games" and "other" topics were left out`, so the raw key still shows in the words (N6). |
+| P7 | **fixed** | The prefilled question reads "What were people saying about Domains in the week of 21 September 2026?" |
+| P8 | **not exercised as such** | No answer gave a date from a message. The false-premise answer says "players are discussing its upcoming release, preloading", which is "upcoming" relative to the messages. It adds no date or year. |
+| P9 | **still seen** | In the post answer, "pre-ordering and expressing excitement for new game plus, new pets" cites "pre order done 😍". New game plus and new pets are in the next message of the same session ("🔥 new game plus/new pets"), which is not cited. The check passed it, because the session backs the claim even though the cited message does not. |
+| P10 | **fixed** | "How many conversations were about pricing last month?" answers: "The conversations do not cover last month. From 13 Sep to 27 Sep, there were 173 conversations about Pricing, editions and monetisation." |
+| P11 | **mostly fixed** | A question of 2,184 characters (sent with `maxlength` removed) returned a 413. The page showed "That question is 2,183 characters long. Keep it under 2,000 and ask again." The text went back into the box, the bubble was removed, there was no "Try again", and no chat was saved. **Still open:** the page asked for `/api/chats/<id>` twice after the 413 and got 404 twice (server log and console). |
+| P12 | **fixed in this run** | The top-frustrations answer lists each point once, and its headings are in sentence case ("Domains difficulty and bugs"). It has no unexplained "(42 of 44 ...)" header. |
+| P13 | **fixed** | The post footer reads "No other conversation among them repeats any claim." Where claims do have numbers, it reads "The number beside a claim is how many more of them say it". |
+| P14 | **fixed** | The panel's tab names the cited message ("Are any of the Devs on here?...", "I am most excited to seeing h..."). The heading reads "Opens with ..." for the conversation's first line. |
+| P15 | **partly fixed** | The rows say "24 Sep, 116 messages in 4 conversations" and "Busiest sessions". A partial week is explained ("A dashed date is a week at the start or end of the data") and "7" is dashed. **Still open:** the colour scale tops out at 439, set by the "Other" row. |
+| P16 | **fixed (locally)** | `/api/health` returns `{"ok":true,"database":"up","ai":{"provider":"google"},"commit":"local"}`. A deploy would fill the commit from `APP_COMMIT` or `VERCEL_GIT_COMMIT_SHA`, which was not checked here. |
+| P17 | **fixed** | "... last 7 days compared with the week before?" answers "104 ... compared to 69 ... a 51% increase", with no "+". The steps line reads "Counted conversations twice", and a chart compares the two periods. |
+
+### New issues, by severity
+
+| id | severity | what happened | expected |
+|---|---|---|---|
+| B1 | **blocker** | In the long chat, "tell me more about the second one" (after the Domains answer, whose second point is bugs) answered with no tool call and no steps line: "Among the 56 bug reports about the Domains from 13 Sep 2026 to 27 Sep 2026, ... the average mood in these conversations being 47/100", and the mood carried the counted-figure marker. Both numbers belong to the earlier answer, "Read 56 bug reports", which covered **all topics from 24 Sep**. A read-only count on the database gives **114** Domains conversations flagged as bugs (`p_bug >= 0.5`) from 13 to 27 Sep. Under the answer, the check line reads "Checked: 4 of 5 claims are backed". The saved text carries `47/100 [scan]`. `sourcelessFigures` (`src/lib/agent/rates.ts:118`) accepts a tag when a tool of that name ran anywhere in the chat, and `countMismatches` checks rates only, so a count restated for a different slice goes through. A second follow-up of the same kind ("tell me more about the first one") stated no number, so the failure happens only some of the time. | A count or mood in a follow-up comes from a tool result for the same slice and period, or the answer states none. A figure tag is accepted only when a tool result in this chat holds that number for that slice; otherwise the tag is dropped or flagged as sourceless. |
+| N1 | major | Off-topic questions in the middle of a chat skip the out-of-scope path. After 3 questions, "Can you write me a poem about pirates?" got a 12-line pirate poem in 2 s, with no tool call and no check. In the long chat, "What's the weather going to be in Oslo tomorrow?" was declined in the model's own words, with none of the three suggested questions. In a fresh chat, the same poem request gets the proper out-of-scope answer: "I can't answer that. I only know what the Veil of Ages Discord talked about from 13 Sep to 27 Sep 2026. You could ask:" and three suggestion buttons. | Any turn that calls no tool and cites nothing is checked for scope (the Jev `bearsOn` check already exists), or the instructions make `out_of_scope` the only way to decline, whatever the history. |
+| N2 | minor | The false-premise answer ("Why are people so angry that Tides Remastered was cancelled?") corrects the premise and then repeats most of the previous Tides Remastered answer, including "173 of 236 conversations ... 55/100". Its footer says "all 8 conversations that bore on the question". | The correction and what the search found, without re-running the previous answer. |
+| N3 | minor | Some follow-ups answer from earlier results and call no tool ("tell me more about the first one", "tell me more about the second one"). They have no steps line, although they cite and are checked. | Acceptable when the answer adds no number (see B1). |
+| N4 | minor | The client still sends the whole chat with each question: 1,264 KB after 12 turns (P18's size risk). | Send the new question and the chat id, and read the history on the server (P18's longer-term fix). |
+| N5 | polish | P11 still fetches `/api/chats/<id>` twice after a 413 (404 twice in the console). | Fetch nothing for a chat that was never saved. |
+| N6 | polish | The post answer's text says `"other" topics were left out` (the raw key, lower case). | "Other games and uncategorised talk were left out". |
+
+### Regression pass
+
+- **Core questions:** excited this week (97 read, 76 bore on it, 7 of 7 backed), frustrated in the last few days
+  (89 read, 8 of 8 backed), Domains (223 read, 8 of 9 backed), Ebontide (search, 6 of 7 backed), a count (pricing,
+  last month and week over week), a false premise ("The conversations do not indicate that Tides Remastered was
+  cancelled"), off-topic (fresh chat right; mid-chat wrong, N1). No tool text, raw JSON or keys in any answer.
+- **Evidence panel:** citation chips open it with the cited message lit and numbered in the thread tree, on desktop
+  and as a bottom sheet at 375 px. "Show the whole session" works.
+- **Steps line:** "2 steps" opened to "Counted engagement ..." and "Read 97 excited conversations ...", with the chart.
+- **Saved chats:** reloading `/c/<id>` brings back all 12 answers with their checks. The sidebar lists the new chats
+  under "Today". New chat works from the sidebar and from the error bar.
+- **Mobile (375 px):** no horizontal scroll on the chat page or on /explore. The menu opens the chat list.
+- **Dark and light:** both render; the theme toggle works (left on dark).
+- **Console:** the only errors were the QA's own 413, and the two 404s from N5. The dev server logged one
+  `__webpack_require__.C is not a function` for `/api/thread/[id]` static paths (webpack dev only; the request
+  returned 200).
+
+**Latency**, from pressing send to the end of the answer, as the answer footers report it: frustrated in the last
+few days 13 s, bugs follow-up 10 s, excited 11 s, post 9 s, Domains 14 s, "second one" 5 s, Tides Remastered 14 s,
+pricing last month 3 s, weather 1 s, false premise 10 s, Ebontide 10 s, bugs follow-up (Ebontide) 6 s, top
+frustrations 26 s, "first one" 4 s, week-over-week count 4 s, poem mid-chat 2 s, poem in a fresh chat 2 s.

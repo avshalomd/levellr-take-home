@@ -1,0 +1,567 @@
+{
+ "run_at": "2026-09-27T23:15:35.588Z",
+ "agent_model": "gemini-2.5-flash",
+ "judge": "gemini-3.5-flash-lite",
+ "note": "v1.1 final: longer claim-check retry",
+ "summary": {
+  "questions": 11,
+  "errors": 0,
+  "score": 0.9545454545454546,
+  "correct": 10,
+  "partial": 1,
+  "wrong": 0,
+  "by_type": {
+   "lookup": {
+    "n": 2,
+    "score": 1
+   },
+   "temporal": {
+    "n": 2,
+    "score": 1
+   },
+   "excited": {
+    "n": 2,
+    "score": 1
+   },
+   "frustrated": {
+    "n": 3,
+    "score": 1
+   },
+   "aggregate": {
+    "n": 1,
+    "score": 0.5
+   },
+   "false-premise": {
+    "n": 1,
+    "score": 1
+   }
+  },
+  "abstained_when_it_should": "1/1",
+  "abstained_when_it_should_not": "0/10",
+  "invented": 0,
+  "citations": {
+   "total": 187,
+   "invalid": 0,
+   "not_retrieved": 0,
+   "cited": 68,
+   "supported": 67,
+   "unchecked": 0,
+   "supported_share": 0.9852941176470589
+  },
+  "latency_ms": {
+   "p50": 8093,
+   "p90": 9657
+  },
+  "pairs": {
+   "domains-complaints": {
+    "verdicts": {
+     "C03": "correct"
+    },
+    "agree": true
+   }
+  },
+  "tool_use": {
+   "find": 5,
+   "aggregate": 3,
+   "scan": 8
+  }
+ },
+ "runs": [
+  {
+   "id": "L05",
+   "type": "lookup",
+   "question": "Is the final Bushido update available on Switch 2?",
+   "answer": "The final Bushido update will mostly be available, though certain projects linked to Tides Remastered will not be available on Switch 2, as Tides Remastered is not coming to that platform [msg5104, msg7441].\n\n* Players discussed whether the update would come to Switch 2, with some expressing concern if it didn't [msg5043, msg5083].\n* One player stated that the two projects in the Echo Hub, which reward legacy outfits and have shared progress across Bushido and Tides Remastered, will not be available on Switch 2 because Tides Remastered is not coming to that platform [msg5104].\n* Other players clarified that only the Tides Remastered-related projects would not be on Switch, and \"everything else should be\" [msg7444, msg7446].\n* There was some uncertainty among players, with one suggesting the update \"should be available on Switch then like the rest, maybe it will come a bit later\" [msg7460].",
+   "grounding": "cited",
+   "revision": {
+    "status": "done",
+    "kept": true
+   },
+   "model": "gemini-2.5-flash",
+   "ms": 7114,
+   "tools": [
+    {
+     "tool": "find",
+     "input": {
+      "query": "Bushido final update Switch 2",
+      "about": "Bushido final update on Switch 2"
+     }
+    }
+   ],
+   "judge": {
+    "verdict": "correct",
+    "abstained": false,
+    "invented": false,
+    "reason": "The answer accurately reflects the community discussion regarding the Bushido update and its partial availability on Switch 2 based on the tool outputs and rubrics."
+   },
+   "citations": {
+    "total": 8,
+    "invalid": 0,
+    "not_retrieved": 0,
+    "claims_cited": 5,
+    "claims_supported": 5,
+    "claims_unchecked": 0,
+    "uncited_sentences": 0
+   }
+  },
+  {
+   "id": "L06",
+   "type": "lookup",
+   "question": "What crashes did people report after the final update?",
+   "answer": "After the final update, players reported several crashes and significant bugs from 17 Sep 2026 to 18 Sep 2026:\n\n* The game crashes on boot-up, specifically on Xbox Series X [msg7443, msg7452].\n* Crashes occur when the game reaches 100% on \"checking memory add-ons,\" which some players link to the Kuroshima DLC [msg7573, msg7596].\n* A \"very bad game crash\" is caused by new gear added in the update [msg7766].\n* The final boss fight against Garrett was bugged, with him having an invisible sword and dying automatically [msg9548, msg9708].",
+   "grounding": "cited",
+   "model": "gemini-2.5-flash",
+   "ms": 6097,
+   "tools": [
+    {
+     "tool": "find",
+     "input": {
+      "query": "crashes final update",
+      "about": "crashes after final update"
+     }
+    }
+   ],
+   "judge": {
+    "verdict": "correct",
+    "abstained": false,
+    "invented": false,
+    "reason": "The answer accurately summarizes the reported crashes and bugs following the update using the provided tool outputs and cited messages without any hallucinations."
+   },
+   "citations": {
+    "total": 7,
+    "invalid": 0,
+    "not_retrieved": 0,
+    "claims_cited": 4,
+    "claims_supported": 4,
+    "claims_unchecked": 0,
+    "uncited_sentences": 1
+   }
+  },
+  {
+   "id": "T02",
+   "type": "temporal",
+   "question": "How did the community react on the night the final update came out?",
+   "answer": "On the night of 17 Sep, the community's reaction to the final Bushido update was mixed, with an average mood of 50/100 [aggregate]. Many players encountered bugs and crashes, particularly with the new Domains content, while others enjoyed the new story quest and gear.\n\n* Several players reported that the new Domains content was not working or had issues, such as not being able to enter the gateway [msg7537, msg7550, msg7515, msg7520].\n* Some players experienced game crashes upon booting up the game after the update, especially on Xbox [msg7443, msg7452, msg7596].\n* There were frustrations with the difficulty of new boss fights and buggy parkour sequences, including issues with ledge grabs [msg7630, msg7635, msg7637, msg7722, msg7727, msg7842].\n* Players discussed the update on Switch, with some noting the update is not yet live on the platform or questioning whether it will come due to items linked to the Remaster [msg7441, msg7503].\n* Despite the issues, some players expressed enjoyment of the new story quest [msg7619, msg7842] and appreciated the new gear and outfits [msg7532, msg7535, msg7740].",
+   "grounding": "cited",
+   "revision": {
+    "status": "done",
+    "kept": true
+   },
+   "model": "gemini-2.5-flash",
+   "ms": 9920,
+   "tools": [
+    {
+     "tool": "find",
+     "input": {
+      "query": "Bushido final update announcement",
+      "about": "Bushido final update announcement"
+     }
+    },
+    {
+     "tool": "aggregate",
+     "input": {
+      "metric": "avg_sentiment",
+      "group_by": "none",
+      "filters": {
+       "since": "2026-09-17T19:30Z",
+       "until": "2026-09-18T07:00Z"
+      }
+     }
+    },
+    {
+     "tool": "scan",
+     "input": {
+      "question": "What are people saying about the final update for Bushido?",
+      "about": "community reaction to Bushido final update",
+      "filters": {
+       "since": "2026-09-17T19:30Z",
+       "until": "2026-09-18T07:00Z"
+      }
+     }
+    }
+   ],
+   "judge": {
+    "verdict": "correct",
+    "abstained": false,
+    "invented": false,
+    "reason": "The answer accurately captures the timeline and mixed community reactions on update night as supported by the rubric and cited messages."
+   },
+   "citations": {
+    "total": 20,
+    "invalid": 0,
+    "not_retrieved": 0,
+    "claims_cited": 5,
+    "claims_supported": 5,
+    "claims_unchecked": 0,
+    "uncited_sentences": 1
+   }
+  },
+  {
+   "id": "E01",
+   "type": "excited",
+   "question": "What are people most excited about right now?",
+   "answer": "People are most excited about Tides Remastered and the final update for Bushido, with a generally positive mood of 77/100 [scan]. This covers 82 relevant conversations from 20 Sep 19:30 UTC to now.\n\n* Many are hyped for Tides Remastered, with some pre-ordering it and looking forward to new game plus and new pets [msg22334, msg22335, msg22347, msg22348]. Players are also excited about outfits seen in the Art Book for the remaster, finding them amazing [msg15194, msg15204].\n* The Bushido final update has players excited about new perks and weapons, such as the sleeper stars and cutlass, which offer new stealth options and combat possibilities in Domains [msg17894, msg17897, msg17910].\n* There is excitement for the lore and story, specifically the Thorne storyline in VoA 3 and the anticipation of Kidd's story expansion in Tides Remastered [msg16216, msg16220, msg24350].\n* Some players are enjoying replaying classic games like VoA Fjord, appreciating the amount of content it offers [msg16524].\n* The combat mechanics and perks in Domains are also a source of excitement, with players enjoying parrying attacks and using specific perks like the sandevistan [msg16555, msg16560].",
+   "grounding": "cited",
+   "revision": {
+    "status": "done",
+    "kept": true
+   },
+   "model": "gemini-2.5-flash",
+   "ms": 7069,
+   "tools": [
+    {
+     "tool": "scan",
+     "input": {
+      "question": "What are people excited about?",
+      "about": "what people are excited about",
+      "filters": {
+       "since": "2026-09-20T19:30Z",
+       "flag": "excited"
+      },
+      "top": 15
+     }
+    }
+   ],
+   "judge": {
+    "verdict": "correct",
+    "abstained": false,
+    "invented": false,
+    "reason": "The answer is fully grounded in the provided tool outputs and cited messages, accurately reporting themes of excitement, time period, and mood score without inventing any unsupported information."
+   },
+   "citations": {
+    "total": 15,
+    "invalid": 0,
+    "not_retrieved": 0,
+    "claims_cited": 6,
+    "claims_supported": 6,
+    "claims_unchecked": 0,
+    "uncited_sentences": 1
+   }
+  },
+  {
+   "id": "F01",
+   "type": "frustrated",
+   "question": "What have players been frustrated about in the last few days?",
+   "answer": "Players have been frustrated about several issues in the Veil of Ages games from 24 Sep 19:30 UTC to now, with the average mood in these conversations at 36/100 [scan].\n\n* In Tides Remastered, players are disappointed by the inability to replay story missions and the removal of additional objectives for full synchronization [msg21527, msg21670]. They are also frustrated about not being able to pick up muskets [msg21472, msg21490] and the inability to buy the deluxe pack separately [msg21101].\n* In Bushido, frustrations include long and annoying intros in the Domains [msg23873, msg23874], corrupted saves [msg23877], and bugs where players die despite having a \"you cannot die\" modifier [msg23882, msg23928]. Some players are tired of the Domains and wish for more bosses and levels [msg23944, msg23949].\n* General game issues include save file deletion [msg24491] and a buggy free weekly Nexus item [msg21009, msg21018]. Players also express frustration with the grind and difficulty of achievements, particularly in Veil of Ages 3, citing annoying optional objectives and enemies detecting them from a distance [msg21042, msg21007, msg21075].\n* Some players are frustrated about not being able to obtain the Fox Mask after defeating a boss in Bushido [msg22443, msg22454].",
+   "grounding": "cited",
+   "model": "gemini-2.5-flash",
+   "ms": 7914,
+   "tools": [
+    {
+     "tool": "scan",
+     "input": {
+      "question": "What are players frustrated about?",
+      "about": "player frustrations",
+      "filters": {
+       "since": "2026-09-24T19:30Z",
+       "flag": "frustrated"
+      }
+     }
+    }
+   ],
+   "judge": {
+    "verdict": "correct",
+    "abstained": false,
+    "invented": false,
+    "reason": "The answer covers the requested window, accurately lists player frustrations from the data and cited messages, and uses correct formatting and numbers."
+   },
+   "citations": {
+    "total": 20,
+    "invalid": 0,
+    "not_retrieved": 0,
+    "claims_cited": 7,
+    "claims_supported": 7,
+    "claims_unchecked": 0,
+    "uncited_sentences": 1
+   }
+  },
+  {
+   "id": "A02",
+   "type": "aggregate",
+   "question": "Which channels were busiest in the last 3 days?",
+   "answer": "The busiest channels from 24 Sep 19:30 UTC to now were:\n\n* off-topic with 2,023 messages [aggregate]\n* game-chat with 1,196 messages [aggregate]\n* new-release-discussion with 1,017 messages [aggregate]\n* remaster-discussion with 421 messages [aggregate]\n* rpg-chat with 242 messages [aggregate]",
+   "grounding": "uncited",
+   "revision": {
+    "status": "failed"
+   },
+   "model": "gemini-2.5-flash",
+   "ms": 9116,
+   "tools": [
+    {
+     "tool": "aggregate",
+     "input": {
+      "metric": "messages",
+      "group_by": "channel",
+      "filters": {
+       "since": "2026-09-24T19:30Z"
+      }
+     }
+    },
+    {
+     "tool": "scan",
+     "input": {
+      "question": "Which channels were busiest in the last 3 days?",
+      "about": "busiest channels",
+      "filters": {
+       "since": "2026-09-24T19:30Z"
+      }
+     }
+    }
+   ],
+   "truth": [
+    {
+     "channel": "off-topic",
+     "n": 2023
+    },
+    {
+     "channel": "game-chat",
+     "n": 1203
+    },
+    {
+     "channel": "new-release-discussion",
+     "n": 1017
+    }
+   ],
+   "judge": {
+    "verdict": "partial",
+    "abstained": false,
+    "invented": false,
+    "reason": "The answer names the top channels and gives the window, but includes extra channels beyond the top 3 and has a minor count mismatch for game-chat compared to TRUTH."
+   },
+   "citations": {
+    "total": 0,
+    "invalid": 0,
+    "not_retrieved": 0,
+    "claims_cited": 0,
+    "claims_supported": 0,
+    "claims_unchecked": 0,
+    "uncited_sentences": 0
+   }
+  },
+  {
+   "id": "X01",
+   "type": "false-premise",
+   "question": "What did players think of patch 1.2 for Bushido?",
+   "answer": "The conversations do not mention a patch 1.2 for Bushido. Instead, players are discussing \"Patch 1.1.11 New Story Drop - Ebontide\" [msg5104], which is referred to as the final content update for Bushido. The mood in the 145 conversations about the Bushido final update is 48/100 [scan].\n\nHere's what players think about the final content update:\n* Many players are disappointed that the update feels like a marketing tool for Tides Remastered, with forced connections to the upcoming game rather than letting Bushido have its own conclusion [msg9649, msg5141, msg5150, msg7971].\n* The Ebontide quest itself is generally well-received, with some calling it \"amazing\" and \"beautiful\" [msg9650, msg8156, msg14422], and some even saying it was better than the main story [msg7873, msg7988].\n* However, the update introduced several bugs and performance issues, including game crashes on boot-up or when using new gear [msg7766, msg7443, msg9311, msg16730].\n* The new Roguelite Mode, \"Domains,\" is a source of frustration for some players due to its difficulty, grindy achievements, and poor design in certain areas like the \"ship domain\" [msg8892, msg8907, msg8869, msg8871, msg8201]. Some players also experienced bugs with the Domains, such as being unable to interact with the gateway [msg7694, msg7537, msg7545].\n* There is also disappointment regarding the lack of content for the Nintendo Switch 2, with some features linked to Tides Remastered not being available on that platform [msg5043, msg5029, msg5030, msg7441].",
+   "grounding": "cited",
+   "model": "gemini-2.5-flash",
+   "ms": 9520,
+   "tools": [
+    {
+     "tool": "find",
+     "input": {
+      "query": "patch 1.2 Bushido",
+      "about": "patch 1.2 for Bushido"
+     }
+    },
+    {
+     "tool": "scan",
+     "input": {
+      "question": "What do players think about the final content update (Patch 1.1.11, Ebontide) for Bushido?",
+      "about": "player sentiment on Bushido final update",
+      "filters": {
+       "topic": "Bushido final update"
+      }
+     }
+    },
+    {
+     "tool": "scan",
+     "input": {
+      "question": "What do players think about the final content update (Patch 1.1.11, Ebontide) for Bushido?",
+      "about": "player sentiment on Bushido final update",
+      "filters": {
+       "topic": "Ebontide and new quests"
+      }
+     }
+    }
+   ],
+   "judge": {
+    "verdict": "correct",
+    "abstained": false,
+    "invented": false,
+    "reason": "The answer accurately states that patch 1.2 is not in the data and correctly identifies the actual final update discussed as 1.1.11, while fulfilling all rubric criteria without any fabrications."
+   },
+   "citations": {
+    "total": 26,
+    "invalid": 0,
+    "not_retrieved": 0,
+    "claims_cited": 7,
+    "claims_supported": 7,
+    "claims_unchecked": 0,
+    "uncited_sentences": 1
+   }
+  },
+  {
+   "id": "C03",
+   "type": "frustrated",
+   "pair": "domains-complaints",
+   "question": "What are the main complaints about Domains?",
+   "answer": "The main complaints about Domains are centered around their difficulty, bugs, lack of variety, and overall design.\n\n* **Excessive Difficulty and Balancing Issues:** Many players find the Domains, particularly at higher levels, to be unfairly difficult, especially when facing multiple bosses simultaneously [msg10161, msg16551]. Some describe the difficulty as \"random\" or \"rigged\" rather than challenging [msg10171, msg13300]. Specific characters like Hana are considered unsuitable for certain challenges [msg10195], and the boss Takeda is frequently cited as being overly difficult due to his teleporting, dodging, cloning, and distant attacks [msg13299, msg15087].\n* **Bugs and Glitches:** Players have reported various bugs, including being unable to exit a Domain or access the map/menu within it [msg9159, msg9171, msg9193, msg9218]. There are also complaints about bosses bugging out, such as pushing players into walls or refusing to die [msg13302]. One player experienced a soft lock during a related quest, leading to the loss of in-game gear [msg8158, msg8187, msg8188].\n* **Limited Variety and Unrewarding Grind:** Some players express a desire for more boss variety [msg17028] and feel that the exclusive rewards tied to Domains make the frustrating experience feel mandatory [msg17026, msg17031]. There's a sentiment that the mode focuses on \"getting the numbers bigger by constant grind\" rather than engaging gameplay [msg13309].\n* **Poor Design and User Experience:** Players criticize the design, suggesting that access to higher-level Domains should be restricted until players reach a certain level (e.g., level 100) [msg15783]. The update introducing Domains is described as \"poorly designed\" and \"a mess\" with missing features [msg15785, msg15801].",
+   "grounding": "cited",
+   "model": "gemini-2.5-flash",
+   "ms": 7251,
+   "tools": [
+    {
+     "tool": "find",
+     "input": {
+      "query": "complaints about Domains",
+      "about": "complaints about Domains"
+     }
+    }
+   ],
+   "judge": {
+    "verdict": "correct",
+    "abstained": false,
+    "invented": false,
+    "reason": "The answer accurately summarizes the main complaints about Domains based directly on the provided tool outputs and cited messages, covering difficulty, multi-boss fights, bugs, grind, and poor design without overstating anything or introducing unsupported facts."
+   },
+   "citations": {
+    "total": 22,
+    "invalid": 0,
+    "not_retrieved": 0,
+    "claims_cited": 10,
+    "claims_supported": 10,
+    "claims_unchecked": 0,
+    "uncited_sentences": 0
+   }
+  },
+  {
+   "id": "T04",
+   "type": "temporal",
+   "question": "What happened on 17 Sep?",
+   "answer": "On 17 Sep, there were 186 conversations [aggregate], with an average mood of 53/100 [scan]. Of these, 174 conversations were about what people were talking about [scan].\n\n* Players discussed the Bushido final update, including issues like lost progress and bugs [msg7407, msg7416, msg7420], and the size of the update [msg7386, msg7394]. There was also excitement about new content such as quests, projects, rifts, and Domains [msg7360].\n* Conversations about Lore and story focused on Bushido's narrative, character arcs for Hana and Kano [msg6508, msg6509, msg6518], and speculation about upcoming quests and character appearances [msg6437, msg6444, msg6451]. Opinions on the story were mixed, with some liking it and others finding it the weakest part of Bushido [msg7199, msg7211, msg7217].\n* Discussions around Tides Remastered included potential changes to the detection system and animations [msg6252, msg6264, msg6277], and the inclusion of Duncan as a boss fight [msg6424, msg6431].\n* Other conversations covered bugs in DLC for \"VoA 3\" [msg6866, msg6872] and achievements in older Veil of Ages titles [msg6882, msg6892]. There were also off-topic discussions about movies [msg6373, msg6379] and current events [msg5495, msg5503].",
+   "grounding": "cited",
+   "model": "gemini-2.5-flash",
+   "ms": 9657,
+   "tools": [
+    {
+     "tool": "aggregate",
+     "input": {
+      "metric": "conversations",
+      "group_by": "day",
+      "filters": {
+       "since": "2026-09-17",
+       "until": "2026-09-18"
+      }
+     }
+    },
+    {
+     "tool": "scan",
+     "input": {
+      "question": "What were people talking about?",
+      "about": "conversations on 17 Sep",
+      "filters": {
+       "since": "2026-09-17",
+       "until": "2026-09-18"
+      },
+      "top": 15
+     }
+    }
+   ],
+   "truth": [
+    {
+     "n": 2712
+    }
+   ],
+   "judge": {
+    "verdict": "correct",
+    "abstained": false,
+    "invented": false,
+    "reason": "The answer accurately covers the events of 17 September as specified in the rubric, citing correct messages and matching the TRUTH and tool outputs."
+   },
+   "citations": {
+    "total": 28,
+    "invalid": 0,
+    "not_retrieved": 0,
+    "claims_cited": 7,
+    "claims_supported": 7,
+    "claims_unchecked": 0,
+    "uncited_sentences": 1
+   }
+  },
+  {
+   "id": "E02",
+   "type": "excited",
+   "question": "What got people hyped about Tides Remastered?",
+   "answer": "People are hyped about Tides Remastered due to new content, improved gameplay, and lore, with an average mood of 71/100 in the excited conversations about the game from 13 to 27 Sep [scan].\n\n* Players are excited about new content and features, including a new encounter quest, a story drop called Ebontide, and a roguelite mode called Domains with exclusive gear and currency [msg4951, msg4953].\n* The possibility of New Game Plus, weekly 'Anomalies' missions, and the inclusion of all three DLC islands with refreshed content and better rewards are also generating excitement [msg21041, msg22348].\n* Graphics that look like the cgi trailer [msg848], the return of parkour chases [msg858], and level remakes to add parkour stealth options [msg858] are highly anticipated.\n* New legacy outfits and gear, such as a Spartan helmet, tomahawk, and Kassandra's spear, are drawing significant interest [msg4937, msg4940, msg4942, msg4953].\n* The confirmation of more lore in upcoming Veil of Ages games and the inclusion of new cutscenes are also exciting players [msg843, msg853, msg661, msg2184].\n* Many are pre-ordering the game, with particular enthusiasm for the deluxe edition and its black and gold outfit [msg6754, msg6859, msg22347].",
+   "grounding": "cited",
+   "revision": {
+    "status": "done",
+    "kept": true
+   },
+   "model": "gemini-2.5-flash",
+   "ms": 9029,
+   "tools": [
+    {
+     "tool": "scan",
+     "input": {
+      "question": "What got people hyped about Tides Remastered?",
+      "about": "Tides Remastered excitement",
+      "filters": {
+       "topic": "tides-remastered",
+       "since": "2026-09-13",
+       "flag": "excited"
+      }
+     }
+    }
+   ],
+   "judge": {
+    "verdict": "correct",
+    "abstained": false,
+    "invented": false,
+    "reason": "The answer accurately addresses the rubric and references the exact data provided, including themes, period, and mood score, without inventing any information."
+   },
+   "citations": {
+    "total": 18,
+    "invalid": 0,
+    "not_retrieved": 0,
+    "claims_cited": 6,
+    "claims_supported": 5,
+    "claims_unchecked": 0,
+    "uncited_sentences": 1
+   }
+  },
+  {
+   "id": "F02",
+   "type": "frustrated",
+   "question": "What are the top frustrations players have right now?",
+   "answer": "The main frustrations expressed by players from 20 to 27 Sep, with an average mood of 35/100 across all 194 frustrated conversations [scan], are:\n\n* **Difficulty and balancing of the Domains game mode:** Many players find the Domains mode to be unfairly difficult and poorly balanced, especially for casual players. They complain about bullet-sponge bosses, one-hit kills, and the need to constantly re-roll modifiers [msg16978, msg16983, msg16019, msg16021]. Some feel it was not tested with casual players in mind and that it requires being level 100 or in NG+ to stand a chance [msg16024, msg15783, msg15794].\n* **Bugs and glitches in the Domains and other game features:** Players report various bugs within the Domains, such as broken hitboxes, getting stuck in textures, invisible bosses, bosses randomly immune to skills, and lightning strikes while climbing [msg16030]. There are also frustrations with perks not working as intended, like the sleep shuriken perk putting players into combat [msg19279, msg19288]. Some experienced issues with \"cannot die\" modifiers not working [msg23882].\n* **Lack of clear progression and rewards in Domains:** Players are frustrated by the lack of clarity on how to obtain certain rewards, such as the Red Excalibur or Kano's katana, despite numerous runs of high-level Domains [msg17342, msg17347, msg17014, msg19286]. Some believe these items might be bugged and not dropping [msg19286].\n* **Repetitive and uninspired mission design in Bushido:** Players express frustration with side missions feeling like repetitive fetch quests or simple dialogue choices [msg15778, msg15779]. Some find the map layout tiresome, leading to constant bumping into trees during exploration [msg15761].\n* **Issues with cosmetic items and outfits:** There is frustration about not receiving full outfits, specifically the Etta headpiece, which players feel does not match any existing gear and is a missed opportunity for the final content drop [msg15880, msg15920, msg15938]. Some also report issues with the free weekly Nexus item not being available [msg21009].",
+   "grounding": "cited",
+   "revision": {
+    "status": "done",
+    "kept": true
+   },
+   "model": "gemini-2.5-flash",
+   "ms": 8093,
+   "tools": [
+    {
+     "tool": "scan",
+     "input": {
+      "question": "What are the main frustrations expressed by players?",
+      "about": "player frustrations",
+      "filters": {
+       "since": "2026-09-20T19:30Z",
+       "flag": "frustrated"
+      },
+      "top": 15
+     }
+    }
+   ],
+   "judge": {
+    "verdict": "correct",
+    "abstained": false,
+    "invented": false,
+    "reason": "The answer correctly references the period and the 35/100 mood score from the tool output, accurately lists specific player frustrations (Domains difficulty, bugs, missing drop rewards, mission design, and cosmetics), and cites the correct message references."
+   },
+   "citations": {
+    "total": 23,
+    "invalid": 0,
+    "not_retrieved": 0,
+    "claims_cited": 11,
+    "claims_supported": 11,
+    "claims_unchecked": 0,
+    "uncited_sentences": 2
+   }
+  }
+ ]
+}
