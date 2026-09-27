@@ -5,8 +5,8 @@
 //   citations   - the claim check the app runs: ids that exist, ids the agent actually read this turn, and Jev's
 //                 support probability per cited claim
 //   abstention  - false-premise and out-of-scope questions must be declined or corrected, not answered
-// plus latency and which tools were used. Ported from Community Pulse 90f193d (eval/agent.ts) without its paraphrase
-// pairs. Results -> eval/results/agent.json.
+// plus latency and which tools were used. Ported from Community Pulse 90f193d (eval/agent.ts); paraphrase pairs
+// (questions sharing `pair`) are reported as agreeing or not. Results -> eval/results/agent.json.
 //
 // It spends the agent model's quota (one question = up to 8 agent steps), so run it on purpose:
 // usage: npm run eval:agent [-- --only L01,A02] [-- --concurrency 2] [-- --note "why this run"] [-- --out path]
@@ -38,8 +38,8 @@ const Verdict = z.object({
   reason: z.string().describe("one or two sentences"),
 });
 
-// The messages the answer cites, in full: tool outputs are cut for the judge, so a quote from a late hit would
-// otherwise look invented.
+// The messages the answer cites, in full: a tool output that runs past the judge's budget keeps only its figures,
+// so a quote from a late hit would otherwise look invented.
 async function citedMessages(answer: string): Promise<string> {
   const refs = citedTags(answer)
     .map(refOfTag)
@@ -69,8 +69,11 @@ async function judge(q: Q, answer: string, truth: unknown, tools: string) {
       "'wrong' = misses the point, contradicts the rubric or truth, or answers a false premise as if it were true. " +
       "The rubric's examples are examples: other themes are fine when the tool outputs or cited messages support " +
       "them. Citation markers like [msg1234] are expected; ignore them. TOOL OUTPUTS are what the chatbot's own tools " +
-      "told it, and CITED MESSAGES are the full text of every message the answer cites: a number or fact found in " +
-      "either is not invented. 'invented' is for statements nothing here supports.",
+      "told it, in full, and CITED MESSAGES are the full text of every message the answer cites: a number or fact found " +
+      "in either is not invented. Figures the tools computed (counts, shares, engagement scores, mood or sentiment " +
+      "values, dates, author activity) are the app's own measurements: when such a number appears in TOOL OUTPUTS, or " +
+      "follows from them by rounding, summing or taking a share, it is not invented, even if no cited message states " +
+      "it. 'invented' is for statements nothing here supports.",
     input:
       `QUESTION: ${q.question}\n\nRUBRIC: ${q.expect}\n\nTRUTH: ${truth === undefined ? "(none)" : JSON.stringify(truth)}` +
       `\n\nTOOL OUTPUTS:\n${tools || "(none)"}\n\nCITED MESSAGES:\n${cited || "(none)"}\n\nANSWER:\n${answer}`,
@@ -102,6 +105,7 @@ async function main() {
         return {
           id: q.id,
           type: q.type,
+          pair: q.pair,
           question: q.question,
           answer: after.text,
           grounding: after.grounding.kind,
@@ -169,6 +173,13 @@ async function main() {
       supported_share: cites.cited - cites.unchecked ? cites.supported / (cites.cited - cites.unchecked) : null,
     },
     latency_ms: { p50: lat[Math.floor(lat.length / 2)], p90: lat[Math.floor(lat.length * 0.9)] },
+    // Paraphrase pairs: the same question in other words should get the same verdict (and, for counts, the same number).
+    pairs: Object.fromEntries(
+      [...new Set(ok.map((r) => r.pair).filter((p): p is string => !!p))].map((p) => {
+        const rs = ok.filter((r) => r.pair === p);
+        return [p, { verdicts: Object.fromEntries(rs.map((r) => [r.id, r.judge.verdict])), agree: new Set(rs.map((r) => r.judge.verdict)).size === 1 }];
+      }),
+    ),
     tool_use: Object.fromEntries(
       [...new Set(ok.flatMap((r) => r.tools.map((t) => t.tool)))].map((t) => [t, ok.filter((r) => r.tools.some((x) => x.tool === t)).length]),
     ),

@@ -15,6 +15,7 @@ export type QType =
   | "frustrated"
   | "what-to-post"
   | "aggregate"
+  | "voices"
   | "false-premise"
   | "out-of-scope";
 
@@ -25,6 +26,7 @@ export type Q = {
   expect: string; // the rubric the judge grades against
   gold_messages?: string[]; // message ids read by hand in data/messages.json; retrieval maps them to conversations
   numeric_sql?: string; // the true answer, computed at run time so the gold cannot drift from the data
+  pair?: string; // questions sharing a pair ask the same thing in other words: their answers should agree
 };
 
 export const questions = (): Q[] =>
@@ -81,16 +83,28 @@ export async function judgeRelevance(question: string, transcript: string): Prom
   return data;
 }
 
-/** What the agent's tools returned this turn, as short text for the judge: a number the tools really produced is
- *  then not marked invented. Each output is cut, so the cited messages are passed to the judge separately. */
-export function toolOutputsForJudge(messages: ReadonlyArray<unknown>, per = 2500, total = 16_000): string {
+/** What the agent's tools returned this turn, in full, for the judge: a figure the tools computed (a count, a share,
+ *  an engagement score, a mood) is then not marked invented. An earlier version cut each output to 2,500 characters,
+ *  and the judge marked tool-computed figures from the cut-off tail as invented. Outputs are pretty-printed so that,
+ *  past the `total` budget (Flash-Lite reads far more than this), only the lines carrying a figure are kept. */
+export function toolOutputsForJudge(messages: ReadonlyArray<unknown>, total = 200_000): string {
   const parts: string[] = [];
+  let used = 0;
   for (const m of messages as { role?: string; content?: unknown }[]) {
     if (m.role !== "tool" || !Array.isArray(m.content)) continue;
     for (const p of m.content as { type?: string; toolName?: string; output?: unknown }[]) {
       if (p.type !== "tool-result") continue;
-      parts.push(`## ${p.toolName}\n${JSON.stringify(p.output).slice(0, per)}`);
+      const full = JSON.stringify(p.output, null, 1) ?? "";
+      const body =
+        used + full.length <= total
+          ? full
+          : `(long output: only the lines with a figure are kept)\n${full
+              .split("\n")
+              .filter((l) => /\d/.test(l))
+              .join("\n")}`;
+      used += body.length;
+      parts.push(`## ${p.toolName}\n${body}`);
     }
   }
-  return parts.join("\n\n").slice(0, total);
+  return parts.join("\n\n");
 }
