@@ -9,5 +9,7 @@ export function chatErrorWords(message: string | undefined): string {
   const m = (message ?? "").trim();
   if (!m) return "The answer could not be finished.";
   if (isDropped(m)) return "The connection dropped before the answer finished. Check your connection and try again.";
+  // A page instead of an error (a 404 or a platform error page): its HTML reached the chat raw.
+  if (/^<!doctype|<html[\s>]/i.test(m)) return "The server could not answer. Try again in a moment.";
   return m;
 }

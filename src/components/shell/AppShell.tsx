@@ -36,7 +36,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <header className="flex h-12 shrink-0 items-center gap-3 px-4 lg:px-5">
           {/* Home is a new chat: the page renders a fresh chat id each time (app/page.tsx). */}
           <Link href="/" className="flex min-w-0 items-baseline gap-2.5">
-            <span className="text-[15px] font-semibold tracking-[-0.01em]">{APP_NAME}</span>
+            <span className="shrink-0 text-[15px] font-semibold tracking-[-0.01em] whitespace-nowrap">{APP_NAME}</span>
             <span className="truncate text-[13px] text-muted-foreground">{APP_SUBTITLE}</span>
           </Link>
           <span className="flex-1" />

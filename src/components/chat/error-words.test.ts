@@ -11,4 +11,7 @@ describe("chatErrorWords", () => {
     expect(chatErrorWords("The free model is busy right now. Try again in a few seconds.")).toMatch(/busy/);
     expect(chatErrorWords("")).toBe("The answer could not be finished.");
   });
+  it("never shows an error page's HTML", () => {
+    expect(chatErrorWords("<!DOCTYPE html><html><body>404</body></html>")).toBe("The server could not answer. Try again in a moment.");
+  });
 });
