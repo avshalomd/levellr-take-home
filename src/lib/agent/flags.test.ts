@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   aboutOwnGames,
+  asksForMore,
   asksForSlice,
   asksWhatToPost,
   flagsNamed,
@@ -262,5 +263,36 @@ describe("followUpContext", () => {
     expect(questionInContext(["What are people complaining about?", "And how did they feel in July?"])).toBe(
       "And how did they feel in July?",
     );
+  });
+});
+
+// v1.1 QA (B1): "tell me more about the second one" answered from the earlier answer's words, with its count and mood.
+describe("asksForMore", () => {
+  it("reads a follow-up that asks for more on something the last answer said", () => {
+    for (const q of [
+      "tell me more about the second one",
+      "Tell me more",
+      "More about the Domains bugs, please",
+      "What about the first point?",
+      "Can you expand on that?",
+      "Please elaborate",
+      "Any details on the last one?",
+      "Why?",
+      "And why is that?",
+      "why do they hate it",
+      "Can you dig deeper into #2?",
+    ])
+      expect(asksForMore(q), q).toBe(true);
+  });
+  it("reads nothing into a rewrite request, a new question, or a full question that opens with why", () => {
+    for (const q of [
+      "Thanks, can you say that more briefly?",
+      "What are people most excited about this week?",
+      "How many conversations were about pricing last month?",
+      "Why are people so angry that Tides Remastered was cancelled?",
+      "Can you write me a poem about pirates?",
+      "What's the weather going to be in Oslo tomorrow?",
+    ])
+      expect(asksForMore(q), q).toBe(false);
   });
 });

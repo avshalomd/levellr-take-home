@@ -180,6 +180,26 @@ export function asksForSlice(question: string, topics: ReadonlyArray<{ key: stri
   );
 }
 
+// v1.1 QA (B1): "tell me more about the second one", after the Domains answer, made no tool call and restated an earlier
+// turn's count and mood for a slice they did not describe (56 bug reports and 47/100, from every topic since 24 Sep;
+// the Domains count was 114). A follow-up that asks for more on something the last answer said (more, the second one,
+// details, why) asks for what that answer did not read, so its first step must read (agent.ts prepareStep). "Why" only
+// as a short question back ("Why?", "And why is that?"): a full question that opens with it is a question of its own.
+const MORE = [
+  /\btell me more\b/i,
+  /\b(?:say|know|hear|read|learn|anything|something) more\b/i,
+  /\bmore (?:about|on|detail|details|context|info|information)\b/i,
+  /\b(?:first|second|third|fourth|fifth|last|next|other|top|1st|2nd|3rd|4th|5th) (?:one|point|item|bullet|theme|idea|suggestion|issue|topic|thing)\b/i,
+  /\b(?:number|no\.?)\s?\d\b|#\d\b/i,
+  /\bexpand\b/i,
+  /\belaborate\b/i,
+  /\bdetails?\b/i,
+  /\bdig (?:into|deeper)\b|\bgo deeper\b/i,
+  /^\s*(?:(?:and|but|so|ok|okay)\W+)?why\b(?:\W+\S+){0,4}\W*$/i,
+];
+/** Whether a question asks for more on something the last answer said: "tell me more about the second one", "why?". */
+export const asksForMore = (question: string) => MORE.some((re) => re.test(question));
+
 /** The flag a call narrowed to that the question (read with the one it follows up) never named, if any. The tools
  *  refuse such a call (lib/agent/tools.ts). */
 export function unaskedFlag(

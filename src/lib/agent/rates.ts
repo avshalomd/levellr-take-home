@@ -107,14 +107,18 @@ export function rateMismatches(answer: string, known: ReadonlyArray<KnownRate>):
   return out;
 }
 
-/** A figure the answer tags [aggregate], [scan] or [voices] when that tool gave no result anywhere in the chat. */
+/** A figure the answer tags [aggregate], [scan] or [voices] when that tool gave no result in this turn. */
 export type SourcelessFigure = { tool: string; figure: string };
 
 const COUNTING_TAG = /\[(scan|aggregate|voices)\]/g;
 
-/** Every figure in `text` tagged with a counting tool that did not run in this chat (`ran`, agent.ts toolsRan). The
- *  eval saw "60/100 [aggregate]" in an answer that made no tool call at all: the tag said "counted" and nothing had
- *  been. The figure is the last word with a digit before the tag, or the three words before it. Pure. */
+/** Every figure in `text` tagged with a counting tool that did not run in this turn (`ran`, agent.ts toolsRan over the
+ *  turn's own steps). The eval saw "60/100 [aggregate]" in an answer that made no tool call at all: the tag said
+ *  "counted" and nothing had been. v1.1 QA (B1): "tell me more about the second one" made no tool call and restated
+ *  "56 bug reports about the Domains ... 47/100 [scan]", both from an earlier turn's read of every topic since 24 Sep
+ *  (the Domains count is 114), and the tag passed because a scan had run somewhere in the chat. A tag means a count
+ *  made for this answer, over the slice it names; one carried over from another turn is not one. The figure is the
+ *  last word with a digit before the tag, or the three words before it. Pure. */
 export function sourcelessFigures(text: string, ran: ReadonlySet<string>): SourcelessFigure[] {
   const out: SourcelessFigure[] = [];
   let from = 0;

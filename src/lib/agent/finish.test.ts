@@ -376,13 +376,36 @@ describe("afterAgent across a chat's turns", () => {
     expect(verification).toEqual({ status: "uncited", read: false, sourceless: [{ tool: "aggregate", figure: "60/100" }] });
   });
 
-  it("says nothing of a tagged figure when that tool ran in an earlier turn", async () => {
-    const chunks: { type: string }[] = [];
-    const text = "About 60 conversations mention it [aggregate].";
+  // v1.1 QA (B1): "tell me more about the second one" made no tool call and restated "56 bug reports about the Domains
+  // ... average mood 47/100 [scan]" from an earlier turn's read of every topic; the Domains count was 114. A tag is
+  // backed only by that tool running in this turn.
+  it("says a tagged figure has no count behind it when that tool ran only in an earlier turn", async () => {
+    const chunks: { type: string; data?: unknown }[] = [];
+    const text = "About 60 conversations mention it, average mood 47/100 [scan].";
     await afterAgent(
       { steps: [{ content: [{ type: "text", text }] }] as never, history: [], earlier },
       (c) => void chunks.push(c as never),
     );
-    expect(chunks.some((c) => c.type === "data-verification")).toBe(false);
+    expect(chunks.filter((c) => c.type === "data-verification").at(-1)?.data).toEqual({
+      status: "uncited",
+      read: false,
+      sourceless: [{ tool: "scan", figure: "47/100" }],
+    });
+  });
+
+  it("passes the check only the tools this turn ran, while earlier turns' citations still back claims (D24)", async () => {
+    retrievedRefs.mockImplementation((steps) =>
+      (steps as unknown[]).includes(earlier[0]) ? new Set(["msg7"]) : new Set<string>(),
+    );
+    const text = "Among the 56 bug reports, the mood is 47/100 [scan]; the screen goes gray [msg7].";
+    await afterAgent({ steps: [{ content: [{ type: "text", text }] }] as never, history: [], earlier });
+    const [, shown, , , , ran] = checkAndRevise.mock.calls[0] as unknown as [unknown, Set<string>, unknown, unknown, unknown, Set<string>];
+    expect([...shown]).toEqual(["msg7"]);
+    expect([...ran]).toEqual([]);
+    // A tool that ran this turn does count.
+    checkAndRevise.mockClear();
+    const thisTurn = { content: [result("scan", { status: "ok", hits: [] })] };
+    await afterAgent({ steps: [thisTurn, { content: [{ type: "text", text }] }] as never, history: [], earlier });
+    expect([...(checkAndRevise.mock.calls[0] as unknown as Set<string>[])[5]]).toEqual(["scan"]);
   });
 });

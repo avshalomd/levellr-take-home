@@ -209,7 +209,7 @@ describe("verify, a follow-up", () => {
     expect(v).toMatchObject({ cited: 3, supported: 2 });
   });
 
-  it("fails a claim that tags a figure with a counting tool that never ran in the chat, and lists the figure", async () => {
+  it("fails a claim that tags a figure with a counting tool that did not run this turn, and lists the figure", async () => {
     const v = await verify(
       "60/100 players call it a bug [aggregate] [msg11]. Most mention the boss [msg12].",
       new Set(["msg11", "msg12"]),
@@ -217,7 +217,8 @@ describe("verify, a follow-up", () => {
       undefined,
       new Set(["scan"]),
     );
-    expect(v.claims[0]).toMatchObject({ support: 0, notes: ["It tags 60/100 [aggregate], but no aggregate ran in this chat."] });
+    expect(v.claims[0]).toMatchObject({ support: 0 });
+    expect(v.claims[0].notes).toEqual([expect.stringMatching(/^It tags 60\/100 \[aggregate\], but no aggregate ran for this answer.*Remove it/)]);
     expect(v.supported).toBe(1);
     expect(v.sourceless).toEqual([{ tool: "aggregate", figure: "60/100" }]);
     const ran = await verify("About 60 threads [aggregate] [msg11].", new Set(["msg11"]), undefined, undefined, new Set(["aggregate"]));

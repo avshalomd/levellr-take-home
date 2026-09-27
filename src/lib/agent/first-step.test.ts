@@ -255,6 +255,29 @@ describe("a follow-up that asks for a slice (P3)", () => {
   });
 });
 
+// v1.1 QA (B1): "tell me more about the second one" after the Domains answer made no tool call, and restated an earlier
+// turn's count and mood for a slice they did not describe.
+describe("a follow-up that asks for more (B1)", () => {
+  it("must read first, with a reading tool, on the first step only", async () => {
+    script = [
+      () => [call("r1", "read_conversation", { id: "conv1" })],
+      () => [{ type: "text", text: "In that conversation, players said the boss takes no damage [msg1]." }],
+    ];
+    const { agent } = await makeAgent();
+    await agent.generate({
+      messages: [...earlier, { role: "user", content: "tell me more about the second one" }],
+    });
+    expect(offers[0].choice).toBe("required");
+    expect([...offers[0].tools].sort()).toEqual(["find", "read_conversation", "scan"]);
+    expect(offers[1].choice).toBe("auto");
+  });
+
+  it("is not forced on a first question, even one that asks why", async () => {
+    await (await makeAgent()).agent.generate({ prompt: "Why?" });
+    expect(offers[0].choice).toBe("auto");
+  });
+});
+
 // Eval 2026-09-28 (A06): "How many conversations were about pricing last month?" was answered with no tool call and a
 // count tagged [aggregate] that nothing had counted.
 describe("a question for a number", () => {

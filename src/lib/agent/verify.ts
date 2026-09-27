@@ -48,7 +48,7 @@ export type Verification = {
   uncitedSentences: number; // sentences that state something without a citation (headlines excluded)
   /** Per-day rates the answer states that no tool gave (rates.ts). Absent on answers saved before 2026-09-26. */
   rates?: RateCheck[];
-  /** Figures tagged with a tool that never ran in this chat (sourcelessFigures). Absent when none, and before 2026-09-27. */
+  /** Figures tagged with a tool that did not run this turn (sourcelessFigures). Absent when none, and before 2026-09-27. */
   sourceless?: SourcelessFigure[];
 };
 
@@ -96,8 +96,8 @@ export async function verify(
   retrieved: ReadonlySet<string>,
   known?: ReadonlyArray<KnownRate>,
   figures?: ReadonlyArray<number>,
-  // The tools that gave a result in this chat (agent.ts toolsRan). When given, a claim that tags a figure with a
-  // counting tool that never ran fails, and the answer's sourceless figures are listed.
+  // The tools that gave a result in this turn (agent.ts toolsRan). When given, a claim that tags a figure with a
+  // counting tool that did not run this turn fails, and the answer's sourceless figures are listed (B1).
   ran?: ReadonlySet<string>,
   // The community's own games, for a question D20 keeps to them (finish.ts ownGames): a citation about something else
   // backs nothing, and a claim resting only on such citations fails.
@@ -209,7 +209,11 @@ export async function verify(
     for (const f of unbacked)
       notes.push(`It states ${f}, which none of its cited messages and none of the counts gives.`);
     const orphans = ran ? sourcelessFigures(claim, ran) : [];
-    for (const o of orphans) notes.push(`It tags ${o.figure} [${o.tool}], but no ${o.tool} ran in this chat.`);
+    for (const o of orphans)
+      notes.push(
+        `It tags ${o.figure} [${o.tool}], but no ${o.tool} ran for this answer: the figure comes from another turn, ` +
+          "which counted another slice or period. Remove it, or state only a figure a tool gave in this turn's RESULTS.",
+      );
     if (unbacked.length || orphans.length) support = 0;
     // A figure no source gives fails the claim whatever Jev would have said, so only a claim with nothing else against
     // it is left unchecked.

@@ -14,7 +14,7 @@ import { topicLabels } from "@/lib/data/read";
 import { instructions } from "./instructions";
 import { answerModel, chatModel } from "./model";
 import { msgTag } from "@/lib/refs";
-import { asksForSlice, isRefusal, lastQuestion } from "./flags";
+import { asksForMore, asksForSlice, isRefusal, lastQuestion } from "./flags";
 import { asksWhatPeopleSay, needsRead, triedToRead } from "./grounding";
 import { makeTools } from "./tools";
 import { isOffTopic } from "./off-topic";
@@ -35,6 +35,9 @@ export const answeredOffTopic = ({ steps }: { steps: ReadonlyArray<StepLike> }) 
 /** Once turned down, out_of_scope is not offered again this turn, so the model cannot ask the same thing twice. */
 export const scopeTurnedDown = (steps: ReadonlyArray<StepLike>) =>
   steps.some((s) => s.toolResults.some((r) => isInScope(r.output)));
+
+/** The tools a follow-up asking for more may start with: read the conversation again, find the thing, or scan for it. */
+const MORE_READS: ("read_conversation" | "find" | "scan")[] = ["read_conversation", "find", "scan"];
 
 /** Whether the turn is a follow-up in a chat: an earlier answer is in the messages. */
 const followsUp = (messages: ReadonlyArray<ModelMessage>) => messages.some((m) => m.role === "assistant");
@@ -211,7 +214,12 @@ export async function makeAgent(writer?: UIMessageStreamWriter) {
         : // A follow-up that asks for a kind, a topic or a period reads that slice before it answers (P3, flags.ts).
           stepNumber === 0 && followsUp(messages) && asksForSlice(lastQuestion(messages), topics)
           ? { activeTools: toolNames.filter((t) => t !== "out_of_scope"), toolChoice: "required" as const }
-          : // A question for a number gets it from a tool (D11). Eval 2026-09-28 (A06): told the data's dates,
+          : // A follow-up that asks for more on something the last answer said ("tell me more about the second one",
+            // "why?") reads it before it answers, with a reading tool, on the first step only (v1.1 QA, B1: answered
+            // from the earlier answer's words, it restated a count and a mood for a slice they did not describe).
+            stepNumber === 0 && followsUp(messages) && asksForMore(lastQuestion(messages))
+            ? { activeTools: MORE_READS, toolChoice: "required" as const }
+            : // A question for a number gets it from a tool (D11). Eval 2026-09-28 (A06): told the data's dates,
             // "How many conversations were about pricing last month?" was answered with no tool call, and a count
             // tagged [aggregate] that nothing had counted. out_of_scope stays offered: revenue is a number too.
             stepNumber === 0 && !asksWhatPeopleSay(lastQuestion(messages))

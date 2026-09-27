@@ -9,7 +9,7 @@ import type { Verification } from "./verify";
 // "uncited": an answer from the tools that cites no message, so nothing in it could be checked. Said under it, never
 // left blank (QA 2026-09-26, lib/agent/grounding.ts). `read`: whether the turn read any messages at all. `rates`: the
 // per-day rates it states that no count gave, left after its one correction (open item 2026-09-26, lib/agent/finish.ts).
-// `sourceless`: figures it tags with a counting tool that never ran in the chat (rates.ts sourcelessFigures); an answer
+// `sourceless`: figures it tags with a counting tool that did not run this turn (rates.ts sourcelessFigures); an answer
 // that used no tool at all gets this line only for them (QA 2026-09-27, eval: "60/100 [aggregate]" with no tool call).
 export type VerificationPart =
   | { status: "running" }

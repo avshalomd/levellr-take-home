@@ -81,8 +81,9 @@ export function afterCite(r: RevisionPart, cited: RevisionPart | undefined): Rev
 }
 
 /** `earlier`: the chat's earlier tool results, in the shape of steps (agent.ts chatToolSteps). A citation of a message an
- *  earlier turn's tools showed backs a claim as one of this turn's does, and a figure tagged with a tool that ran in an
- *  earlier turn has a count behind it (QA 2026-09-27). The eval runs one question a chat and passes none. */
+ *  earlier turn's tools showed backs a claim as one of this turn's does (QA 2026-09-27, D24). A figure tagged [scan],
+ *  [aggregate] or [voices] is backed only by that tool running in THIS turn (v1.1 QA, B1: a follow-up restated an
+ *  earlier turn's count for a different slice, tagged, and passed). The eval runs one question a chat and passes none. */
 export async function afterAgent(
   turn: { steps: ReadonlyArray<StepLike>; history: ModelMessage[]; earlier?: ReadonlyArray<StepLike> },
   write: (chunk: Chunk) => void = () => {},
@@ -94,7 +95,8 @@ export async function afterAgent(
   const retrieved = retrievedRefs(turn.steps);
   const chat = [...(turn.earlier ?? []), ...turn.steps];
   const shown = turn.earlier?.length ? retrievedRefs(chat) : retrieved;
-  const ran = toolsRan(chat);
+  // The tools that ran this turn: a tag says "counted for this answer", never "counted somewhere in the chat" (B1).
+  const ran = toolsRan(turn.steps);
   const cites = () => claimsOf(answer).some((c) => c.ids.length);
   let grounding = groundingOf(cites(), turn.steps);
 
@@ -213,7 +215,7 @@ export async function afterAgent(
       verdict(sourceless.length ? { ...line, sourceless } : line);
     } else if (answer.trim()) {
       // An answer that used no tool and cites nothing gets no line (a question back, a greeting), unless it tags a
-      // figure as counted when nothing in the chat counted it (QA 2026-09-27, eval: "60/100 [aggregate]", no tool call).
+      // figure as counted when nothing this turn counted it (QA 2026-09-27, eval: "60/100 [aggregate]", no tool call).
       const sourceless = sourcelessFigures(answer, ran);
       if (sourceless.length) verdict({ status: "uncited", read: false, sourceless });
     }

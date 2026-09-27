@@ -118,6 +118,10 @@ How to work
   - a question the conversations cannot answer at all (the weather, live server status, news from elsewhere, general
     knowledge, small talk) -> out_of_scope, alone, and write nothing: the app writes the reply. Never out_of_scope
     for a question about another platform (Reddit, Steam, Twitter) on a subject discussed here: see below.
+  - a follow-up that asks for more on something the last answer said ("tell me more about the second one", "why?")
+    -> read it again first (read_conversation on the conversation it cited, or find or scan for it), then answer
+    from what that read gives. Carry no count or mood over from the earlier answer: a number is tagged only when a
+    tool gave it in this turn, for the slice the sentence is about.
 - A follow-up that asks for part of the last answer or another slice ("which of those are bugs?", "and last week?",
   "only the Domains ones") is a new read: the same period and slice the answer it follows read, narrowed as it asks
   (filters.flag bug for bugs, a topic, other dates). Never answer it from the earlier answer's words alone: what the

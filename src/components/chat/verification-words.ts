@@ -80,12 +80,13 @@ function ratesNote(rates: ReadonlyArray<unknown> | undefined): string {
 
 const TOOL_NAMES: Record<string, string> = { aggregate: "count", scan: "scan", voices: "count of voices" };
 
-/** A figure tagged as counted by a tool that never ran in the chat (lib/agent/rates.ts sourcelessFigures, QA
- *  2026-09-27): which figure, and that nothing counted it. */
+/** A figure tagged as counted by a tool that did not run for this answer (lib/agent/rates.ts sourcelessFigures, QA
+ *  2026-09-27; v1.1 QA B1: one carried over from an earlier turn counted another slice): which figure, and that
+ *  nothing counted it for this answer. */
 function sourcelessNote(s: ReadonlyArray<{ tool: string; figure: string }> | undefined): string {
   if (!s?.length) return "";
   return s
-    .map((f) => `${f.figure ? `“${f.figure}”` : "A figure"} is marked as counted, but no ${TOOL_NAMES[f.tool] ?? f.tool} ran in this chat.`)
+    .map((f) => `${f.figure ? `“${f.figure}”` : "A figure"} is marked as counted, but no ${TOOL_NAMES[f.tool] ?? f.tool} ran for this answer.`)
     .join(" ");
 }
 

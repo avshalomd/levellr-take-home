@@ -180,10 +180,10 @@ describe("verificationWords, a weak result", () => {
     expect(verificationWords({ status: "uncited", read: false, sourceless })).toEqual({
       state: "quiet",
       text: "No messages are cited here, and nothing in this chat counted its figures.",
-      note: "“60/100” is marked as counted, but no count ran in this chat.",
+      note: "“60/100” is marked as counted, but no count ran for this answer.",
       weak: true,
     });
     const v = { ...done(2, 2), sourceless } as VerificationPart;
-    expect(verificationWords(v)).toMatchObject({ weak: true, note: "“60/100” is marked as counted, but no count ran in this chat." });
+    expect(verificationWords(v)).toMatchObject({ weak: true, note: "“60/100” is marked as counted, but no count ran for this answer." });
   });
 });
