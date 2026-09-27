@@ -204,10 +204,27 @@ describe("afterAgent, a turn that used the tools and left no words", () => {
     expect(out.text).toBe("People complain about lag [msg11].");
     expect(out.grounding).toEqual({ kind: "uncited", read: true }); // as the agent left it, before the cite pass
   });
-  it("is not asked for a turn that used no tool, or an off-topic one", async () => {
-    await run("", []);
+  it("is not asked for an off-topic turn: the reply is written in code", async () => {
     await run("", [offTopic]);
     expect(answerFromTools).not.toHaveBeenCalled();
+  });
+  // Production QA 2026-09-27 (P1): an empty first step (no words, no tool call) ended the turn, and the page said "This
+  // answer was not finished". It now falls through to the forced answer, like a turn that read and left no words.
+  it("is asked for a turn that used no tool and left no words, and its answer is shown", async () => {
+    answerFromTools.mockResolvedValue("The conversations I could read do not say.");
+    const { out, chunks } = await run("", []);
+    expect(answerFromTools).toHaveBeenCalledTimes(1);
+    expect(chunks.map((c) => c.type).slice(0, 3)).toEqual(["text-start", "text-delta", "text-end"]);
+    expect(out.text).toBe("The conversations I could read do not say.");
+    expect(out.grounding).toEqual({ kind: "none" });
+    expect(citeAnswer).not.toHaveBeenCalled();
+    expect(checkAndRevise).not.toHaveBeenCalled();
+  });
+  it("leaves a turn with no tool and no words empty when the forced answer fails too", async () => {
+    const { out, chunks } = await run("", []);
+    expect(answerFromTools).toHaveBeenCalledTimes(1);
+    expect(out.text).toBe("");
+    expect(chunks).toEqual([]);
   });
   it("is not asked when the agent wrote an answer", async () => {
     citeAnswer.mockResolvedValue(cited("Lag [msg11]."));
