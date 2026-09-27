@@ -792,4 +792,18 @@ describe("an engagement-by-topic chart under an excitement question", () => {
     expect(rowLabel("other", "topic", topics)).toBe("Other");
     expect(rowLabel("some-new-topic", "topic", topics)).toBe("Some new topic");
   });
+
+  // QA P5: the overview names the residual topic by its key ({"key":"other","name":"other"}), so the frustrations chart
+  // drew a lower-case "other" on top, and ranked "Other games" too.
+  it("reads a name that is only the key as no name", () => {
+    expect(rowLabel("other", "topic", new Map([...topics, ["other", "other"]]))).toBe("Other");
+  });
+
+  it("leaves them out of a frustrations chart as well", () => {
+    const frustrated = { ...byTopic, input: { ...byTopic.input, metric: "conversations", filters: { flag: "frustrated" } } };
+    const named = new Map([...topics, ["other", "other"]]);
+    const c = pickChart([frustrated], named, "What are the top frustrations players have right now?");
+    expect(c!.rows.map((r) => r.key)).toEqual(["domains", "tides-remastered"]);
+    expect(pickChart([frustrated], named, "What are players complaining about in other games?")!.rows).toHaveLength(4);
+  });
 });

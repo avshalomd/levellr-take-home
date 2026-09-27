@@ -262,7 +262,13 @@ export function weekDays(monday: string, span: Span = {}): [string, string] {
 export function rowLabel(key: string, groupBy: string, topicNames: Map<string, string>, span?: Span): string {
   if (groupBy === "none") return "All";
   // Never the raw key: the residual "other" topic has no name in the taxonomy and drew as a lower-case "other" (QA Q8).
-  if (groupBy === "topic") return topicNames.get(key) ?? (key === "unlabelled" ? "Not labelled" : keyWords(key));
+  // The overview names such a topic by its key ({"key":"other","name":"other"}), so a name that is only the key counts
+  // as no name at all; the check alone let "other" through on the frustrations chart (QA P5, 2026-09-27).
+  if (groupBy === "topic") {
+    const named = topicNames.get(key);
+    if (named && named !== key) return named;
+    return key === "unlabelled" ? "Not labelled" : keyWords(key);
+  }
   if (groupBy === "week" && /^\d{4}-\d{2}-\d{2}$/.test(key)) return rangeWords(...weekDays(key, span));
   if (groupBy === "day" && /^\d{4}-\d{2}-\d{2}$/.test(key)) return shortDate(key);
   if (groupBy === "month" && /^\d{4}-\d{2}$/.test(key))
@@ -276,18 +282,20 @@ const keyWords = (key: string) => {
   return w ? w[0].toUpperCase() + w.slice(1) : key;
 };
 
-/** The topics D20 leaves out of what excites and what resonates: the residual "other" and talk about other games. */
+/** The topics D20 leaves out of what excites, resonates and frustrates: the residual "other" and talk about other games. */
 const RESIDUAL_TOPIC = (key: string) => key === "other" || key.startsWith("other-");
-/** A question about what excites, resonates or is worth posting: its ranking leaves the residual topics out (D20). */
-const RANKS_EXCITEMENT = /excit|resonat|hype|looking forward|\bpost\b|posting|engag/i;
+/** A question about what excites, resonates, is worth posting or frustrates players: its ranking leaves the residual
+ *  topics out (D20). Frustration joined after the frustrations chart ranked "other" and "Other games" (QA P5). */
+const RANKS_OWN_GAME = /excit|resonat|hype|looking forward|\bpost\b|posting|engag|frustrat|complain|annoy|angry|upset/i;
 /** Whether the reader asked about other games or chatter themselves: then they stay. */
 const ASKS_RESIDUAL = /other games|off[- ]topic|chatter|other franchises/i;
 
-/** A by-topic count's rows as the chart draws them. Under an excitement, resonance or "what should we post" question
- *  the residual topics go, as they go from the answer (DECISIONS D20): the "What should we post" chart ranked
- *  "Other games" and a raw "other" row beside an answer that left both out (QA Q8, 2026-09-27). */
+/** A by-topic count's rows as the chart draws them. Under an excitement, resonance, "what should we post" or
+ *  frustration question the residual topics go, as they go from the answer (DECISIONS D20): the "What should we post"
+ *  chart ranked "Other games" and a raw "other" row beside an answer that left both out (QA Q8, 2026-09-27), and the
+ *  frustrations chart did the same (QA P5). */
 export function chartRows(rows: Row[], groupBy: string, told: string): Row[] {
-  if (groupBy !== "topic" || !RANKS_EXCITEMENT.test(told) || ASKS_RESIDUAL.test(told)) return rows;
+  if (groupBy !== "topic" || !RANKS_OWN_GAME.test(told) || ASKS_RESIDUAL.test(told)) return rows;
   return rows.filter((r) => !RESIDUAL_TOPIC(r.key));
 }
 
