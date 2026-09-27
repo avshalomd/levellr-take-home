@@ -18,6 +18,13 @@ there. Every number below was measured on this file.
 | text | short: median 40 characters. Links are replaced by `[link]`, spoilers are `\|\|...\|\|` |
 | permalinks | none in the export, so citations open the message in the app, not in Discord |
 
+**Dates written inside messages do not match the timestamps.** A message stamped 2026-09-27 says "Today is 25th of
+June", and Tides Remastered's launch is "July 9th" in messages stamped 09-18 to 09-27, while "now" is 27
+September. The brief's sample shows `msg_000054` at 2026-06-22 11:00Z; the export stamps the same message 2026-09-13
+21:09Z. The timestamps look shifted forward by about three months. The app trusts the timestamps
+([DECISIONS.md, D2](../DECISIONS.md#d2-now-is-the-last-message)), so a date quoted from a message can contradict the
+window it sits in ([QA.md](QA.md), P8).
+
 ### Channels
 
 | channel | messages | what it is about |
@@ -45,7 +52,7 @@ The game is a renamed Assassin's Creed, "Veil of Ages". In this window:
 
 ## Shape of the conversation
 
-This decides the unit ([DECISIONS.md, D3](../DECISIONS.md#d3-the-unit-pause-split-sessions-long-ones-cut-into-pieces-chosen-by-the-human)).
+This decides the unit ([DECISIONS.md, D3](../DECISIONS.md#d3-the-unit-pause-split-sessions-long-ones-cut-at-the-best-silence-the-humans-rule)).
 
 - **Long sessions dominate.** Split each channel at 15-minute pauses: 159 sessions have more than 30 messages, and
   they hold 67% of all messages. The largest is 1,054 messages from 98 authors over 12 hours, on update night.

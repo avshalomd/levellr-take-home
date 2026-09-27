@@ -25,8 +25,8 @@ Run from the laptop, straight into Neon (D15). The dataset is described by a man
 |---|---|---|---|
 | normalize | `normalize.py` | the Discord export into one message shape | `data/work/messages.jsonl` |
 | group | `group.py` | 15-minute sessions per channel, long ones cut into pieces; reply parents from earlier pieces attached as context (D3, D4) | `conversations.jsonl` |
-| sample, suggest | `sample.py`, `suggest.py` | a channel-stratified sample of 300, a label set suggested by Flash-Lite, then edited by hand (D6) | `suggested.json`, `topics.json` |
-| enrich | `enrich.py`, `flags.py` | one Jev request per conversation: a probability per topic, sentiment, six flags (D6, D7, D8, D16) | `labels.jsonl` |
+| sample, suggest | `sample.py`, `suggest.py` | a channel-stratified sample of 300, a label set suggested by Flash-Lite, then revised and approved before labelling (D6, D17) | `suggested.json`, `topics.json` |
+| enrich | `enrich.py`, `flags.py` | one Jev request per conversation: a probability per topic, sentiment, six flags (D6, D7, D8, D16, D17) | `labels.jsonl` |
 | embed | `embed.py` | each transcript with `gemini-embedding-2`, 768 dimensions, L2-normalised (D21) | `embeddings.jsonl` |
 | load | `load.py` | `COPY` into Neon, then indexes (`db/indexes.sql`) and `dataset_meta` | Neon |
 | budget | `budget.py` | a ledger of every paid call, with a $3 cap | `spend.json` |
@@ -65,6 +65,9 @@ The tools (`tools.ts`), each a typed call over `src/lib/data/` that returns plai
 | `voices` | `voices.ts` | the most active people in a slice, with what they wrote and started and the reactions they drew |
 | `out_of_scope` | `off-topic.ts`, `scope.ts` | ends the turn with a reply written in code, if the scope check agrees the data cannot answer |
 
+Which tool a question goes to is set in the instructions (D10): a broad question about a topic scans that topic, a
+named thing goes to `find`, and only a question with no subject reads the whole window.
+
 Loop control: at most 8 steps. The last step gets no tools and a flattened history (question plus what each tool
 returned), so it must answer in prose from what was read. A turn that has only counted may not answer a question
 about what people say (`grounding.ts`).
@@ -92,7 +95,7 @@ about what people say (`grounding.ts`).
   The question box stops at 2,000 characters (D29). Chats are saved and listed in the sidebar (`components/shell/`,
   D18).
 - **Evidence panel** (`components/evidence/`): a citation chip opens its conversation as a reply tree (`ThreadMap`,
-  `thread-tree.ts`) with the cited messages lit. The export has no Discord permalinks, so a citation opens the message
+  `thread-tree.ts`, D32) with the cited messages lit. The export has no Discord permalinks, so a citation opens the message
   in the app.
 - **Explore** (`/explore`; `components/insights/`, `lib/data/insights*.ts`, `/api/insights`): a topic x time grid
   (days, weeks or months) showing how many conversations or their mood. Selecting cells lists the busiest sessions and
@@ -110,4 +113,5 @@ about what people say (`grounding.ts`).
 - `agent.ts`: every question end to end through `makeAgent` and `afterAgent`; a Flash-Lite judge reads the answer,
   the rubric, SQL truth for counts, every step's tool outputs and the cited messages in full. `--out` writes a run to
   its own file, as for the model comparison in `results/models/`.
-- `report.ts` writes `results/report.md`. The numbers are in the README.
+- `report.ts` writes `results/report.md` from `results/agent.json` and `results/retrieval.json`. The numbers, with
+  the model comparison from `results/models/`, are in the README.

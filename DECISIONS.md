@@ -1,8 +1,16 @@
 # Decisions
 
-Each choice, the alternative, and why. Where the human chose, ruled or overruled what the coding agent proposed, it
-says so. Every number is measured on this dataset ([docs/DATA.md](docs/DATA.md)). How the pieces fit together is in
-[docs/DESIGN.md](docs/DESIGN.md).
+Each choice, the alternative, and why. The build was done by a coding agent working under a human who reviewed and
+ruled as it went. Where the human chose, ruled or overruled what the coding agent proposed, the decision says so and
+gives the human's reason; where it does not, the choice is the coding agent's. Every number is measured on this
+dataset ([docs/DATA.md](docs/DATA.md)). How the pieces fit together is in [docs/DESIGN.md](docs/DESIGN.md).
+
+The human's rulings, in short: the agent model and keeping it after a comparison (D9), Jev for closed judgments (D6,
+D9), the grouping rule (D3), the sentiment target (D7), topics and flags as two axes with no overlap (D17),
+iterating the flag wording (D16), saved chats (D18), a topic question reads only its topic (raised by the human,
+D10), `gemini-embedding-2` (D21), the evidence view as a reply tree (D32), a public repo and app (D33), holding
+topic editing back from production and why Jev makes it worth finishing (D6, D31), and freezing production at tag
+`v1.0` (D22).
 
 ## D1. A Python ingest, a TypeScript app, one Postgres
 
@@ -24,13 +32,16 @@ says so. Every number is measured on this dataset ([docs/DATA.md](docs/DATA.md))
 - **Why:** the export is a snapshot; against the wall clock every relative question would come back empty or wrong
   the day after it was sent.
 
-## D3. The unit: pause-split sessions, long ones cut into pieces (chosen by the human)
+## D3. The unit: pause-split sessions, long ones cut at the best silence (the human's rule)
 
 - **Choice:** inside each channel, a new conversation starts after a 15-minute pause. A session over 40 messages
   is cut into pieces: each cut goes at the longest pause between 20 and 40 messages from the piece's start, and the
   last piece keeps the remainder (51 of the 553 cut pieces are under 20; `ingest/group.py`). The result: 1,933
-  sessions, 2,362 conversations, median 4 messages, at most 40. **The human chose this** after reviewing the session
-  shapes the coding agent measured.
+  sessions, 2,362 conversations, median 4 messages, at most 40.
+- **Who ruled:** the coding agent's first design cut long sessions every 30 messages. **The human was not on board
+  with a plain cut** and held labelling until the grouping rule was settled. After the coding agent measured the
+  session shapes and showed examples, **the human agreed to the 15-minute pause and set the rule for long
+  sessions**: where there is no 15-minute silence, cut at the next best silence into pieces of 20 to 40 messages.
 - **Alternatives, measured:**
   - Reply trees only: 63% of messages are not replies, so they would belong to no conversation.
   - Reply trees merged into the sessions: replies link sessions into chains, and the largest group holds 1,989
@@ -61,28 +72,32 @@ says so. Every number is measured on this dataset ([docs/DATA.md](docs/DATA.md))
   (so a conversation can carry several), sentiment, and flags. Probabilities are stored; a topic "counts" at 0.5, a
   rule written once in SQL (`pulse_topics`), so thresholds stay a query-time choice.
 - **Topics:** a Gemini Flash-Lite pass over a 300-conversation, channel-stratified sample suggested a label set
-  (`data/work/suggested.json`); **the human edited it**: Bushido split into the final update, Domains, and Ebontide
-  and new quests; bugs and performance and pricing and editions added; "general franchise" became series direction;
-  a generic "community chat" topic dropped; several descriptions tightened ("only when ..."). **The human later
-  removed** bugs and performance (D17), leaving 12 topics plus "other" (`data/work/topics.json`). The pricing topic
-  was tightened after the hand audit (D23). The final set, with descriptions and shares, is in
-  [docs/DATA.md](docs/DATA.md#label-set).
+  (`data/work/suggested.json`). The coding agent revised it: Bushido split into the final update, Domains, and
+  Ebontide and new quests; bugs and performance and pricing and editions added; "general franchise" became series
+  direction; a generic "community chat" topic dropped. **The human approved the list** before any paid labelling.
+  Bugs and performance was later removed under the human's ruling that no topic may sit close to a flag (D17),
+  leaving 12 topics plus "other" (`data/work/topics.json`). Descriptions were tightened with "only when ..." and
+  "not ..." clauses after the first labels (D16), and pricing again after the hand audit (D23). The final set, with
+  descriptions and shares, is in [docs/DATA.md](docs/DATA.md#label-set).
 - **Alternative:** one topic per conversation as a hard verdict, or free-text tags from an LLM.
 - **Why:** a conversation often touches two subjects; a verdict hides how sure the label is; free tags cannot be
   counted.
-- **Why Jev, in the human's words, a main reason:** the team should own the topics. Because a label is one yes/no
-  probability per topic, changing one topic re-asks only that one question, and Jev's calls are cheap enough that the
-  team can start a relabel itself, whenever it wants, without an engineer. On this data one full labelling run (every
-  topic, flag and sentiment for all 2,362 conversations) cost $0.24; re-asking one topic is priced at about $0.06
-  (D31). The editing that uses this is built but not merged (D31).
+- **Why Jev (the human's choice, and the human's main reason):** the human added Jev for the closed judgments at the
+  start (D9). At delivery the human gave a main reason for it: relabelling becomes so cheap that a user can start it
+  whenever they want, so the team can make the topics its own without an engineer. Because a label is one yes/no
+  probability per topic, changing one topic re-asks only that one question. On this data one full labelling run
+  (every topic, flag and sentiment for all 2,362 conversations) cost $0.23 to $0.24; re-asking one topic is priced
+  at about $0.06 (D31). The editing that uses this is built but not merged (D31).
 
-## D7. Sentiment towards the games and their developer (simplified by the human)
+## D7. Sentiment towards the games and their developer (the human's target)
 
 - **Choice:** sentiment is measured towards "the Veil of Ages games and their developer", 0 to 1.
-- **Alternative:** general mood of the conversation, or the suggestion step's target, "Veil of Ages Bushido Final
-  Update and Tides Remastered changes" (too narrow: it leaves out the rest of the series and the studio).
-- **Why:** the user is the studio's community team: a cheerful meme thread about another game says nothing about how
-  players feel about theirs. **The human simplified the target** to this one phrase.
+- **Alternatives:** general mood of the conversation; the suggestion step's target, "Veil of Ages Bushido Final
+  Update and Tides Remastered changes" (too narrow: it leaves out the rest of the series and the studio); the coding
+  agent's wider wording, "the Veil of Ages games and the studio behind them: their updates, releases and decisions".
+- **Why:** **the human set the target**: this is a game's Discord, so sentiment should be towards the game or its
+  developer, and the extra words in the longer wording added nothing. The user is the studio's community team: a
+  cheerful meme thread about another game says nothing about how players feel about theirs.
 
 ## D8. Flags for the brief: excited and frustrated
 
@@ -95,23 +110,28 @@ says so. Every number is measured on this dataset ([docs/DATA.md](docs/DATA.md))
 
 | role | model | key |
 |---|---|---|
-| agent | `gemini-2.5-flash` | the brief's key (`GOOGLE_GENERATIVE_AI_API_KEY`) |
-| bulk text (topic suggestion, answer rewrite) | `gemini-3.5-flash-lite` | the brief's key |
-| embeddings | `gemini-embedding-2`, 768 dimensions, L2-normalised | the brief's key |
-| closed judgments: labels, rerank, scan relevance, claim support | Jev, `typesafe/jev-1.13` via OpenRouter | my own OpenRouter key |
-| eval judge | `gemini-3.5-flash-lite` | the brief's key |
+| agent | `gemini-2.5-flash` | the provided key (`GOOGLE_GENERATIVE_AI_API_KEY`) |
+| bulk text (topic suggestion, answer rewrite) | `gemini-3.5-flash-lite` | the provided key |
+| embeddings | `gemini-embedding-2`, 768 dimensions, L2-normalised | the provided key |
+| closed judgments: labels, rerank, scan relevance, claim support | Jev, `typesafe/jev-1.13` via OpenRouter | the builder's own OpenRouter key |
+| eval judge | `gemini-3.5-flash-lite` | the provided key |
 
-- **Agent model, chosen by the human, then ruled on again after a measured comparison:** Gemini 2.5 Flash, the model
-  the brief named. It was first picked over 3.8 Flash to protect the capped key's quota. After the build, both ran
-  the same 35 questions on the same code (README, Eval): 3.8 Flash was judged right on 35 of 35 against 34 of 35, but
-  took about three times as long (median 19.4 s against 6.7 s) and made more tool calls (68 against 42). **The human
-  ruled** that production stays on 2.5 Flash, and that the 3.8 Flash run stays in the eval as the comparison. One
-  env var (`AI_MODEL`) switches it.
-- **Jev is outside the provided key, stated openly.** It answers closed questions with calibrated probabilities and
-  writes no text, which is what labels, rerank and the claim check need; the alternative is thousands of Flash calls
-  on a capped key, parsed from prose. Everything written (the answer, suggestions) stays on the brief's key.
-- **Embeddings are normalised** because Gemini only normalises its full-size output; a 768-dimension vector is not
-  unit length, and cosine search would compare unlike things.
+- **Which models the key serves:** the email with the key named Gemini 2.5 Flash, Flash-Lite and
+  `gemini-embedding-001`. At the human's request the coding agent first probed the key: it also serves
+  `gemini-3.8-flash`, `gemini-3.5-flash-lite` and `gemini-embedding-2`.
+- **Agent model (the human's choice, ruled on twice):** Gemini 2.5 Flash. The coding agent recommended 3.8 Flash as
+  better at using tools. **The human chose 2.5 Flash** so as not to hit the key's cap through 3.8's higher cost, with
+  3.8 kept one setting away. After the build the human asked for 3.8 to be measured: both ran the same 35 questions
+  on the same code (README, Eval). 3.8 Flash was judged right on 35 of 35 against 34 of 35, but took about three
+  times as long (median 19.4 s against 6.7 s) and made more tool calls (68 against 42). **The human ruled** that
+  production stays on 2.5 Flash and that the 3.8 run stays in the eval docs as the comparison. One env var
+  (`AI_MODEL`) switches it.
+- **Jev for closed judgments (the human's addition), outside the provided key, stated openly.** Jev answers closed
+  questions with calibrated probabilities and writes no text, which is what labels, rerank and the claim check need;
+  the alternative is thousands of Flash calls on a capped key, parsed from prose. Its low price also makes relabelling
+  cheap enough for a user to start (D6). Everything written (the answer, suggestions) stays on the provided key.
+- **Embeddings are L2-normalised in code**, on the ingest side and the query side, so cosine search compares unit
+  vectors whatever length the API returns at 768 dimensions.
 
 ## D10. Two retrieval tools: scan and find
 
@@ -125,6 +145,16 @@ says so. Every number is measured on this dataset ([docs/DATA.md](docs/DATA.md))
   Whether each half of hybrid and the rerank earn their place is measured in `eval/retrieval.ts` (README, Eval).
   The "too broad" branch refuses a slice over 2,500 conversations with a breakdown by topic and week; this dataset
   has 2,362, so on it the branch never fires, and it is there for a bigger export.
+- **Routing, after the human's question:** reviewing an answer about one topic, **the human asked why it read every
+  conversation in the database**. The agent had scanned the whole window without the topic. The instructions now
+  route by the question's shape: a broad question about a topic scans that topic's slice only (for multiplayer and
+  co-op, the 4.1% of conversations carrying that topic instead of all 2,362); a specific thing inside a topic
+  (Ebontide, fall damage) goes to `find`; only a question with no subject ("what are people excited about") reads
+  the whole window. A topic read of under 150 conversations is followed by a `find` for recall, because a label
+  misses a clear topic in about 1 of 5 conversations (docs/DATA.md). The first
+  version of the rule also sent named things to a topic scan, and the lookup questions got worse in the eval
+  (`eval/results/agent.json`: lookup 0.58); sending named things to `find` fixed it (6/6 lookups right in the
+  35-question run).
 
 ## D11. Numbers come from code
 
@@ -147,8 +177,10 @@ says so. Every number is measured on this dataset ([docs/DATA.md](docs/DATA.md))
   the conversations the turn found relevant, so the answer can say how many back it, not only the two or three it
   cites (`corroborate.ts`). The result is shown under the answer (D27).
 - **Alternative:** trust the model's citations.
-- **Why:** grounding is what the reviewers weigh most, and a citation that does not support its sentence is worse
-  than none.
+- **Why:** the brief asks for answers grounded in the messages, and a citation that does not support its sentence
+  is worse than none.
+- **Known gaps in v1.0** (docs/QA.md): the check asks whether a message supports its sentence, so it passes a
+  supported sentence about another game (P2) and some paraphrases whose meaning drifted (P9).
 
 ## D13. "What should we post?" is answered as suggestions
 
@@ -156,13 +188,17 @@ says so. Every number is measured on this dataset ([docs/DATA.md](docs/DATA.md))
   suggestions, not findings.
 - **Alternative:** answer it as a finding, like any other question.
 - **Why:** the data shows what people talk about; what to post is a judgement the tool can support, not a fact.
+- **Known gap in v1.0:** the post answer can rest on the excitement scan alone, one message per idea, with no
+  engagement measure behind it (docs/QA.md, P4).
 
 ## D14. UI scope
 
 - **Built:** the chat page (streaming answer, citation chips, the one-line "what the agent did" with steps a click
-  away, the verification, the evidence panel), saved chats (D18), and Explore's topic x time grid, read-only (D31).
+  away, the verification, the evidence panel as a reply tree, D32), saved chats (D18), and Explore's topic x time
+  grid, read-only (D31).
 - **Cut:** login; topic editing is not on `main` (D31).
-- **Why:** the reviewers weigh retrieval and answer quality; the minutes went to the LLM path.
+- **Why:** the brief asks for a useful answer grounded in the messages, and calls anything more a bonus; the minutes
+  went to the answer path (retrieval, grounding, the claim check), and the UI shows what that path did.
 
 ## D15. Data stays out of git
 
@@ -172,33 +208,50 @@ says so. Every number is measured on this dataset ([docs/DATA.md](docs/DATA.md))
 - **Why:** the messages are the client's, even pseudonymised. Loading from the laptop also avoids the 4.5 MB request
   limit of a Vercel function.
 
-## D16. Flags mean a main thread, not anyone (the human's call)
+## D16. Flags mean a main thread, not anyone (iterated at the human's direction)
 
 - **Choice:** `excited`, `frustrated` and `help` ask whether that feeling or request is a main thread of the
   conversation (more than a passing remark; in a one- or two-message conversation, the message itself), not whether
-  anyone in it shows it. `bug` covers defects, crashes and performance. The wording is in `ingest/flags.py` (v4).
+  anyone in it shows it. `help` counts a practical question that someone answers, even in a longer chat; opinion
+  questions and banter do not. `bug` covers defects, crashes and performance. The wording is in `ingest/flags.py`
+  (v4).
 - **Alternative:** the first wording (v1), "does anyone ...".
+- **Who ruled:** the first labels saturated on long pieces. **The human invited a relabel** ("a relabel is pretty
+  fast") and asked how to improve the labels. The coding agent proposed the "main thread" wording and tested it (v2)
+  on 60 conversations against v1. **The human liked the v2 improvement and told the coding agent to keep iterating
+  until it was satisfied.** Two more rounds on the same 60 (v3, v4) caught an answered help question that v2 missed
+  and stopped opinion fights from counting as help; v4 was then run on every conversation.
 - **Why, measured:** under v1 a long chat often holds one happy line and one grumble, so the flags stopped separating
   anything. On the same 60 conversations, the ones flagged both excited and frustrated fell from 15 to 1 going from v1
   to v4. On the full run of 2,362: both flags from 20.1% to 0.7%, excited 35.0% to 10.3%, frustrated 42.2% to 19.4%,
-  help 51.1% to 36.3%. A slice like "what are people frustrated about" now holds the conversations that are about it.
-  The hand audit (docs/DATA.md) found 37 of 41 fired flags right. **The human chose the v4 wording** after this A/B.
+  help 51.1% to 36.3% (after the pricing relabel, D23: both 0.9%, excited 10.2%). A slice like "what are people
+  frustrated about" now holds the conversations that are about it. The hand audit (docs/DATA.md) found 37 of 41 fired
+  flags right.
 
-## D17. No topic duplicates a flag (the human's call)
+## D17. Topics and flags stay two axes, and no topic duplicates a flag (the human's ruling)
 
-- **Choice:** the "bugs and performance" topic is removed; bugs are the `bug` flag only.
-- **Alternative:** keep both, as first suggested.
+- **Choice:** topics say what a conversation is about; flags say what kind of conversation it is (a bug report, a
+  request, excitement, frustration, help, noise). Both are yes/no probabilities from the same Jev request. No topic
+  may sit close to a flag, so the "bugs and performance" topic is removed (bugs are the `bug` flag only), and "Other
+  games and off-topic" became "Other games", a subject only, leaving off-topic chatter to the `noise` flag.
+- **Alternatives:** one flat list of labels, as the human first asked about ("bug is not really a topic"); or both
+  axes with the overlapping topics kept, as first suggested.
+- **Who ruled:** **the human questioned why flags are separate from topics.** The coding agent's case for two axes:
+  a question like "frustrations about Domains" crosses a subject with a kind, and a flat list has no subject axis to
+  group by. **The human ruled: keep the two axes for now, but no topic closely related to a flag**, and test the change
+  on 60 conversations before relabelling everything.
 - **Why:** two labels for one question disagree at the edges, and the agent then has two answers to "how many bug
-  reports". A topic says what a conversation is about, a flag what kind of message it holds. **The human removed the
-  topic.**
+  reports".
 
-## D18. Saved chats are restored (the human's call, after a UX review)
+## D18. Saved chats and a list of past chats (the human's call, after a UX review)
 
-- **Choice:** a chat is saved and survives a reload through its URL (`/c/[id]`), with past chats in a sidebar. The `chats` table is in `db/app.sql`, apart from the build tables, so reloading the data keeps saved
+- **Choice:** a chat is saved and survives a reload through its URL (`/c/[id]`), with past chats listed in a
+  sidebar. The `chats` table is in `db/app.sql`, apart from the build tables, so reloading the data keeps saved
   chats. The owner is an anonymous cookie id: no accounts, each browser sees its own history.
-- **Alternative:** the first cut: lose a chat on reload.
-- **Why:** reviewing the page as its user, **the human asked for it back**: a community manager returns to an answer to
-  quote it, and an answer that vanishes on reload cannot be shared or checked again.
+- **Alternative:** the coding agent's first cut: no history, a chat lost on reload.
+- **Why:** reviewing the page as its user, **the human found no list of previous conversations and asked for it**.
+  A community manager returns to an answer to quote it, and an answer that vanishes on reload cannot be shared or
+  checked again.
 
 ## D19. Engagement is a score, never a count
 
@@ -218,24 +271,33 @@ says so. Every number is measured on this dataset ([docs/DATA.md](docs/DATA.md))
 - **Alternative:** rank everything the flag or the engagement score picks up.
 - **Why:** the user is the studio's team: excitement about another franchise or a hardware purchase is real in the
   data but says nothing about their games, and would crowd the ranking (other games touch 17.1% of conversations).
-- **Known debt:** the rule names the topics ("other", other games) in the prompt and the chart code. After a relabel
-  it should read a "general" flag on the topic instead (README, Roadmap).
+- **Known debt, raised by the human:** the rule names the topics ("other", other games) in the prompt and the chart
+  code, and the prompt's examples name the Domains and Ebontide. **The human pointed out** that a relabel which
+  renames or removes those topics would break the rule. The topic list the agent sees is read from the data on every
+  request; the rule should read a "general" flag on the topic in the same way (README, Roadmap).
+- **Known gap in v1.0:** production QA still found other games in an excitement answer (P6) and GTA 6 pricing in a
+  frustrations answer (P2), and the frustrations chart still ranks "other" and other games (P5; docs/QA.md).
 
-## D21. Embeddings: gemini-embedding-2, not the brief's embedding-001
+## D21. Embeddings: gemini-embedding-2, not embedding-001 (approved by the human)
 
-- **Choice:** `gemini-embedding-2` at 768 dimensions on the brief's key, documents as RETRIEVAL_DOCUMENT, questions as
-  RETRIEVAL_QUERY, every vector L2-normalised in code (`ingest/embed.py`, `src/lib/data/embed.ts`).
-- **Alternative:** `gemini-embedding-001`, the model the brief named.
+- **Choice:** `gemini-embedding-2` at 768 dimensions on the provided key, documents as RETRIEVAL_DOCUMENT, questions
+  as RETRIEVAL_QUERY, every vector L2-normalised in code (`ingest/embed.py`, `src/lib/data/embed.ts`).
+- **Alternative:** `gemini-embedding-001`, the model the key's email named.
+- **Who ruled:** **the human asked for the key to be tested on the newer models** before choosing, and approved
+  `gemini-embedding-2` with the other model choices. Reading the design later, the human asked why not 001, heard the
+  reasons below, and **kept embedding-2**.
 - **Why:** the key serves both, and embedding-2 is the newer model; the ingest and query sides use the same model
-  and settings. 768 dimensions keeps the index small. The two were not compared on
-  this data.
+  and settings. 768 dimensions keeps the index small. The two were not compared on this data.
 
-## D22. Deploys are by hand
+## D22. Deploys are by hand, and production is frozen at v1.0 (the human's calls)
 
 - **Choice:** Vercel git deploys are off (`vercel.json`); a production deploy is `vercel deploy --prod`, run when
-  **the human decides**.
+  **the human decides**. The human asked for a deploy at the end, allowed deploys of checked work until a freeze just
+  before delivery, then **froze production and had it tagged**: `v1.0` is the deployed commit `2ae6130`, and commits
+  after it change docs only.
 - **Alternative:** deploy on every push to `main`.
 - **Why:** the capped key pays for every question the live app answers; nothing reaches it by accident on a push.
+  The tag lets a reviewer read the exact code the live app runs.
 
 ## D23. The pricing topic tightened after the hand audit
 
@@ -246,7 +308,8 @@ says so. Every number is measured on this dataset ([docs/DATA.md](docs/DATA.md))
 - **Why, measured:** the audit (docs/DATA.md) found 5 of 10 random pricing conversations right. The earlier, stricter
   wording had listed "purchases ... store items", Jev read the list as trigger words, and the share rose from 11.9%
   (v1) to 15.9%. With the exclusions spelled out it is 7.3%. The flag shares barely moved on the relabel (excited
-  10.2%, frustrated 19.4%, help 36.3%). The new pricing labels were checked on 40 conversations, not re-audited.
+  10.2%, frustrated 19.4%, help 36.3%, both excited and frustrated 0.9%). The new pricing labels were checked on 40
+  conversations, not re-audited.
 
 ## D24. A follow-up's citations are checked against the whole chat
 
@@ -256,6 +319,7 @@ says so. Every number is measured on this dataset ([docs/DATA.md](docs/DATA.md))
 - **Why:** QA (docs/QA.md, Q1): "which of those are bugs?" answered from the previous turn's reads, and the check
   failed every claim although the same messages had backed them one turn earlier. The guard that matters, that the
   agent cannot cite what it never saw, holds either way.
+- **Known gap in v1.0:** a follow-up that calls no tool and cites nothing is not checked at all (docs/QA.md, P3).
 
 ## D25. A sentence that lists several things must be backed whole
 
@@ -269,7 +333,7 @@ says so. Every number is measured on this dataset ([docs/DATA.md](docs/DATA.md))
 
 - **Choice:** text the model writes before a tool call is a draft: it is neither shown nor checked. The page
   (`evidence.ts`) and the check (`finish.ts`) cut at the same place.
-- **Alternative:** the earlier rule, from the 2026-09-26 review: show and check every step's text, joined.
+- **Alternative:** the earlier rule: show and check every step's text, joined.
 - **Why:** that rule fixed claims that were shown but never checked, but it also kept drafts: in the eval (O02),
   "60/100 [aggregate]" written beside an out-of-scope call stayed in the answer, above the answer written after
   reading. Cutting at the last tool call keeps the check's guarantee and drops the draft.
@@ -297,7 +361,7 @@ says so. Every number is measured on this dataset ([docs/DATA.md](docs/DATA.md))
   (`lib/question-limit.ts`).
 - **Alternative:** no cap.
 - **Why:** QA (Q6), found by reading the code: the public deploy would send a pasted 100k-character question to Gemini
-  on the brief's capped key. 2,000 is room for a question with a quoted message in it, not for a pasted document.
+  on the provided capped key. 2,000 is room for a question with a quoted message in it, not for a pasted document.
 
 ## D30. The community is named "the Veil of Ages Discord"
 
@@ -324,7 +388,34 @@ says so. Every number is measured on this dataset ([docs/DATA.md](docs/DATA.md))
   checked yet. The measured upper bound is a full labelling run, every topic, flag and sentiment in one request per
   conversation: $0.23 to $0.24 for each of the three runs recorded in `data/work/labels.jsonl`.
 - **Alternative:** merge it untested, or leave Explore out.
+- **Who ruled:** the human asked for the grid in production, then asked how the relabel and backfill had been tested
+  and **ruled out risking production** with it ("I don't want to mess up production 20 minutes before we need to
+  deliver"). The coding agent found it had never run against a database and stopped all writes to Neon. At delivery
+  **the human ruled** not to add it that late, and to put it first on the roadmap with the reason Jev was chosen (D6).
 - **Why:** the grid only reads the labels; editing writes them. Its tables (`npm run db:app`) and any relabel would
   run against the one Neon database, which production shares, and no Neon branch could be made to test on before
   delivery. Code that has never run does not go to `main` (D1). The steps to finish it are the first item of the
   README's roadmap.
+
+## D32. The evidence view is a reply tree (the human's call)
+
+- **Choice:** a citation chip opens its conversation drawn as a reply tree: reading order across, reply depth down.
+  A session's top-level messages hang from one node for the conversation; replies nest beneath the message they
+  answer; the cited messages are numbered like their chips and lit; a parent carried in from an earlier piece (D4) is
+  drawn hollow and faint (`ThreadMap.tsx`, `thread-tree.ts`).
+- **Alternative:** the first picture, a timeline of dots with arcs for replies.
+- **Who ruled:** reviewing the evidence panel, **the human rejected the timeline** as not good enough and asked for it
+  to be replaced; the reply tree is what replaced it.
+- **Why:** 37% of messages are replies, and one piece often holds several short exchanges. The tree
+  shows who answered whom and where the cited message sits in its exchange, which a flat timeline hides.
+
+## D33. The repo and the app are public (the human's call)
+
+- **Choice:** the GitHub repo is public, and the Vercel deployment has Deployment Protection off, so the live URL
+  opens without a login.
+- **Alternative:** a private repo shared by invitation, and a protected deployment.
+- **Who ruled:** **the human made both public**: this is a take-home, and it can be taken down once the review is
+  done. The human also asked that reversible publishing choices like this not hold up the build.
+- **Why:** a reviewer can open the code and ask the live app a question without an account. The cost is that every
+  question spends the provided capped key, which the README says next to the URL; the question length cap (D29)
+  keeps a pasted document off it.
