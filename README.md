@@ -5,7 +5,8 @@ frustrated by, or saying about an update, and get an answer grounded in the mess
 message behind it and checked, or a plain "the data cannot answer that".
 
 **Live:** https://levellr-take-home.vercel.app (public; every question spends the brief's capped Gemini key). It runs
-commit `e650633`: the chat, and Explore's topic x time grid, read-only.
+release tag [`v1.0`](https://github.com/avshalomd/levellr-take-home/tree/v1.0) (commit `2ae6130`): the chat, and Explore's topic x time grid,
+read-only. Commits after the tag change docs only.
 
 ## The unit, and what it cannot count
 
