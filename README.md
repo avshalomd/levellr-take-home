@@ -137,7 +137,7 @@ fell from 15.9% to 7.3%. Details in [docs/DATA.md](docs/DATA.md#label-audit).
 
 ## Cost
 
-The build's paid calls, from the `budget.py` ledger (`data/work/spend.json`, cap $3.00, re-runs included):
+The build's paid calls, from the `budget.py` ledger (`data/work/spend.json`, re-runs included):
 **$0.88 in total**.
 
 | kind | model | calls | input tokens | cost |
@@ -193,7 +193,7 @@ In priority order.
    $0.24), cheap enough for the team to start a relabel whenever it wants, without an engineer. To finish:
    1. make a Neon branch and point `.env.local` at it;
    2. `npm run db:app` (taxonomies, relabel jobs, spend);
-   3. `npm run labels -- seed-spend`, so ingest's cost counts against the same cap;
+   3. `npm run labels -- seed-spend`, so ingest's cost is recorded beside the relabels;
    4. in the app, price, run and remove a topic; check that the grid and the agent read the new labels;
    5. merge, then deploy.
 2. **Fix what the production QA found** ([docs/QA.md](docs/QA.md)): open an Explore row's conversation in the

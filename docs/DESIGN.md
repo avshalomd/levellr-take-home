@@ -29,7 +29,7 @@ Run from the laptop, straight into Neon (D15). The dataset is described by a man
 | enrich | `enrich.py`, `flags.py` | one Jev request per conversation: a probability per topic, sentiment, six flags (D6, D7, D8, D16, D17) | `labels.jsonl` |
 | embed | `embed.py` | each transcript with `gemini-embedding-2`, 768 dimensions, L2-normalised (D21) | `embeddings.jsonl` |
 | load | `load.py` | `COPY` into Neon, then indexes (`db/indexes.sql`) and `dataset_meta` | Neon |
-| budget | `budget.py` | a ledger of every paid call, with a $3 cap | `spend.json` |
+| budget | `budget.py` | a ledger of every paid call | `spend.json` |
 
 `build.py` runs normalize and group in one go. `enrich.py` and `embed.py` cache by content hash, so a re-run pays
 only for what changed.

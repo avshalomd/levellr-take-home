@@ -377,8 +377,8 @@ measured comparison are in D9; why topic editing is held back from production is
   back from `main` on purpose.
 - **What it does:** in Explore the team adds, renames, redefines, combines or removes topics. A rename or a combine
   applies at once. Adding or redefining a topic shows a price first; on confirm, Jev asks that one topic's yes/no
-  question of every conversation and backfills the probabilities, in resumable batches, under the build's $3 spend
-  cap. Removing a topic is free.
+  question of every conversation and backfills the probabilities, in resumable batches, under a spend cap the team
+  sets. Removing a topic is free.
 - **What it costs:** the branch prices a relabel before any call as conversations x (state + question + call
   overhead) tokens at Jev's $0.042 per million input tokens (`estimate` in `src/lib/labels/taxonomy.ts` on the
   branch). With this data's mean state of 1,321 characters and the current topic descriptions, re-asking one topic
