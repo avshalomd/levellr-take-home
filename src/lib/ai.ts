@@ -46,7 +46,7 @@ export function getModel(): LanguageModel {
     case "openai":
       return openai(m ?? "gpt-5.4-mini");
     case "google":
-      return google(m ?? "gemini-3.8-flash");
+      return google(m ?? "gemini-2.5-flash");
     case "openrouter":
       return openrouter(m ?? PRIMARY_OPENROUTER_MODEL);
     case "gateway":
