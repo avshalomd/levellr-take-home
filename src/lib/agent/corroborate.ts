@@ -7,6 +7,7 @@ import { messagesFor } from "@/lib/data/search";
 import type { Filters, MessageRef } from "@/lib/data/types";
 import { sameSlice } from "./slices";
 import { decide, noul } from "@/lib/llm/decide";
+import { withRetry } from "@/lib/llm/retry";
 import { msgTag, refOfTag } from "@/lib/refs";
 import { shownCitations } from "@/lib/claims";
 import { SUPPORTED, type Verification } from "./verify";
@@ -27,34 +28,9 @@ const PER_CONVERSATION = 12; // messages per conversation, highest-scored first
 const CLAIMS_MAX = 8;
 const MORE_MAX = 40; // the list behind "+N": enough to scroll, not the whole set
 // 8, not 20: every Jev read goes through OpenRouter's shared pool, which answered a burst of 20 with HTTP 429 on all
-// of them (QA Q4, 2026-09-27). Fewer in flight plus the retry below reads 80 conversations in a few seconds still.
+// of them (QA Q4, 2026-09-27). Fewer in flight plus the retry (lib/llm/retry) reads 80 conversations in a few seconds still.
 const IN_FLIGHT = 8;
-const RETRY_DELAYS_MS = [400, 1_200, 3_000]; // one try, then three more on a rate limit, an outage or a timeout
-
-/** A failure worth another try: a rate limit, a server error or a timeout. A refused key or an off-schema answer
- *  will fail the same way again. */
-export function transient(e: unknown): boolean {
-  if (!(e instanceof Error)) return false;
-  if ((e as { kind?: string }).kind === "timeout") return true;
-  return /\bHTTP (429|5\d\d)\b|rate limit|too many requests|temporarily unavailable/i.test(e.message);
-}
-
-/** `fn`, tried again after each delay while it fails transiently. The last failure is thrown. */
-export async function withRetry<T>(
-  fn: () => Promise<T>,
-  delays: readonly number[] = RETRY_DELAYS_MS,
-  sleep: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms)),
-): Promise<T> {
-  for (let attempt = 0; ; attempt++) {
-    try {
-      return await fn();
-    } catch (e) {
-      if (attempt >= delays.length || !transient(e)) throw e;
-      // Jitter, so the reads that failed together do not all come back in the same instant.
-      await sleep(delays[attempt] * (0.75 + Math.random() * 0.5));
-    }
-  }
-}
+export { transient, withRetry } from "@/lib/llm/retry";
 
 export type MoreItem = MessageRef & { threadTitle: string; support: number };
 export type CorroboratedClaim = {

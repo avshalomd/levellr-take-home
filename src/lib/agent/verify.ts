@@ -1,5 +1,6 @@
 import "server-only";
 import { decide, noul } from "@/lib/llm/decide";
+import { withRetry } from "@/lib/llm/retry";
 import { getMessagesByRef } from "@/lib/data/read";
 import { claimsOf } from "@/lib/claims";
 import { msgTag, refOfTag } from "@/lib/refs";
@@ -127,7 +128,9 @@ export async function verify(
           evidence,
           ...(own ? { games: own } : {}),
         };
-        const res = await decide({
+        // Retried on a rate limit, a server error or a timeout, as corroboration is: a claim left unchecked because
+        // OpenRouter's shared pool was busy says nothing about the answer (v1.1 eval: 24 of 169 cited claims).
+        const res = await withRetry(() => decide({
           state,
           questions: Object.fromEntries([
             ...asks.flatMap((a) => {
@@ -138,7 +141,7 @@ export async function verify(
             }),
             ...(own ? valid.map((id) => [`off_${id}`, noul(ELSEWHERE_QUESTION(id))] as const) : []),
           ]),
-        });
+        }));
         const got = res.answers as Record<string, { noul: number } | undefined>;
         answers = Object.fromEntries([
           ...asks.flatMap((a) => [
