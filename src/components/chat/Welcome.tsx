@@ -2,7 +2,7 @@
 
 import { ArrowUpRight } from "lucide-react";
 import type { Overview } from "@/lib/data/read";
-import { topicQuestion } from "@/lib/starters";
+import { BRIEF_QUESTIONS, topicQuestion } from "@/lib/starters";
 import { cn } from "@/lib/utils";
 import { shortDate } from "./evidence";
 
@@ -16,12 +16,6 @@ type Meta = {
   counts?: { messages?: number; conversations?: number; authors?: number };
 };
 
-/** The three questions the brief names: what a Community & Marketing Manager asks first. */
-export const BRIEF_QUESTIONS = [
-  "What have players been frustrated about in the last few days?",
-  "What are people most excited about right now?",
-  "What should we post about this week?",
-] as const;
 
 const n = (x?: number) => (x ?? 0).toLocaleString("en-GB");
 

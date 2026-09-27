@@ -110,7 +110,6 @@ export function MessageCard({
           <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1">
             <span className="truncate text-[14px] font-semibold">{node.author}</span>
             {num > 0 && <span className={chipClass(level)}>{num}</span>}
-            {node.kind === "post" && <Mark>Started the thread</Mark>}
             {context && <Mark>{CONTEXT_WORDS}</Mark>}
             {node.removed && <Mark>Removed</Mark>}
             {node.is_bot && <Mark>Bot</Mark>}
@@ -125,7 +124,7 @@ export function MessageCard({
       </header>
       {/* overflow-wrap:anywhere: a long address or an unbroken string wraps inside the card instead of running off it. */}
       {clamp && text ? (
-        <Clamped text={text} whole={node.kind === "post" ? "Show the whole post" : "Show the whole message"} />
+        <Clamped text={text} whole="Show the whole message" />
       ) : (
         <div className={cn("mt-3 text-[14.5px] leading-[1.6] [overflow-wrap:anywhere]", focused ? "text-foreground" : "text-foreground/80")}>
           {text ? <MessageText text={text} /> : <em className="text-muted-foreground">This message was removed.</em>}

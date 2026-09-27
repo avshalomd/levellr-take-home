@@ -654,15 +654,15 @@ describe("pickChart draws only a slice the reader was told about", () => {
       output: { metric: "avg_sentiment", groupBy: "none", filters, rows: [{ key: "all", value: 0.3, n: 20 }] },
     };
   };
-  const julyComplaints = moodBy("jc", "complaint", "2026-07-01", "2026-08-01");
-  const sepComplaints = moodBy("sc", "complaint", "2026-09-01", "2026-09-25");
+  const julyComplaints = moodBy("jc", "bug", "2026-07-01", "2026-08-01");
+  const sepComplaints = moodBy("sc", "bug", "2026-09-01", "2026-09-25");
   const julyHelp = moodBy("jh", "help", "2026-07-01", "2026-08-01");
   const sepHelp = moodBy("sh", "help", "2026-09-01", "2026-09-25");
   const steps = [julyComplaints, sepComplaints, julyHelp, sepHelp];
 
   it("passes over a later count of a kind the answer does not name, for the one it does", () => {
-    const c = pickChart(steps, names, "How did July compare with September?\nAmong the complaints, the mood was lower in September.");
-    expect(c).toMatchObject({ groupBy: "period", title: "The average mood by period, in complaints" });
+    const c = pickChart(steps, names, "How did July compare with September?\nAmong the bug reports, the mood was lower in September.");
+    expect(c).toMatchObject({ groupBy: "period", title: "The average mood by period, in bug reports" });
   });
   it("draws nothing when every count is narrowed to a kind the reader was never told about", () => {
     expect(pickChart(steps, names, "How did the mood in July compare with September?\nThe mood fell in September.")).toBeNull();

@@ -1,7 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { Overview } from "@/lib/data/read";
-import { BRIEF_QUESTIONS, Welcome } from "./Welcome";
+import { BRIEF_QUESTIONS } from "@/lib/starters";
+import { Welcome } from "./Welcome";
 
 // The home page as the browser first paints it: while the overview loads, and once it has.
 const overview = {

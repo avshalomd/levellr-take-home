@@ -8,7 +8,8 @@ import { MessageCard } from "./MessageCard";
 const node: ThreadNode = {
   id: "m1",
   ref: 12,
-  kind: "comment",
+  kind: "message",
+  n_reactions: 4,
   channel: "Discussion",
   thread_id: "t1",
   reply_to: null,

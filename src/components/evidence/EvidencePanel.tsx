@@ -100,9 +100,10 @@ export function EvidencePanel({
     const out: { threadId: string; title: string; cited: string[] }[] = [];
     for (const tag of evidence.cited) {
       const r = refOf(tag);
-      if (!r) continue;
-      let t = out.find((x) => x.threadId === r.thread_id);
-      if (!t) out.push((t = { threadId: r.thread_id, title: r.threadTitle ?? "", cited: [] }));
+      const threadId = r?.thread_id ?? r?.conversation_id;
+      if (!r || !threadId) continue;
+      let t = out.find((x) => x.threadId === threadId);
+      if (!t) out.push((t = { threadId, title: r.threadTitle ?? "", cited: [] }));
       t.cited.push(tag);
     }
     return out;
@@ -294,7 +295,7 @@ function ThreadView({
   }, [laid, shape, focusRaw, highlight, byTag]);
   const replies = useMemo(() => replyCounts(laid), [laid]);
   const topId = useMemo(() => {
-    const comments = laid.filter((n) => n.kind !== "post" && n.score > 0);
+    const comments = laid.filter((n) => n.score > 0);
     return comments.length >= 3 ? comments.reduce((a, b) => (b.score > a.score ? b : a)).id : null;
   }, [laid]);
   const view = useMemo(() => (focusRaw ? focusView(laid, focusRaw, shape) : null), [laid, focusRaw, shape]);

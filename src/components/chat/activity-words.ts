@@ -46,9 +46,11 @@ const METRIC_WORDS: Record<string, string> = {
   share_excited: "the share of excited conversations",
   net_votes: "net votes",
   reactions: "reactions",
+  engagement: "engagement",
+  avg_engagement: "the average engagement",
 };
 // A count of things is counted; a mood or a share is worked out.
-const COUNTED = new Set(["conversations", "messages", "authors", "net_votes", "reactions"]);
+const COUNTED = new Set(["conversations", "messages", "authors", "net_votes", "reactions", "engagement"]);
 
 // A chart title's grouping ("The share of complaints by week"), and a step's, said after its slice ("..., week by
 // week"). A total is said too: two counts of one slice, one by week and one in total, read the same otherwise (QA

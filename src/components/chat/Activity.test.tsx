@@ -78,9 +78,9 @@ describe("Activity", () => {
   });
   // QA 2026-09-26: a chart of a kind of conversation the answer never mentioned.
   it("draws a count narrowed to one kind of conversation only when the reader was told about that kind", () => {
-    const complaints = { ...weekly, input: { ...weekly.input, filters: { flag: "complaint" } }, output: { ...weekly.output, filters: { flag: "complaint", since: "2026-09-09" } } };
-    expect(render(true, [complaints], "How do players feel about bans?\nMost are angry.")).not.toContain("<figure");
-    expect(render(true, [complaints], "How do players feel about bans?\nAmong the complaints, most are angry.")).toContain("<figure");
+    const bugs = { ...weekly, input: { ...weekly.input, filters: { flag: "bug" } }, output: { ...weekly.output, filters: { flag: "bug", since: "2026-09-09" } } };
+    expect(render(true, [bugs], "How do players feel about bans?\nMost are angry.")).not.toContain("<figure");
+    expect(render(true, [bugs], "How do players feel about bans?\nAmong the bug reports, most are angry.")).toContain("<figure");
   });
   // QA 2026-09-26: at 1440px 5 of 12 topic names were cut ("Performance & Ac…") in a 7.5rem column of a 28rem card,
   // and "and 1 more" was a sentence with nothing behind it.
