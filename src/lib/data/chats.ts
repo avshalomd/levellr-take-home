@@ -46,7 +46,7 @@ export function titleOf(messages: ChatMessage[]): string {
 
 // A step that read the data: a finished call to a tool that reads conversations. A look at what the data covers or a
 // call that failed answered nothing from the data, and named the chat after a question the agent never answered from
-// it (reference review). This repo's tools have no refused results, so the reference's refusal check is not carried.
+// it. The tools here return no refused results, so there is no refusal check.
 const READERS = new Set(["tool-scan", "tool-find", "tool-aggregate", "tool-voices", "tool-read_conversation"]);
 const readTheData = (p: ChatMessage["parts"][number]) =>
   READERS.has(p.type) && "state" in p && p.state === "output-available" && Boolean(p.output);

@@ -1,12 +1,12 @@
 """data/work/* -> Neon Postgres. Drops and rebuilds the data tables: the database is a build output, never hand-edited.
 
-Adapted from the reference. Bulk-loads with COPY (one round trip per table instead of one per row), derives topic
+Bulk-loads with COPY (one round trip per table instead of one per row), derives topic
 membership in SQL (pulse_topics, db/schema.sql), builds the indexes, writes dataset_meta, then checks the counts that
 went in against the counts that came out.
 
 Labels are optional: before enrich.py has run (or before topics are approved) conversations load with NULL labels, and
 a later run fills them. A label row is used only when it was made from this transcript (hash) with the current
-question set (qhash), so a stale label never lands on changed data. The reference's label-set carry-over (a customer's
+question set (qhash), so a stale label never lands on changed data. A label-set carry-over (a customer's
 edited taxonomy surviving a rebuild) is left out: there is no in-app topic editing in this build yet.
 
 usage (from ingest/): uv run --env-file ../.env.local python load.py   (DATABASE_URL_UNPOOLED: COPY wants a direct

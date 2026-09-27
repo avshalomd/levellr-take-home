@@ -58,3 +58,6 @@ next-env.d.ts
 .claude/worktrees/
 test-results
 playwright-report
+
+# local agent instructions, kept out of the repo
+CLAUDE.md

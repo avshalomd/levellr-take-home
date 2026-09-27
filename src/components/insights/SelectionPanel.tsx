@@ -262,7 +262,7 @@ function Mood({ combined, population }: { combined: Agg | null; population: Agg 
 
 // ---------- the sessions ----------
 
-// Discord has no threads or titles here: the busiest sessions (D3) stand in for the reference's busiest threads, named by
+// Discord has no threads or titles here: the busiest sessions (D3) stand in for the busiest threads, named by
 // their channel and first message. Asking about one names its convN handle, which the chat's read_conversation takes.
 function Sessions({ detail, onRetry, onAsk }: { detail: Detail; onRetry: () => void; onAsk: (q: string) => void }) {
   return (

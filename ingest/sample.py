@@ -1,6 +1,6 @@
 """The sample the topic suggestion reads: small, but with the same shape as the whole dataset, plus its loudest tail.
 
-Ported from the reference (DECISIONS D46), with the channel in place of the week: this export spans two weeks, but
+Stratified by channel, not by week (DECISIONS D46): this export spans two weeks, but
 its 11 channels map to different products (Bushido, Tides Remastered, Hollow, the franchise), so the channel is what
 a sample must not tilt. Two parts:
 

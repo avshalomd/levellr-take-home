@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { asksWhatPeopleSay, groundingOf, needsRead, toolsUsed } from "./grounding";
 
 // QA 2026-09-26, round 5: "What are people complaining about most in September?" came back as five points quoting
-// thread titles ("State of PUBG", "Max Level Cheater") and a cause ("traced to AWS server congestion"), with no citation
+// thread titles and a cause ("traced to AWS server congestion"), with no citation
 // chip and no "Checked:" line, from a turn that had only counted.
 const result = (toolName: string, output: unknown) => ({ type: "tool-result", toolName, output });
 const step = (...content: unknown[]) => ({ content });

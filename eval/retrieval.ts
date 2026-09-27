@@ -1,5 +1,5 @@
 // Retrieval arms, head to head: does each half of hybrid search, and the Jev rerank, earn its place? (DECISIONS.md)
-// Ported from Community Pulse 90f193d (eval/retrieval.ts); the gold is message ids here, not Reddit thread ids.
+// The gold is message ids.
 //
 // For every lookup question, six ranked lists of 8 conversations:
 //   kw, vec, hybrid              - the first 8 of each retriever's fused order (no rerank)

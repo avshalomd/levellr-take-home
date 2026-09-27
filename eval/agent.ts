@@ -5,8 +5,7 @@
 //   citations   - the claim check the app runs: ids that exist, ids the agent actually read this turn, and Jev's
 //                 support probability per cited claim
 //   abstention  - false-premise and out-of-scope questions must be declined or corrected, not answered
-// plus latency and which tools were used. Ported from Community Pulse 90f193d (eval/agent.ts); paraphrase pairs
-// (questions sharing `pair`) are reported as agreeing or not. Results -> eval/results/agent.json.
+// plus latency and which tools were used. Paraphrase pairs (questions sharing `pair`) are reported as agreeing or not. Results -> eval/results/agent.json.
 //
 // It spends the agent model's quota (one question = up to 8 agent steps), so run it on purpose:
 // usage: npm run eval:agent [-- --only L01,A02] [-- --concurrency 2] [-- --note "why this run"] [-- --out path] [-- --dump dir]

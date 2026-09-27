@@ -66,9 +66,9 @@ describe("markStopped and clearStopped", () => {
 });
 
 describe("pageTitle", () => {
-  // QA 2026-09-26: a new chat's tab said "Community Pulse" until a reload; it now reads as the server renders it.
+  // A new chat's tab once showed only the app's name until a reload; it now reads as the server renders it.
   it("puts the chat's title through the layout's template", () => {
-    expect(pageTitle("How do players feel about the anti-cheat?")).toBe("How do players feel about the anti-cheat? · Community Pulse");
+    expect(pageTitle("How do players feel about the anti-cheat?")).toBe("How do players feel about the anti-cheat? · Community Insights");
   });
 });
 

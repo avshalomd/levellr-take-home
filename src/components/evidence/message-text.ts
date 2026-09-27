@@ -25,7 +25,7 @@ const ADDRESS = /^(https?:\/\/)?[\w-]+(\.[\w-]+)+(\/\S*)?$/i;
 
 /**
  * A link whose words are a web address, shown as the address it really opens, shortened to the site and the start of
- * the path ("reddit.com/r/PUBATTLEGROUNDS/comments/…"), so a long address never runs across the card. The words are
+ * the path ("reddit.com/r/VeilOfAgesGames/comments/…"), so a long address never runs across the card. The words are
  * never trusted: "[paypal.com/login](https://evil.example)" reads "evil.example". Null for ordinary words.
  */
 export function linkLabel(text: string, href: string, max = 40): string | null {

@@ -150,7 +150,7 @@ export function Chat({
   const sentInitial = useRef(false);
   const busy = status === "submitted" || status === "streaming";
 
-  // A chat opened by New chat is ready to type (the reference's QA: focus stayed on the link). Not on a first page
+  // A chat opened by New chat is ready to type (without this, focus stayed on the link). Not on a first page
   // load, where the skip link keeps the first Tab stop, nor on a touch screen, where it would open the keyboard.
   useEffect(() => {
     if (takeFocusAsk() && window.matchMedia("(pointer: fine)").matches) inputRef.current?.focus();

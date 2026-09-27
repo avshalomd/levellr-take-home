@@ -1,10 +1,10 @@
 """Label every conversation with Jev: one yes/no per topic, sentiment, and the six flags, in ONE request each.
 
-Ported from the reference. Why Jev and not an LLM: every one of these is a closed judgment. Jev answers all of them
+Why Jev and not an LLM: every one of these is a closed judgment. Jev answers all of them
 over the same state in one call, returns probabilities instead of text, and costs $0.042 per million input tokens.
 The probabilities are stored, not verdicts, so the app chooses its own thresholds and an unsure label shows as unsure.
 
-Changed from the reference: Jev is reached through OpenRouter's decisions endpoint over plain HTTP (the same request
+Jev is reached through OpenRouter's decisions endpoint over plain HTTP (the same request
 and answer shape as src/lib/llm/decide.ts), because the TypeSafe account is out of credit. The flags are this
 dataset's six (flags.py). Topics come from data/work/topics.json, the label set a person approved; without it the
 run stops, because labelling against unapproved topics would be paid work thrown away.
@@ -41,7 +41,7 @@ URL = "https://openrouter.ai/api/alpha/decisions"
 MODEL = "typesafe/jev-1.13"  # pinned: "latest" could move under the thresholds the app is tuned to
 STATE_CHARS = 12000  # the longest transcript here is ~8,400 chars; Jev reads 32K tokens
 
-# The one per-topic question (the reference's topic-question.json). load.py writes it into dataset_meta so the app's
+# The one per-topic question. load.py writes it into dataset_meta so the app's
 # relabel, if built, asks the same question and a topic means the same thing to both.
 TOPIC_QUESTION = ("Is `conversation`, from `community`, about this topic: {name} ({description})? Answer yes when a "
                   "real part of the conversation discusses it, even if it is not the main subject; answer no when it "

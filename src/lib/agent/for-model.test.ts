@@ -340,7 +340,7 @@ describe("conversationsForModel on a hit saved in an older or slimmer shape", ()
         id: "m-seed",
         ref: 990001,
         kind: "post",
-        channel: "r/PUBATTLEGROUNDS",
+        channel: "r/VeilOfAgesGames",
         thread_id: "thread-seed",
         reply_to: null,
         conversation_id: "conv-seed",

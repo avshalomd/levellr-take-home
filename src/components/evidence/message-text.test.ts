@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { cardMarkdown, linkLabel, plainMessage, safeHref } from "./message-text";
 
-// The opening of the "Map Service Report - Update 43.1" post, as the data holds it (QA 2026-09-25: the card showed
-// every mark of it as text, and its long link ran off the card's right edge).
+// The opening of a long announcement post, with a link, an image, a heading and emphasis (the card once showed every
+// mark of it as text, and its long link ran off the card's right edge).
 const report = [
-  "[https://www.reddit.com/r/PUBATTLEGROUNDS/comments/1n2abcd/map_service_report/](https://www.reddit.com/r/PUBATTLEGROUNDS/comments/1n2abcd/map_service_report/)",
+  "[https://www.reddit.com/r/VeilOfAgesGames/comments/1n2abcd/map_service_report/](https://www.reddit.com/r/VeilOfAgesGames/comments/1n2abcd/map_service_report/)",
   "",
   "[media]",
   "",
@@ -12,7 +12,7 @@ const report = [
   "",
   "*※* *Due to rounding, the total may not add up to exactly 100%.*",
   "",
-  "* **Erangel (25%) / Miramar (25%)**",
+  "* **Harbor (25%) / Desert (25%)**",
 ].join("\n");
 
 describe("cardMarkdown", () => {
@@ -31,7 +31,7 @@ describe("cardMarkdown", () => {
 
 describe("safeHref", () => {
   it("keeps web addresses", () => {
-    expect(safeHref("https://pubg.com/en/news/11019")).toBe("https://pubg.com/en/news/11019");
+    expect(safeHref("https://example.org/en/news/11019")).toBe("https://example.org/en/news/11019");
     expect(safeHref(" http://example.com/a ")).toBe("http://example.com/a");
   });
 
@@ -43,10 +43,10 @@ describe("safeHref", () => {
 
 describe("linkLabel", () => {
   it("shortens a link whose words are its own address", () => {
-    expect(linkLabel("https://pubg.com/en/news/11019", "https://pubg.com/en/news/11019")).toBe("pubg.com/en/news/11019");
-    const u = "https://www.reddit.com/r/PUBATTLEGROUNDS/comments/1n2abcd/map_service_report/";
+    expect(linkLabel("https://example.org/en/news/11019", "https://example.org/en/news/11019")).toBe("example.org/en/news/11019");
+    const u = "https://www.reddit.com/r/VeilOfAgesGames/comments/1n2abcd/map_service_report/";
     expect(linkLabel(u, u)).toBe(
-      "reddit.com/r/PUBATTLEGROUNDS/comments/1…", // 40 characters, the ellipsis included
+      "reddit.com/r/VeilOfAgesGames/comments/1…", // 40 characters, the ellipsis included
     );
   });
 
@@ -58,14 +58,14 @@ describe("linkLabel", () => {
   });
 
   it("leaves ordinary link words alone", () => {
-    expect(linkLabel("Original Post (pubg.com)", "https://pubg.com")).toBeNull();
+    expect(linkLabel("Original Post (example.org)", "https://example.org")).toBeNull();
   });
 });
 
 describe("plainMessage", () => {
   it("reads the report as words: no heading or emphasis marks, links as their words, pictures as (image)", () => {
     expect(plainMessage(report).split("\n")).toEqual([
-      "https://www.reddit.com/r/PUBATTLEGROUNDS/comments/1n2abcd/map_service_report/",
+      "https://www.reddit.com/r/VeilOfAgesGames/comments/1n2abcd/map_service_report/",
       "",
       "(image)",
       "",
@@ -73,12 +73,12 @@ describe("plainMessage", () => {
       "",
       "※ Due to rounding, the total may not add up to exactly 100%.",
       "",
-      "Erangel (25%) / Miramar (25%)",
+      "Harbor (25%) / Desert (25%)",
     ]);
   });
 
   it("keeps link words and drops Reddit's blank-line filler", () => {
-    expect(plainMessage("[Original Post (pubg.com)](https://pubg.com/en/news/11019)")).toBe("Original Post (pubg.com)");
+    expect(plainMessage("[Original Post (example.org)](https://example.org/en/news/11019)")).toBe("Original Post (example.org)");
     expect(plainMessage("&amp;#x200B;")).toBe("");
   });
 

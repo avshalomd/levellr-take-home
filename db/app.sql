@@ -1,6 +1,6 @@
 -- The table the APP writes. The build tables in schema.sql are rebuilt by ingest/load.py, which drops only messages,
--- conversations and dataset_meta, so saved chats survive a reload of the data. From the reference's db/app.sql, chats
--- only (Explore is not built tonight, so no taxonomies, relabel jobs or spend). Idempotent: `npm run db:app`.
+-- conversations and dataset_meta, so saved chats survive a reload of the data. Chats only
+-- (Explore is not built tonight, so no taxonomies, relabel jobs or spend). Idempotent: `npm run db:app`.
 
 -- One saved conversation with the chatbot. The owner is an anonymous id from a cookie (src/proxy.ts): there are no
 -- accounts, so a browser sees its own history and nobody else's. `messages` is the AI SDK UIMessage array exactly as

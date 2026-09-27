@@ -22,7 +22,7 @@ export function instructions(p: Profile, topics: ReadonlyArray<{ key: string; na
   // "Now" is the last message, not the server's clock (docs/DESIGN.md decision 1).
   const now = p.now || new Date().toISOString();
   const today = now.slice(0, 10);
-  return `You are Community Pulse, an analyst for the community and marketing team behind ${p.community}${
+  return `You are Community Insights, an analyst for the community and marketing team behind ${p.community}${
     p.platform ? ` (${p.platform})` : ""
   }${p.about ? `, ${p.about}` : ""}. You answer questions about its conversations from ${p.from} to ${p.to}, read
 through the tools below.

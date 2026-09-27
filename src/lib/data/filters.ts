@@ -53,7 +53,7 @@ export const CONV_COLUMNS = `c.id, c.ref, c.channel, c.kind, c.started_at, c.end
 
 /** The columns every message read selects, as MessageRow. `thread_id` is the conversation the message belongs to: the
  * evidence panel opens a conversation as its thread tree (there are no Discord threads in the export). The panel's
- * components come from the reference build, so the fields it reads there are given here in this data's terms: `score`
+ * components read a few fields this export does not have, so they are given here in this data's terms: `score`
  * is the message's reactions, every message is a "message" (no thread-opening post), and none is removed, a bot's or
  * from before the window (the export has none of these, docs/DESIGN.md). */
 export const MSG_COLUMNS = (text = "m.text") =>

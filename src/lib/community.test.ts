@@ -11,7 +11,7 @@ describe("the community's name", () => {
   it("reads with an article in a sentence, never twice", () => {
     expect(communityInProse("Veil of Ages Discord (Levellr sample)")).toBe("the Veil of Ages Discord");
     expect(communityInProse("The Veil Discord")).toBe("the Veil Discord");
-    expect(communityInProse("r/pubg")).toBe("r/pubg");
+    expect(communityInProse("r/veilofages")).toBe("r/veilofages");
     expect(communityInProse("", "the Veil of Ages Discord")).toBe("the Veil of Ages Discord");
   });
 });

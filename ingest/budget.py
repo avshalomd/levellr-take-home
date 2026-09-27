@@ -1,6 +1,6 @@
 """Every paid call in the pipeline goes through here, so the total spend is known and capped.
 
-Ported from the reference. The ledger is a JSON file (data/work/spend.json) so it survives restarts: a re-run of a
+The ledger is a JSON file (data/work/spend.json) so it survives restarts: a re-run of a
 step adds to it. `check()` refuses a call whose estimate would take the total over the cap, before the call is made.
 """
 
@@ -17,7 +17,7 @@ CAP_USD = 3.00
 PRICE_PER_MTOK = {
     "llm": 0.10,  # the suggestion call on Gemini Flash-Lite, input (suggest.py prices output itself)
     "jev": 0.042,  # Jev 1.13 (typesafe/jev-1.13 via OpenRouter), input only: Jev writes no text
-    "embed": 0.20,  # gemini-embedding-2, input only (the reference's list price; the API returns no usage figure)
+    "embed": 0.20,  # gemini-embedding-2, input only (list price; the API returns no usage figure)
 }
 
 

@@ -10,9 +10,9 @@ import { ThemeToggle } from "./ThemeToggle";
 import { NewChatLink } from "./new-chat";
 
 // The frame around the page: a title bar on the paper ground (the product name, the community and window the data
-// covers, the theme toggle), the saved chats in a column on its left, and the chat on a white sheet set into it. From
-// the reference's AppShell: below 1024px the sidebar becomes a drawer behind a menu button, and slides back out the
-// way it came in. The title bar is this repo's own and stays at every width.
+// covers, the theme toggle), the saved chats in a column on its left, and the chat on a white sheet set into it. Below
+// 1024px the sidebar becomes a drawer behind a menu button, and slides back out the
+// way it came in. The title bar stays at every width.
 //
 // MotionConfig reducedMotion="user": with the system's reduce-motion setting on, every spring in the app becomes an
 // instant change of position while opacity still fades, so nothing slides but nothing pops either.

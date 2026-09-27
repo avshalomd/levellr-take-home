@@ -69,11 +69,11 @@
 }
 
 :root {
-  /* Design tokens (docs/DECISIONS.md D16). The accent is the blue of PUBG's shrinking zone: it marks what the
+  /* Design tokens (docs/DECISIONS.md D16). The accent is one blue: it marks what the
      answer rests on - cited messages, the selection, focus. Sentiment is a
      red-to-teal diverging pair, never the accent. Everything else is cool neutral, so the evidence is the colour. */
   --paper: oklch(0.975 0.004 250);   /* #F4F6F8, the app ground */
-  --pulse: oklch(0.55 0.21 265);     /* zone blue #2E5BFF */
+  --pulse: oklch(0.55 0.21 265);     /* accent blue #2E5BFF */
   --pulse-soft: oklch(0.95 0.03 265);
   /* The fill behind white text on a solid accent button (Ask, Save). Light: the accent itself, 5:1 with white. */
   --pulse-solid: oklch(0.55 0.21 265);

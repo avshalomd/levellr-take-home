@@ -7,10 +7,10 @@ const html = (text: string) => renderToStaticMarkup(<MessageText text={text} />)
 
 describe("MessageText", () => {
   it("renders a post's markdown as formatting, not as marks (QA 2026-09-25)", () => {
-    const out = html("# Schedule\n\n*※* *Due to rounding.*\n\n* **Erangel**");
+    const out = html("# Schedule\n\n*※* *Due to rounding.*\n\n* **Harbor**");
     expect(out).toContain('<p class="mt-3 mb-1 font-semibold text-foreground first:mt-0">Schedule</p>');
     expect(out).toContain("<em>※</em> <em>Due to rounding.</em>");
-    expect(out).toContain("<strong>Erangel</strong>");
+    expect(out).toContain("<strong>Harbor</strong>");
     expect(out).not.toMatch(/[#*]/);
   });
 
@@ -22,10 +22,10 @@ describe("MessageText", () => {
   });
 
   it("opens web links in a new tab, shortened when the words are the address", () => {
-    const url = "https://www.reddit.com/r/PUBATTLEGROUNDS/comments/1n2abcd/map_service_report/";
+    const url = "https://www.reddit.com/r/VeilOfAgesGames/comments/1n2abcd/map_service_report/";
     const out = html(`[${url}](${url})`);
     expect(out).toContain(`href="${url}" target="_blank" rel="noopener noreferrer"`);
-    expect(out).toContain(">reddit.com/r/PUBATTLEGROUNDS/comments/1…</a>");
+    expect(out).toContain(">reddit.com/r/VeilOfAgesGames/comments/1…</a>");
   });
 
   it("labels an address-looking link with where it really goes (review 2026-09-26)", () => {

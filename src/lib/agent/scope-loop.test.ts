@@ -12,9 +12,9 @@ vi.mock("@/lib/llm/decide", () => ({
 }));
 vi.mock("@/lib/data/profile", () => ({
   profile: async () => ({
-    community: "r/PUBATTLEGROUNDS",
+    community: "r/VeilOfAgesGames",
     platform: "Reddit",
-    about: "PUBG",
+    about: "Veil of Ages",
     from: "2026-06-18",
     to: "2026-09-24",
     events: null,

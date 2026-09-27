@@ -2,12 +2,12 @@
 
 Everything downstream (grouping, labelling, the database, the app) sees only `Message`. A new source needs one more
 adapter here and a manifest in datasets/<name>.json (what the community is, where its raw file is, which authors are
-bots, how authors are named); nothing else changes (ported from the reference, DECISIONS D18).
+bots, how authors are named); nothing else changes (DECISIONS D18).
 
 One adapter exists, for the brief's export ("discord-json"): a JSON array of
 {id, community_id, channel, author{id, name}, timestamp, text, reactions[{emoji, count}], reply_to}.
 - channel = channel; reply_to = the parent message id (every reply stays inside its channel);
-- n_reactions = the sum of reaction counts (the reference's `score`); the per-emoji list is kept as it came;
+- n_reactions = the sum of reaction counts (what the app reads as `score`); the per-emoji list is kept as it came;
 - authors are already pseudonyms in the export ("authors": "pseudonymous" in the manifest), so the name is kept as
   given and the stable account id is kept beside it for counting distinct people.
 """

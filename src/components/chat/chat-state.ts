@@ -48,7 +48,7 @@ export function clearStopped(messages: ChatMessage[]): ChatMessage[] {
 }
 
 /** A saved chat's tab title, as the server renders it: the chat's own title (data/chats.ts titleOf) through the
- *  layout's template, "%s · Community Pulse" (app/layout.tsx). */
+ *  layout's template, "%s · Community Insights" (app/layout.tsx). */
 export const pageTitle = (chatTitle: string) => `${chatTitle} · ${APP_NAME}`;
 
 /** What a dropped connection leaves on the page. The server finishes and saves an answer whether or not the reader is

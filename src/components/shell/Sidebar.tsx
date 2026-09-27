@@ -12,8 +12,8 @@ import { cn } from "@/lib/utils";
 import { chatIdOf, clipTitle, groupChats, type ChatSummary } from "./history";
 import { chatsStore } from "./chats-store";
 
-// The app's left rail: a new chat, the two places (Ask and Explore), and this browser's saved chats. From the reference,
-// less its brand (the header above carries the name and the data's window here). The list reloads whenever a chat finishes an answer (Chat dispatches "chats:changed"), so a new conversation appears in
+// The app's left rail: a new chat, the two places (Ask and Explore), and this browser's saved chats. It
+// carries no brand (the header above carries the name and the data's window). The list reloads whenever a chat finishes an answer (Chat dispatches "chats:changed"), so a new conversation appears in
 // it without a page load.
 
 export const CHATS_CHANGED = "chats:changed";

@@ -9,7 +9,7 @@ import { MockLanguageModelV4 } from "ai/test";
 const scanMock = vi.fn();
 vi.mock("@/lib/data/profile", () => ({
   profile: async () => ({
-    community: "r/PUBATTLEGROUNDS",
+    community: "r/VeilOfAgesGames",
     platform: "Reddit",
     about: "",
     from: "2026-06-18",

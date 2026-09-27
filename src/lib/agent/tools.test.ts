@@ -129,7 +129,7 @@ describe("a flag the question never named", () => {
 
 describe("what the tools add around a call (QA 2026-09-26, round 5)", () => {
   const tools = makeTools(undefined, {
-    community: "r/PUBATTLEGROUNDS",
+    community: "r/VeilOfAgesGames",
     platform: "Reddit",
     about: "",
     from: "2026-06-18",
@@ -358,7 +358,7 @@ describe("what the tools add around a call (QA 2026-09-26, round 5)", () => {
     };
     expect(out.status).toBe("off-topic");
     expect(out.text).toMatch(
-      /^I can't answer that\. I only know what r\/PUBATTLEGROUNDS talked about from 18 Jun to 24 Sep 2026\. You could ask:/,
+      /^I can't answer that\. I only know what r\/VeilOfAgesGames talked about from 18 Jun to 24 Sep 2026\. You could ask:/,
     );
     const model = await tools.out_of_scope.toModelOutput!({
       toolCallId: "t1",

@@ -1,5 +1,5 @@
 -- One Postgres (Neon) holds the messages, the conversations built from them, their Jev labels and their embeddings.
--- Adapted from the reference (Community Pulse). Applied by ingest/load.py, which drops and recreates these tables: the
+-- Applied by ingest/load.py, which drops and recreates these tables: the
 -- data is a build output of the pipeline, never edited by hand. App tables (chats, ...) are not touched here.
 
 CREATE EXTENSION IF NOT EXISTS vector;

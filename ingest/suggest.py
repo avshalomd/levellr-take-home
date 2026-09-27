@@ -1,8 +1,8 @@
 """Read the sample and suggest (a) the topics to label every conversation with and (b) what the mood is about.
 
-Ported from the reference (DECISIONS D17, D46). Why an LLM here and Jev everywhere else: proposing categories is
+Why an LLM here and Jev everywhere else: proposing categories is
 open-ended writing, which Jev does not do; applying them to every conversation is a closed judgment repeated, which is
-Jev's job. The reference called a model on OpenRouter; here it is Gemini Flash-Lite on the brief's key, one call.
+Jev's job (DECISIONS D17, D46). The model is Gemini Flash-Lite on the brief's key, one call.
 
 Topics may overlap: each becomes its own yes/no question, so the model is asked for what a Community & Marketing
 manager would want to track, not for a mutually exclusive taxonomy. Each topic is ONE neutral subject; feelings and

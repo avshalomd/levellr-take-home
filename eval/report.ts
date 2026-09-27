@@ -1,6 +1,5 @@
 // eval/results/report.md, generated from eval/results/*.json so the numbers written in the README can be pasted from
 // what was measured, never typed by hand. Either result file may be missing; its section then says so.
-// Ported in shape from Community Pulse 90f193d (eval/report.ts).
 // usage: npm run eval:report
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 

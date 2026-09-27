@@ -3,10 +3,10 @@ import { google } from "@ai-sdk/google";
 import { z } from "zod";
 import { extract } from "@/lib/llm/extract";
 
-// Shared by both eval runners (ported from Community Pulse 90f193d, eval/lib.ts): the question file, a JSON cache on
+// Shared by both eval runners: the question file, a JSON cache on
 // disk (every judgment is paid for once and a re-run is reproducible), and the judge. The judge is Gemini Flash-Lite
 // on the brief's key: a different model from the agent (Gemini Flash) and from Jev (rerank, claim support), so no
-// component grades its own work. The reference judged on OpenRouter; tonight the judge stays on the key we were given.
+// component grades its own work.
 
 export type QType =
   | "lookup"
