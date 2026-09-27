@@ -1,0 +1,5 @@
+{
+  "_why": "The one copy of the per-topic question (docs/DECISIONS.md D46). ingest/enrich.py asks it at onboarding and src/lib/labels/taxonomy.ts asks it in a relabel; both read this file, so a topic means the same thing to both.",
+  "instructions": "Is `conversation`, from `community`, about this topic: {name} ({description})? Answer yes when a real part of the conversation discusses it, even if it is not the main subject; answer no when it is only mentioned in passing.",
+  "state_chars": 4000
+}
