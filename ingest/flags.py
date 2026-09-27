@@ -17,8 +17,10 @@ FLAGS: dict[str, str] = {
     "bug": "Does anyone report a defect, crash or performance problem (something broken or behaving wrongly), as "
     "opposed to disliking a design choice or finding something hard?",
     "feature": "Does anyone ask for a change or an addition to a game (a feature request or a concrete suggestion)?",
-    "help": "Is asking the community for help, advice or an explanation a main thread of this conversation (more "
-    "than a one-off question in a longer chat; in a one- or two-message conversation, the message itself)?",
+    "help": "Is asking the community for help, advice or an explanation a main thread of this conversation? A "
+    "practical question about playing, fixing or finding something that someone answers counts, even in a longer "
+    "chat; opinion questions, rhetorical questions and banter do not; in a one- or two-message conversation, the "
+    "message itself.",
     "noise": "Is this conversation noise for a community manager: jokes, memes, one-word reactions or off-topic chat "
     "with no feedback, question or information about the games?",
 }
