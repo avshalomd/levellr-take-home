@@ -27,8 +27,9 @@ from the rehearsal.
 
 ## D3. The unit: pause-split sessions, long ones cut into pieces (chosen by the human)
 
-- **Choice:** inside each channel, a new conversation starts after a 15-minute pause. A long session is cut
-  into pieces of 20-40 messages, each cut placed at the longest pause in that range. **The human chose this** after
+- **Choice:** inside each channel, a new conversation starts after a 15-minute pause. A session over 40 messages
+  is cut into pieces: each cut goes at the longest pause between 20 and 40 messages from the piece's start, and the
+  last piece keeps the remainder (51 of the 553 cut pieces are under 20; `ingest/group.py`). **The human chose this** after
   reviewing the session shapes the coding agent measured.
 - **Alternatives, measured:**
   - Reply trees only: 63% of messages are not replies, so they would belong to no conversation.
@@ -61,7 +62,8 @@ from the rehearsal.
   rule written once in SQL (`pulse_topics`), so thresholds stay a query-time choice.
 - **Topics:** a Gemini Flash-Lite pass over a 300-conversation, channel-stratified sample suggested a label set; **the
   human edited it**: Bushido split into the final update, Domains, and Ebontide and new quests; bugs and performance
-  and pricing and editions added; a generic "community chat" topic dropped. 13 topics plus "other".
+  and pricing and editions added; a generic "community chat" topic dropped. Bugs and performance was later removed
+  (D17), leaving 12 topics plus "other".
 - **Alternative:** one topic per conversation as a hard verdict, or free-text tags from an LLM.
 - **Why:** a conversation often touches two subjects; a verdict hides how sure the label is; free tags cannot be
   counted. Kept from the reference (D12, D17, D46).
@@ -143,3 +145,23 @@ from the rehearsal.
   and writes them locally and loads Neon directly from the laptop.
 - **Why:** the messages are the client's, even pseudonymised. Loading from the laptop also avoids the 4.5 MB request
   limit of a Vercel function.
+
+## D16. Flags mean a main thread, not anyone
+
+- **Choice:** `excited`, `frustrated` and `help` ask whether that feeling or request is a main thread of the
+  conversation (more than a passing remark; in a one- or two-message conversation, the message itself), not whether
+  anyone in it shows it. `bug` covers defects, crashes and performance. The wording is in `ingest/flags.py` (v4).
+- **Alternative:** the first wording (v1), "does anyone ...".
+- **Why, measured:** under v1 a long chat often holds one happy line and one grumble, so the flags
+  stopped separating anything. On the same 60 conversations, the ones flagged both excited and frustrated fell from 15
+  to 1 going from v1 to v4. On the full run of 2,362: both flags from 20.1% to 0.7%, excited 35.0% to 10.3%,
+  frustrated 42.2% to 19.4%, help 51.1% to 36.3%. A slice like "what are people frustrated about" now holds the
+  conversations that are about it. The hand audit (docs/DATA.md) found 37 of 41 fired flags right.
+
+## D17. No topic duplicates a flag (the human's call)
+
+- **Choice:** the "bugs and performance" topic is removed; bugs are the `bug` flag only.
+- **Alternative:** keep both, as first suggested.
+- **Why:** two labels for one question disagree at the edges, and the agent then has two answers to "how many bug
+  reports". A topic says what a conversation is about, a flag what kind of message it holds. **The human removed the
+  topic.**

@@ -10,9 +10,10 @@ message behind it and checked, or a plain "the data cannot answer that".
 
 - **A message** is one Discord message (channel, pseudonymous author, UTC time, reactions, reply parent). It is what
   answers cite.
-- **A conversation** is a piece of one channel's activity: split at 15-minute pauses, long sessions cut into 20-40
-  message pieces at their longest pause. It is what the agent searches, reads, labels and counts. Every message is in
-  exactly one conversation.
+- **A conversation** is a piece of one channel's activity: split at 15-minute pauses; a session over 40 messages is
+  cut at its longest pause 20-40 messages in, repeatedly, and the last piece keeps the remainder. It is what the agent
+  searches, reads, labels and counts. Every message is in exactly one conversation. **2,362 conversations**: median 4
+  messages, p90 33, max 40.
 - **Now** is the last message, 2026-09-27 19:30 UTC. "The last 3 days" means 09-24 19:30 to 09-27 19:30 UTC.
 - **It cannot count:** anything outside these 11 channels (Reddit, Steam reviews, sales, revenue), anything before
   2026-09-13, readers who never wrote, reach (reactions are on 4.5% of messages, at most 8), or intent beyond the
@@ -68,8 +69,9 @@ All with alternatives and reasons in [DECISIONS.md](DECISIONS.md). The short ver
    its decisions against this data (D1).
 2. **The unit is a pause-split conversation piece**, chosen after measuring reply trees and fixed windows (D3).
 3. **"Resonating" = authors + replies + reactions**, because reactions alone are too sparse (D5).
-4. **Labels are probabilities** from Jev, over 13 topics discovered in the data and edited by hand (D6), with
-   `excited` and `frustrated` flags for the brief (D8).
+4. **Labels are probabilities** from Jev, over 12 topics discovered in the data and edited by hand (D6), with
+   `excited` and `frustrated` flags for the brief (D8). A flag means a main thread of the conversation, not one
+   remark (D16), and no topic duplicates a flag (D17).
 5. **Two retrieval tools**: `scan` reads a whole slice for "what are people saying"; `find` searches for a named
    thing (D10). Numbers come from SQL, never from the model (D11).
 6. **Every cited claim is checked**, and weak ones rewritten once (D12).
@@ -108,16 +110,46 @@ Full tables: `eval/results/report.md`.
 
 ## Label audit
 
-TODO: ~30 conversations read by hand against their labels (topic, sentiment, excited, frustrated).
+30 conversations (10 per size band, fixed seed) read against their final labels, plus 10 random pricing ones
+(docs/DATA.md): **topics right 21/30** (6 miss a clear topic, 4 carry a wrong pricing), **fired flags right 37/41**
+(whole conversation 24/30), **sentiment direction 30/30**. **Pricing is over-assigned**: 5 of 10 random pricing
+conversations are right; it fires on any buying word in passing, "value for my money", "DLC" as a name, in-game
+currency, and context messages. Its stricter description listed "purchases ... store items", and Jev read the list
+as trigger words: the share rose from 11.9% to 15.9%. Read pricing counts as an upper bound.
+
+**Label shares** (final run, 2,362 conversations, p >= 0.5):
+
+| flags | | topics | | | |
+|---|---|---|---|---|---|
+| help | 36.3% | lore and story | 17.8% | Tides Remastered | 10.2% |
+| noise | 35.4% | other games | 17.1% | Domains | 9.3% |
+| frustrated | 19.4% | pricing and editions | 15.9% | Bushido final update | 6.2% |
+| bug | 13.9% | series direction | 13.4% | RPG-era games | 4.4% |
+| feature | 13.4% | classic games | 10.8% | multiplayer and co-op | 4.2% |
+| excited | 10.3% | *no topic* | 34.4% | Ebontide and new quests | 1.2% |
+| | | | | Hollow and future titles | 0.7% |
+
+A conversation can carry several topics and flags, so the columns do not sum to 100%.
 
 ## Cost
 
-TODO: the build's spend from `data/work/spend.json` (Jev labels, embeddings, Flash-Lite) and the eval's.
+The build's paid calls, from the `budget.py` ledger (`data/work/spend.json`, cap $3.00, re-runs included):
+**$0.62 in total**.
+
+| kind | model | calls | input tokens | cost |
+|---|---|---|---|---|
+| labels (every run and re-run) | Jev via OpenRouter | 4,924 | 11.6 M | $0.49 |
+| embeddings | gemini-embedding-2 | 32 batches | 0.66 M | $0.13 |
+| topic suggestion | Gemini Flash-Lite | 1 | 35 K | $0.004 |
+
+Embeddings are priced at list price (the API returns no usage figure). The agent's and the eval's Gemini calls
+(agent, rewrite, judge) and the app's Jev calls (rerank, scan, claim check) are not in the ledger; they were not
+measured tonight.
 
 ## Known limits
 
 - Conversation pieces are cut at pauses, not at subject changes; a piece can still hold two subjects.
-- Jev labels were audited on a small sample only (above).
+- Jev labels were audited on a small sample only (above); `pricing-and-editions` is over-assigned, its counts run high.
 - Reactions are too sparse to measure reach; engagement is a proxy.
 - The eval's questions and rubrics were written by the builder, who had read the data: they show direction and
   regressions, not a benchmark score. One judge model.
