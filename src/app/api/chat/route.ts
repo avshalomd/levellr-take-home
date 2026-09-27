@@ -14,7 +14,8 @@ import { QUESTION_MAX, questionLength, tooLongWords } from "@/lib/question-limit
 import type { ChatMessage } from "@/lib/agent/ui-types";
 import { finishTurn, startTurn } from "@/lib/data/chats";
 import { ownerId } from "@/lib/owner";
-import { friendly, modelIdOf } from "@/lib/llm/errors";
+import { modelIdOf } from "@/lib/llm/errors";
+import { chatWindow, slimWindow, turnErrorWords } from "./turn";
 
 // One chat turn: the agent streams (text, tool calls, tool results, scan progress), then the verification pass
 // streams its per-claim badges into the same message, then how many conversations back each claim. The client renders
@@ -74,7 +75,7 @@ export async function POST(req: Request) {
 
   const stream = createUIMessageStream<ChatMessage>({
     originalMessages: messages,
-    onError: (e) => friendly(e),
+    onError: (e) => turnErrorWords(e),
     // The whole chat is saved again once the answer (and its verification) is complete.
     onFinish: async ({ messages: all }) => {
       if (!id || !owner) return;
@@ -82,11 +83,13 @@ export async function POST(req: Request) {
     },
     execute: async ({ writer }) => {
       const [{ agent, tools, model }] = await Promise.all([makeAgent(writer), saved]);
-      // A step the reader stopped has a call and no result, which a provider rejects; it is left out.
-      const input = await convertToModelMessages(messages.slice(-12), {
-        tools,
-        ignoreIncompleteToolCalls: true,
-      });
+      // The last few questions that got an answer, starting at a question (turn.ts chatWindow, QA P18). The model is
+      // sent the earlier answers as their words and only the last one's tool results; the checks after it read the
+      // window whole, so a rate or a figure an earlier turn's tools gave is still known to them. A step the reader
+      // stopped has a call and no result, which a provider rejects; it is left out.
+      const recent = chatWindow(messages);
+      const convert = (m: ChatMessage[]) => convertToModelMessages(m, { tools, ignoreIncompleteToolCalls: true });
+      const [input, whole] = await Promise.all([convert(slimWindow(recent)), convert(recent)]);
       const result = await agent.stream({
         messages: input,
         // The answer is finished and saved even if the reader leaves (a reload, a closed tab), so it is waiting for
@@ -105,7 +108,7 @@ export async function POST(req: Request) {
         // Without it the SDK writes "An error occurred." for every failed tool call and every error part. A refused
         // call is a result, not an error (lib/agent/tools.ts); what is still an error gets the same plain words as a
         // failed answer, never our own exception text.
-        onError: (e) => friendly(e),
+        onError: (e) => turnErrorWords(e),
         messageMetadata: ({ part }) =>
           part.type === "start" ? { model: modelIdOf(model), startedAt } : undefined,
       }).getReader();
@@ -116,8 +119,8 @@ export async function POST(req: Request) {
       const steps = await result.steps;
       // Every step's messages: in AI SDK 7 result.response is the last step's only, so the rates, changes and figures
       // this turn's tools gave would never reach the checks, nor its results the cite pass.
-      const history = [...input, ...(await result.responseMessages)];
-      // The chat's earlier tool results, all of them, not only the last 12 messages the model is sent: a follow-up
+      const history = [...whole, ...(await result.responseMessages)];
+      // The chat's earlier tool results, all of them, not only the window the model is sent: a follow-up
       // that cites what an earlier turn read is checked against it (QA 2026-09-27, verify.ts).
       const earlier = chatToolSteps(messages);
       const after = await afterAgent({ steps, history, earlier }, (chunk) => writer.write(chunk));

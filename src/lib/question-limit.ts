@@ -10,6 +10,9 @@ export function questionLength(message: { parts?: ReadonlyArray<PartLike> } | un
   return (message?.parts ?? []).reduce((n, p) => n + (p.type === "text" && typeof p.text === "string" ? p.text.length : 0), 0);
 }
 
+/** A question past the cap: the route refuses it, and the page puts it back in the box to shorten (QA P11). */
+export const tooLong = (message: { parts?: ReadonlyArray<PartLike> } | undefined) => questionLength(message) > QUESTION_MAX;
+
 /** The line a question past the cap gets back. */
 export const tooLongWords = (length: number) =>
   `That question is ${length.toLocaleString("en-GB")} characters long. Keep it under ${QUESTION_MAX.toLocaleString("en-GB")} and ask again.`;

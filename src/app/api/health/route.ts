@@ -3,6 +3,7 @@ import { generateText } from "ai";
 import { db, dbConfigured } from "@/db";
 import { aiProvider, getModel } from "@/lib/ai";
 import { toLlmError } from "@/lib/llm/errors";
+import { commitOf } from "./commit";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +35,7 @@ export async function GET(req: Request) {
 
   const ok = database === "up";
   return Response.json(
-    { ok, database, ai, commit: process.env.APP_COMMIT ?? "local" },
+    { ok, database, ai, commit: commitOf() },
     { status: ok ? 200 : 503 },
   );
 }
