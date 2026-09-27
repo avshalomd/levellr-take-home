@@ -143,6 +143,14 @@ describe("corroborationWords", () => {
     expect(corroborationWords({ status: "failed", error: "x" })).toBeNull();
     expect(corroborationWords(undefined)).toBeNull();
   });
+  // QA P13: under an answer whose claims each rested on their own citations, the line explained a number not shown.
+  it("explains the number beside a claim only when some claim has one", () => {
+    const none = done(42, 42);
+    none.claims[0].moreTotal = 0;
+    expect(corroborationWords(none)?.text).toBe(
+      "Each claim was also checked against all 42 conversations that bore on the question. No other conversation among them repeats any claim.",
+    );
+  });
 });
 
 // QA 2026-09-27: "✓ Checked: 0 of 3 claims are backed" read as a pass. Fewer than half backed gets a warning.
