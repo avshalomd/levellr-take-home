@@ -63,6 +63,32 @@ This decides the unit ([DECISIONS.md, D3](../DECISIONS.md#d3-the-unit-pause-spli
 - **The subject drifts about every 30 minutes** inside a long session, which is why a long session is cut into
   pieces rather than read as one conversation.
 
+## Why a 15-minute silence
+
+A silence of more than 15 minutes between two messages in a channel starts a new session. Measured on the 25,555
+messages in `data/work/messages.jsonl`, channel by channel in time order:
+
+- **Gaps between consecutive messages** (minutes): median 0.4, p75 1.5, p90 9.9, p95 25.9, p99 118.
+- **Reply delay**, for the 9,444 replies whose parent is in the same channel (minutes): median 1.3, p75 7.3, p90 44.3.
+- **The threshold, swept:**
+
+| Silence that splits | Sessions | Single-message sessions | Largest session | Messages in sessions over 40 | Replies in another session from their parent |
+|---|---|---|---|---|---|
+| 2 min | 5,607 | 2,872 | 281 | 35.9% | 34.6% |
+| 5 min | 3,743 | 1,663 | 524 | 47.0% | 24.2% |
+| 10 min | 2,549 | 933 | 641 | 56.1% | 17.6% |
+| **15 min** | **1,933** | **619** | **1,054** | **62.2%** | **14.1%** |
+| 20 min | 1,566 | 477 | 1,149 | 67.7% | 11.5% |
+| 30 min | 1,135 | 301 | 1,149 | 74.1% | 8.5% |
+| 60 min | 600 | 144 | 1,308 | 86.5% | 4.4% |
+| 120 min | 263 | 52 | 3,648 | 93.8% | 1.7% |
+
+Shorter thresholds cut replies from what they answer and leave many one-message sessions; longer ones put most
+messages into sessions over 40, which are then cut at a pause anyway, so they mostly merge subjects that a long
+silence separated. The curve has no sharp elbow. 15 minutes sits just past the 90th percentile of gaps and keeps 86%
+of replies with their parent; the rest carry their parent as context (DECISIONS D4). It was not tuned against answer
+quality.
+
 ## What one row is, and what the agent cannot count
 
 In the README: [The unit, and what it cannot count](../README.md#the-unit-and-what-it-cannot-count).
