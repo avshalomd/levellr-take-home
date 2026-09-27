@@ -271,7 +271,7 @@ describe("checkAndRevise, a change stated the wrong way round", () => {
     const r = await checkAndRevise(qa, new Set(["msg1"]), history, { revision: (x) => events.push(x) });
     const prompt = (generateTextMock.mock.calls[0][0] as { prompt: string }).prompt;
     expect(prompt).toContain(
-      `A CHECK FOUND THESE CHANGES STATED THE WRONG WAY ROUND:\n- CLAIM: ${qa}\n  It says Updates & Feedback rose; the counts give Updates & Feedback −6% per day.`,
+      `A CHECK FOUND THESE CHANGES STATED THE WRONG WAY ROUND:\n- CLAIM: ${qa}\n  It says Updates & Feedback rose; the counts give Updates & Feedback down 6% per day.`,
     );
     expect(events[0]).toEqual({ status: "running", weak: 1 });
     expect(r.revision).toMatchObject({ status: "done", kept: true });
