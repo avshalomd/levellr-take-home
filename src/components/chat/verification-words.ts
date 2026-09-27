@@ -95,10 +95,12 @@ export function corroborationWords(c?: CorroborationPart): { running: boolean; t
   const by = `the ${READS[reads] ?? reads.toLocaleString("en-GB")} reads found`;
   const against =
     c.pool < c.found
-      ? `the ${convs(c.pool)} closest to the question, of the ${n} ${reads > 1 ? by : "found"} to bear on it`
+      ? `the ${convs(c.pool)} closest to the question, of the ${n} ${reads > 1 ? `${by} to bear on it` : "that bore on it"}`
       : c.found === 1
-        ? "the one conversation found to bear on the question"
-        : `all ${n} ${reads > 1 ? `different conversations ${by}` : "conversations found"} to bear on the question`;
+        ? "the one conversation that bore on the question"
+        : reads > 1
+          ? `all ${n} different conversations ${by} to bear on the question`
+          : `all ${n} conversations that bore on the question`;
   const lost = c.failed ? ` (${convs(c.failed)} could not be read)` : "";
   return { running: false, text: `Each claim was also checked against ${against}${lost}. The number beside a claim is how many more of them say it.` };
 }

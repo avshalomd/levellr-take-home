@@ -305,7 +305,7 @@ export function conversationsRead(reads: { filters: Filters; scanned: number }[]
   return { n: exact ? sets.reduce((t, n) => t + n, 0) : Math.max(0, ...sets), exact, sets };
 }
 
-type Read = { filters: Filters; scanned: number; question: string };
+type Read = { filters: Filters; scanned: number; question: string; relevant?: number };
 
 /** The reads as the summary line says them, one true sentence the steps under it bear out (QA 2026-09-26: "Read at
  *  least 118 conversations" over two steps that each said 118 read). One slice read once: "read 118 complaint threads".
@@ -317,7 +317,10 @@ export function readWords(reads: Read[]): string | null {
   if (reads.every((r) => sameSlice(r.filters, reads[0].filters))) {
     const { scanned: n, filters } = reads[0];
     const what = `${count(n)} ${kindWords(filters.flag, n)}`;
-    if (reads.length === 1) return `read ${what}`;
+    // How many of them bore on the question, beside how many were read: "Read 239 frustrated conversations" over a
+    // verification note saying "of the 219 found to bear on it" read as two counts of one thing (QA 2026-09-27).
+    const bore = reads[0].relevant;
+    if (reads.length === 1) return `read ${what}${bore === undefined || Number.isNaN(bore) || bore === n ? "" : ` (${count(bore)} bore on the question)`}`;
     const questions = new Set(reads.map((r) => r.question)).size;
     return `read the same ${what} ${times(reads.length)}${questions > 1 ? `, for ${inWords(questions)} questions` : ""}`;
   }
@@ -350,7 +353,7 @@ export function activitySummary(steps: StepLike[], topicNames: Map<string, strin
     }
     const o = s.output as Record<string, unknown> | null | undefined;
     const input = (s.input ?? {}) as Record<string, unknown>;
-    if (s.type === "tool-scan" && o?.status === "ok") reads.push({ filters: filtersOf(s), scanned: Number(o.scanned) || 0, question: String(input.question ?? "") });
+    if (s.type === "tool-scan" && o?.status === "ok") reads.push({ filters: filtersOf(s), scanned: Number(o.scanned) || 0, question: String(input.question ?? ""), relevant: o.relevant === undefined ? undefined : Number(o.relevant) });
     else if (s.type === "tool-scan") broad++;
     else if (s.type === "tool-find") searches++;
     else if (s.type === "tool-aggregate") counts.push(s);

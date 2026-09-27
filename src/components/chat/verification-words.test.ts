@@ -116,15 +116,15 @@ describe("corroborationWords", () => {
   });
   it("says what the claims were weighed against, all of it or the most relevant part", () => {
     expect(corroborationWords(done(42, 42))?.text).toBe(
-      "Each claim was also checked against all 42 conversations found to bear on the question. The number beside a claim is how many more of them say it.",
+      "Each claim was also checked against all 42 conversations that bore on the question. The number beside a claim is how many more of them say it.",
     );
-    expect(corroborationWords(done(1, 1))?.text).toContain("against the one conversation found to bear on the question.");
+    expect(corroborationWords(done(1, 1))?.text).toContain("against the one conversation that bore on the question.");
   });
   // QA 2026-09-26: under steps saying 85 and 18 bear on the question, "the 80 conversations closest to the question"
   // never said 80 was a cap; under steps saying 12 and 80, "all 80 conversations found" lost the 12.
   it("says how many of how many when the part read was cut, and never 'all' for a cut", () => {
     const one = corroborationWords(done(80, 224, 2))!.text;
-    expect(one).toContain("against the 80 conversations closest to the question, of the 224 found to bear on it (2 conversations could not be read).");
+    expect(one).toContain("against the 80 conversations closest to the question, of the 224 that bore on it (2 conversations could not be read).");
     expect(one).not.toMatch(/\ball\b/);
     expect(corroborationWords(done(80, 95, 0, 1, 2))!.text).toContain(
       "against the 80 conversations closest to the question, of the 95 the two reads found to bear on it.",
@@ -132,7 +132,7 @@ describe("corroborationWords", () => {
   });
   // Review 2026-09-26: reads are the different slices the scans read; a turn of searches alone has none.
   it("names no reads when only searches fed the pool", () => {
-    expect(corroborationWords(done(5, 5, 0, 1, 0))!.text).toContain("against all 5 conversations found to bear on the question.");
+    expect(corroborationWords(done(5, 5, 0, 1, 0))!.text).toContain("against all 5 conversations that bore on the question.");
   });
   it("says the conversations several reads found between them are counted once", () => {
     expect(corroborationWords(done(80, 80, 0, 1, 2))!.text).toContain("against all 80 different conversations the two reads found to bear on the question.");
