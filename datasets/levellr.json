@@ -1,0 +1,10 @@
+{
+  "name": "levellr",
+  "platform": "discord-json",
+  "community": "Veil of Ages Discord (Levellr sample)",
+  "about": "the Discord server of Veil of Ages, an action-adventure game franchise: Bushido is the current game and is getting its final content update, Tides Remastered is an upcoming remaster, and Hollow is an upcoming game",
+  "raw": "data/messages.json",
+  "via": "the JSON export sent with the Levellr brief",
+  "authors": "pseudonymous",
+  "bots": []
+}

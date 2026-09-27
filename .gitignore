@@ -4,6 +4,9 @@
 node_modules/
 .next/
 data/raw/
+data/messages.json
+data/work/
+.pytest_cache/
 __pycache__/
 .venv/
 
