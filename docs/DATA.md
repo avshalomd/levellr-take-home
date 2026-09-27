@@ -68,7 +68,8 @@ This decides the unit ([DECISIONS.md, D3](../DECISIONS.md#d3-the-unit-pause-spli
 A silence of more than 15 minutes between two messages in a channel starts a new session. Measured on the 25,555
 messages in `data/work/messages.jsonl`, channel by channel in time order:
 
-- **Gaps between consecutive messages** (minutes): median 0.4, p75 1.5, p90 9.9, p95 25.9, p99 118.
+- **Gaps between consecutive messages** (minutes): median 0.4, p75 1.5, p90 9.9, p95 25.9, p99 118. 1,922 of the
+  25,544 gaps (7.5%) run over 15 minutes.
 - **Reply delay**, for the 9,444 replies whose parent is in the same channel (minutes): median 1.3, p75 7.3, p90 44.3.
 - **The threshold, swept:**
 

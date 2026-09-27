@@ -53,8 +53,8 @@ topic editing back from production and why Jev makes it worth finishing (D6, D31
 - **Why 15 minutes:** a silence of more than 15 minutes starts a new session; 15 minutes or less keeps it going
   (`gap > 15 * 60` in `ingest/group.py`). 15 was a default for chat, accepted by the human, not tuned; it was
   measured afterwards on the 25,555 messages (docs/DATA.md § Why a 15-minute silence). Inside a channel, 90% of the
-  gaps between one message and the next are under 10 minutes (median 0.4), so a silence over 15 minutes is in the top
-  7% and usually means the talk stopped. Replies come fast: half within 1.3 minutes of their parent, 75% within 7.3.
+  gaps between one message and the next are under 10 minutes (median 0.4), and only 7.5% of gaps run over 15 minutes
+  (1,922 of 25,544), so such a silence usually means the talk stopped. Replies come fast: half within 1.3 minutes of their parent, 75% within 7.3.
   At 15 minutes 14.1% of replies land in another session from their parent (they carry it as context, D4). At 5
   minutes that is 24.2% and single-message sessions nearly triple (1,663 against 619); at 30 or 60 minutes, 74% or
   87% of messages sit in sessions over 40 that get cut at a pause anyway, so a longer threshold mostly glues separate
