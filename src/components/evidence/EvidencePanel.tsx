@@ -284,7 +284,7 @@ function ThreadView({
     if (!thread) return [];
     return layout(shape === "timeline" && focusRaw ? sessionOf(thread.nodes, focusRaw) : thread.nodes);
   }, [thread, shape, focusRaw]);
-  const geometry = useMemo(() => mapGeometry(laid, shape), [laid, shape]);
+  const geometry = useMemo(() => mapGeometry(laid), [laid]);
   const byTag = useMemo(() => new Map(laid.map((n) => [tagOf(n), n])), [laid]);
   const citedNum = useMemo(() => new Map(evidence.cited.map((t, i) => [t, i + 1])), [evidence.cited]);
   const levelOf = useCallback((tag: string) => supportLevel(evidence.support.get(tag)), [evidence.support]);
@@ -419,6 +419,8 @@ function ThreadView({
           geometry={geometry}
           shape={shape}
           source={source}
+          channel={thread.channel}
+          focusConv={focusConv}
           citedNum={citedNum}
           levelOf={levelOf}
           lit={lit}

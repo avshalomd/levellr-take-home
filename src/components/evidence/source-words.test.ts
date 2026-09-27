@@ -71,7 +71,9 @@ describe("mapHint", () => {
   it("says select, not tap, in both pictures, with the platform's engagement word", () => {
     expect(mapHint("tree", "votes")).toBe("Each dot is a message, each line a reply. Bigger dots drew more net votes; select one to open it.");
     expect(mapHint("tree", "score")).toContain("drew more engagement");
-    expect(mapHint("timeline", "reactions")).toBe("Messages in the order they were sent; an arc joins a reply to what it answers. Select one to open it.");
+    expect(mapHint("timeline", "reactions")).toBe(
+      "Each branch is a reply chain; top-level messages hang from the conversation. Bigger dots drew more reactions; select one to open it.",
+    );
     for (const h of [mapHint("tree", "reactions"), mapHint("timeline", "votes")]) expect(h).not.toMatch(/\btap\b/i);
   });
 });

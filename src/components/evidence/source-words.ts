@@ -68,8 +68,8 @@ export function readableText(s: string): string {
 /** The thread picture's caption when nothing is hovered. Device-neutral: "tap one" read wrong on a desktop with a mouse
  *  (QA 2026-09-26), and a dot is opened by a click, a tap or the keyboard alike. */
 export function mapHint(shape: "tree" | "timeline", kind: EngagementKind): string {
-  if (shape !== "tree") return "Messages in the order they were sent; an arc joins a reply to what it answers. Select one to open it.";
   const word = { votes: "net votes", reactions: "reactions", score: "engagement" }[kind];
+  if (shape !== "tree") return `Each branch is a reply chain; top-level messages hang from the conversation. Bigger dots drew more ${word}; select one to open it.`;
   return `Each dot is a message, each line a reply. Bigger dots drew more ${word}; select one to open it.`;
 }
 

@@ -6,13 +6,14 @@ import type { ThreadNode } from "@/lib/data/read";
 import { msgTag } from "@/lib/refs";
 import { cn } from "@/lib/utils";
 import type { ChipLevel } from "@/components/chat/CitationChip";
-import { nearest, type Laid, type MapGeometry, type Shape } from "./thread-tree";
+import { ROOT, nearest, type Laid, type MapGeometry, type Shape } from "./thread-tree";
 import { shortDate } from "@/components/chat/evidence";
 import { engagement, loudness, mapHint, type Source } from "./source-words";
 
-// The picture of a conversation at the top of the evidence panel. Every message is a dot and every reply a line: a
-// tree (reading order across, reply depth down) for a thread that opens with a post, a timeline with reply arcs for
-// a chat session (thread-tree.ts mapGeometry). The messages this answer cites are numbered like their chips, the
+// The picture of a conversation at the top of the evidence panel. Every message is a dot and every reply a line, drawn
+// as a reply tree (reading order across, reply depth down; thread-tree.ts mapGeometry). A chat session's top-level
+// messages hang from one node for the conversation itself ("#channel · N messages"), which is not a message and is
+// not selectable. A parent from an earlier session, carried as context, is drawn hollow and faint. The messages this answer cites are numbered like their chips, the
 // path down to the open message lights up, a hovered claim's messages glow, and the open one is ringed. A dot's size
 // says how much engagement it drew. Pointing picks the nearest dot, so a 400-message thread is still easy to hit.
 
@@ -24,6 +25,8 @@ export const ThreadMap = memo(function ThreadMap({
   geometry,
   shape,
   source,
+  channel,
+  focusConv,
   citedNum,
   levelOf,
   lit,
@@ -35,6 +38,8 @@ export const ThreadMap = memo(function ThreadMap({
   geometry: MapGeometry;
   shape: Shape;
   source?: Source;
+  channel: string;
+  focusConv: string | null;
   citedNum: Map<string, number>;
   levelOf: (tag: string) => ChipLevel;
   lit: Set<string>;
@@ -44,7 +49,9 @@ export const ThreadMap = memo(function ThreadMap({
 }) {
   const svg = useRef<SVGSVGElement>(null);
   const [hover, setHover] = useState<string | null>(null);
-  const { width: W, height: H, points, edges } = geometry;
+  const { width: W, height: H, points, edges, root } = geometry;
+  const isContext = useCallback((n: ThreadNode) => focusConv !== null && n.conversation_id !== focusConv, [focusConv]);
+  const onBranch = useCallback((e: { from: string; to: string }) => branch.has(e.to) && (e.from === ROOT || branch.has(e.from)), [branch]);
   const byId = useMemo(() => new Map(laid.map((n) => [n.id, n])), [laid]);
   const maxScore = useMemo(() => Math.max(1, ...laid.map((n) => n.score)), [laid]);
   const radius = useCallback((n: ThreadNode) => (citedNum.has(tagOf(n)) ? 6.4 : 1.6 + 2.6 * loudness(n.score, maxScore)), [citedNum, maxScore]);
@@ -57,18 +64,20 @@ export const ThreadMap = memo(function ThreadMap({
             piling up into a black bar; the lit branch is drawn on top at full strength. */}
         <g className="stroke-foreground" opacity={0.16}>
           {edges.map((e) =>
-            branch.has(e.from) && branch.has(e.to) ? null : <path key={`${e.from}-${e.to}`} d={e.d} fill="none" strokeWidth={0.8} strokeLinecap="round" />,
+            onBranch(e) ? null : <path key={`${e.from}-${e.to}`} d={e.d} fill="none" strokeWidth={0.8} strokeLinecap="round" />,
           )}
         </g>
         <g className="stroke-pulse" opacity={0.85}>
           {edges.map((e) =>
-            branch.has(e.from) && branch.has(e.to) ? <path key={`${e.from}-${e.to}`} d={e.d} fill="none" strokeWidth={1.5} strokeLinecap="round" /> : null,
+            onBranch(e) ? <path key={`${e.from}-${e.to}`} d={e.d} fill="none" strokeWidth={1.5} strokeLinecap="round" /> : null,
           )}
         </g>
         {laid.map((n) => {
           if (citedNum.has(tagOf(n))) return null;
           const p = points.get(n.id)!;
           const loud = loudness(n.score, maxScore);
+          if (isContext(n))
+            return <circle key={n.id} cx={p.x} cy={p.y} r={radius(n)} className="fill-background stroke-foreground/40" strokeWidth={0.8} strokeDasharray="1.5 1" />;
           return (
             <circle
               key={n.id}
@@ -80,9 +89,17 @@ export const ThreadMap = memo(function ThreadMap({
             />
           );
         })}
+        {root && (
+          <g>
+            <rect x={root.x - 3.5} y={root.y - 3.5} width={7} height={7} rx={1.5} className="fill-foreground/70" />
+            <text x={root.x + 7} y={root.y + 2.6} className="pointer-events-none fill-muted-foreground text-[7.4px] font-medium">
+              #{channel.replace(/^#/, "")} · {laid.length} {laid.length === 1 ? "message" : "messages"}
+            </text>
+          </g>
+        )}
       </>
     ),
-    [edges, laid, points, branch, citedNum, maxScore, radius],
+    [edges, laid, points, branch, citedNum, maxScore, radius, root, channel, isContext, onBranch],
   );
 
   const toLocal = (e: { clientX: number; clientY: number }) => {

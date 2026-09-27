@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { msgTag } from "@/lib/refs";
-import { branchOf, focusView, layout, mapGeometry, nearest, replyCounts, sessionOf, shapeOf, spanWords, threadFacts } from "./thread-tree";
+import { ROOT, branchOf, focusView, layout, mapGeometry, nearest, replyCounts, sessionOf, shapeOf, spanWords, threadFacts } from "./thread-tree";
 
 const n = (id: string, reply_to: string | null, min: number, kind = "comment", author = id, ref = 0) => ({
   id,
@@ -98,7 +98,7 @@ describe("sessionOf", () => {
 describe("mapGeometry", () => {
   it("places a tree by reading order across and reply depth down, one elbow per reply", () => {
     const laid = layout(thread);
-    const g = mapGeometry(laid, "tree", 400);
+    const g = mapGeometry(laid, 400);
     const xs = laid.map((l) => g.points.get(l.id)!.x);
     expect(xs).toEqual([...xs].sort((a, b) => a - b));
     expect(g.points.get("t1_a1x")!.y).toBeGreaterThan(g.points.get("t1_a1")!.y);
@@ -107,18 +107,20 @@ describe("mapGeometry", () => {
     expect(g.edges.every((e) => e.d.startsWith("M") && e.d.includes("V") && e.d.includes("H"))).toBe(true);
     for (const p of g.points.values()) expect(p.x >= 0 && p.x <= 400 && p.y >= 0 && p.y <= g.height).toBe(true);
   });
-  it("lays a chat session on one baseline in time order, with an arc only for each reply", () => {
+  it("hangs a chat session's top-level messages from a node for the conversation, replies under their parents", () => {
     const laid = layout(sessionOf(session, "d_3"));
-    const g = mapGeometry(laid, "timeline", 400);
-    const ys = new Set([...g.points.values()].map((p) => p.y));
-    expect(ys.size).toBe(1);
+    const g = mapGeometry(laid, 400);
+    expect(g.root).not.toBeNull();
+    expect(g.points.has(ROOT)).toBe(false);
     const order = [...g.points.entries()].sort((a, b) => a[1].x - b[1].x).map(([id]) => id);
-    expect(order).toEqual(["d_1", "d_2", "d_3", "d_4", "d_5"]);
-    expect(g.edges.map((e) => `${e.to}->${e.from}`)).toEqual(["d_3->d_1", "d_5->d_3"]);
-    expect(g.edges.every((e) => e.d.includes("Q"))).toBe(true);
+    expect(order).toEqual(laid.map((l) => l.id));
+    expect(g.edges.filter((e) => e.from !== ROOT).map((e) => `${e.to}->${e.from}`)).toEqual(["d_3->d_1", "d_5->d_3"]);
+    expect(g.edges.filter((e) => e.from === ROOT).map((e) => e.to)).toEqual(laid.filter((l) => l.depth === 0).map((l) => l.id));
+    expect(g.points.get("d_3")!.y).toBeGreaterThan(g.points.get("d_1")!.y);
+    expect(g.points.get("d_1")!.y).toBeGreaterThan(g.root!.y);
   });
   it("centres a single message", () => {
-    const g = mapGeometry(layout([thread[0]]), "tree", 400);
+    const g = mapGeometry(layout([thread[0]]), 400);
     expect(g.points.get("t3_p")!.x).toBe(200);
   });
 });

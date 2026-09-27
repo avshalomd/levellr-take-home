@@ -1,7 +1,8 @@
 // Pure logic for the evidence panel, kept free of React so it is unit-tested (thread-tree.test.ts):
 //  - layout: the reply tree in reading order, each node's depth;
-//  - shapeOf / sessionOf / mapGeometry / nearest: the picture of a conversation - a tree when it opens with a post the
-//    rest reply to (Reddit-shaped), a timeline with reply arcs when it is a chat session (Discord-shaped);
+//  - shapeOf / sessionOf: whether a conversation opens with one message the rest hang from (a thread) or is a chat
+//    session with many top-level messages; mapGeometry / nearest: its picture, always a reply tree, a session's
+//    top-level messages hanging from a node for the conversation itself;
 //  - focusView: what is open when the panel opens on one message - the message, what it answers, what answers it;
 //  - threadFacts / spanWords: the facts the panel header states.
 
@@ -88,46 +89,45 @@ export function sessionOf<T extends TreeInput & { conversation_id: string | null
   return nodes.filter((n) => n.conversation_id === conv || need.has(n.id));
 }
 
-export type MapGeometry = { width: number; height: number; points: Map<string, { x: number; y: number }>; edges: { from: string; to: string; d: string }[] };
+export type MapGeometry = {
+  width: number;
+  height: number;
+  points: Map<string, { x: number; y: number }>;
+  edges: { from: string; to: string; d: string }[];
+  /** Where the conversation itself sits when it has several top-level messages: not a message, never selectable. */
+  root: { x: number; y: number } | null;
+};
+
+/** The id edges use for the conversation's own node (never a message id). */
+export const ROOT = "__conversation__";
 
 const PAD = 9;
 
 /**
- * Where each message sits in the picture, in a `width`-wide coordinate space.
- * Tree: x is reading order, y is reply depth, and a reply hangs from its parent by an elbow.
- * Timeline: x is time order on one baseline, and a reply is an arc back to the message it answers - taller the
- * further back it reaches, so a long-range reply stands out from a quick back-and-forth.
+ * Where each message sits in the picture, in a `width`-wide coordinate space: a reply tree, reading order across and
+ * reply depth down, each reply hanging from its parent by an elbow. A chat session has many top-level messages; they
+ * hang from one node for the conversation itself (`root`), so the picture stays one tree, in the order people spoke.
  */
-export function mapGeometry<T extends TreeInput>(laid: Laid<T>[], shape: Shape, width = 400): MapGeometry {
+export function mapGeometry<T extends TreeInput>(laid: Laid<T>[], width = 400): MapGeometry {
   const points = new Map<string, { x: number; y: number }>();
   const edges: MapGeometry["edges"] = [];
-  const n = laid.length;
+  const tops = laid.filter((l) => l.depth === 0);
+  const hasRoot = tops.length > 1;
+  const shift = hasRoot ? 1 : 0;
+  const n = laid.length + shift;
   const xAt = (i: number) => (n <= 1 ? width / 2 : PAD + (i / (n - 1)) * (width - 2 * PAD));
-
-  if (shape === "tree") {
-    const maxDepth = Math.max(1, ...laid.map((l) => l.depth));
-    const dy = Math.min(14, Math.max(5, 72 / maxDepth));
-    for (const l of laid) points.set(l.id, { x: xAt(l.order), y: PAD + l.depth * dy });
-    for (const l of laid) {
-      const p = l.parentId ? points.get(l.parentId) : undefined;
-      const c = points.get(l.id)!;
-      if (p) edges.push({ from: l.parentId!, to: l.id, d: `M${r1(p.x)},${r1(p.y)} V${r1(c.y)} H${r1(c.x)}` });
-    }
-    return { width, height: PAD * 2 + maxDepth * dy, points, edges };
-  }
-
-  const height = 64;
-  const base = height - PAD;
-  const byTime = [...laid].sort((a, b) => a.ts.localeCompare(b.ts));
-  byTime.forEach((l, i) => points.set(l.id, { x: xAt(i), y: base }));
-  for (const l of byTime) {
-    const p = l.reply_to ? points.get(l.reply_to) : undefined;
-    if (!p) continue;
+  const maxDepth = Math.max(1, ...laid.map((l) => l.depth + shift));
+  const dy = Math.min(14, Math.max(5, 72 / maxDepth));
+  const root = hasRoot ? { x: xAt(0), y: PAD } : null;
+  for (const l of laid) points.set(l.id, { x: xAt(l.order + shift), y: PAD + (l.depth + shift) * dy });
+  const elbow = (p: { x: number; y: number }, c: { x: number; y: number }) => `M${r1(p.x)},${r1(p.y)} V${r1(c.y)} H${r1(c.x)}`;
+  for (const l of laid) {
     const c = points.get(l.id)!;
-    const rise = Math.min(base - PAD, 8 + Math.abs(c.x - p.x) * 0.35); // apex height of the arc
-    edges.push({ from: l.reply_to!, to: l.id, d: `M${r1(c.x)},${base} Q${r1((c.x + p.x) / 2)},${r1(base - 2 * rise)} ${r1(p.x)},${base}` });
+    const p = l.parentId ? points.get(l.parentId) : undefined;
+    if (p) edges.push({ from: l.parentId!, to: l.id, d: elbow(p, c) });
+    else if (root) edges.push({ from: ROOT, to: l.id, d: elbow(root, c) });
   }
-  return { width, height, points, edges };
+  return { width, height: PAD * 2 + maxDepth * dy, points, edges, root };
 }
 
 const r1 = (v: number) => Math.round(v * 10) / 10;
