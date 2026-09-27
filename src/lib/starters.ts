@@ -24,7 +24,7 @@ const COMMON_LEAD = new Set(
     "servers server cheating esports merch trading art fan fans music technical account accounts support player " +
     "players new upcoming future release releases launch content monetisation monetization reviews review hardware " +
     "platform platforms crossplay social moderation spoilers off-topic chatter combat parkour stealth quests " +
-    "editions access progression"
+    "editions access progression maps modes competitive tools"
   ).split(" "),
 );
 

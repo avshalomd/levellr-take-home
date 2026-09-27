@@ -43,6 +43,19 @@ describe("words", () => {
     expect(inSentence("New AI Tools")).toBe("new AI tools");
     expect(inSentence("Servers in Europe")).toBe("servers in Europe");
   });
+
+  // QA P7: Explore asked about "domains" and "tides remastered"; it now follows the chat page's rule (starters.ts).
+  it("keeps a proper noun's capitals, as the chat page's topic chips do", () => {
+    const names = [
+      { key: "domains", name: "Domains" },
+      { key: "tides-remastered", name: "Tides Remastered" },
+      { key: "pricing", name: "Pricing, editions and monetisation" },
+    ];
+    const q = (key: string) => describeSel([{ topic: key, period: wk("2026-09-14") }], names, weeks, "week", W).question;
+    expect(q("domains")).toBe("What were people saying about Domains in the week of 14 September 2026?");
+    expect(q("tides-remastered")).toBe("What were people saying about Tides Remastered in the week of 14 September 2026?");
+    expect(q("pricing")).toBe("What were people saying about pricing, editions and monetisation in the week of 14 September 2026?");
+  });
 });
 
 describe("when", () => {
