@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { Described } from "@/lib/data/insights-question";
-import { BottomSheet, SelectionBody, SideColumn, shareWords, sideEnter, type Detail, type Draft } from "./SelectionPanel";
+import { BottomSheet, SelectionBody, SideColumn, sessionWords, shareWords, sideEnter, type Detail, type Draft } from "./SelectionPanel";
 
 // The selection's two containers as they are first drawn. QA 2026-09-26: Weeks -> Days with a square selected left the
 // side column an empty card for a second or two, and the phone sheet floated 12px above the bottom edge.
@@ -75,13 +75,13 @@ describe("SelectionBody", () => {
     totals: agg,
     people: 9,
     sessions: [
-      { sessionId: "msg_1", ref: 12, channel: "game-chat", opening: "Domains tier 5 is brutal", started: "2026-09-15", engagement: 12, conversations: 1, messages: 8, moodAvg: 0.4 },
+      { sessionId: "msg_1", conversationIds: ["msg_1:w0"], channel: "game-chat", opening: "Domains tier 5 is brutal", started: "2026-09-15", engagement: 12, conversations: 1, messages: 8, moodAvg: 0.4 },
     ],
     voices: [{ author: "someone", messages: 5, conversations: 2, reactions: 6, started: 1, first_ts: "", last_ts: "" }],
   };
   const draft: Draft = { question: "What about Domains?", setQuestion: () => {}, suggestions: [], ask: () => {} };
   const html = renderToStaticMarkup(
-    <SelectionBody described={described} combined={agg} population={agg} inPeriods={4} detail={detail} draft={draft} onClear={() => {}} onRetry={() => {}} />,
+    <SelectionBody described={described} combined={agg} population={agg} inPeriods={4} detail={detail} draft={draft} onClear={() => {}} onRetry={() => {}} onOpen={() => {}} />,
   );
 
   it("writes engagement as a score and a person's number as reactions", () => {
@@ -95,6 +95,21 @@ describe("SelectionBody", () => {
     expect(html).toContain("#game-chat</span> Domains tier 5 is brutal");
     expect(html).toContain("Domains tier 5 is brutal");
   });
+
+  // QA P1: a row asked the chat "What did people say in conv1268 in #remaster-discussion?". It opens the session now.
+  it("opens a session to read, and never puts a handle on the page", () => {
+    expect(html).toContain('title="Read this session"');
+    expect(html).not.toMatch(/conv\d|What did people say/);
+  });
+
+  // QA P15: "116 messages" under "Busiest conversations", beside a legend that caps a conversation at 40.
+  it("lists sessions, and says how many conversations a long one holds", () => {
+    expect(html).toContain("Busiest sessions");
+    expect(html).not.toContain("Busiest conversations");
+    const t = { started: "2026-09-15", engagement: 45, conversations: 3, messages: 116 };
+    expect(sessionWords(t)).toBe("15 Sep, 116 messages in 3 conversations, engagement score 45");
+    expect(sessionWords({ ...t, conversations: 1, messages: 8, engagement: 12 })).toBe("15 Sep, 8 messages, engagement score 12");
+  });
 });
 
 // D46: the selection's conversations are distinct, and until the server has counted them across topic rows the panel
@@ -106,7 +121,7 @@ describe("the selection's counts, multi-label", () => {
 
   it("shows placeholders, not a double-counted sum, while the distinct count is on its way", () => {
     const html = renderToStaticMarkup(
-      <SelectionBody described={described} combined={null} population={population} inPeriods={40} detail={{ state: "loading" }} draft={draft} onClear={() => {}} onRetry={() => {}} />,
+      <SelectionBody described={described} combined={null} population={population} inPeriods={40} detail={{ state: "loading" }} draft={draft} onClear={() => {}} onRetry={() => {}} onOpen={() => {}} />,
     );
     expect(html).toContain("Counting the conversations…");
     expect(html).not.toMatch(/% of the 40 conversations/);

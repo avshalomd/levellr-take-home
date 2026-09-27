@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion, type PanInfo } from "motion/react";
-import { ArrowUp, ArrowUpRight, X } from "lucide-react";
+import { ArrowUp, ArrowUpRight, ListTree, X } from "lucide-react";
 import { useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { dayMonth, fmtInt, moodOf, plural, type Agg } from "@/lib/data/insights-model";
@@ -36,6 +36,7 @@ type Props = {
   draft: Draft;
   onClear: () => void;
   onRetry: () => void;
+  onOpen: (s: Session) => void; // a busiest session, opened in the reply tree
 };
 
 /** What a selection holds, and the way into the chat. Rendered inside the side column or the bottom sheet. */
@@ -48,6 +49,7 @@ export function SelectionBody({
   draft,
   onClear,
   onRetry,
+  onOpen,
 }: Props) {
   return (
     <div className="flex flex-col gap-6">
@@ -73,7 +75,7 @@ export function SelectionBody({
 
       <Counts combined={combined} inPeriods={inPeriods} detail={detail} />
       <Mood combined={combined} population={population} />
-      <Sessions detail={detail} onRetry={onRetry} onAsk={draft.ask} />
+      <Sessions detail={detail} onRetry={onRetry} onOpen={onOpen} />
       <Voices detail={detail} onAsk={draft.ask} />
     </div>
   );
@@ -263,14 +265,18 @@ function Mood({ combined, population }: { combined: Agg | null; population: Agg 
 // ---------- the sessions ----------
 
 // Discord has no threads or titles here: the busiest sessions (D3) stand in for the busiest threads, named by
-// their channel and first message. Asking about one names its convN handle, which the chat's read_conversation takes.
-function Sessions({ detail, onRetry, onAsk }: { detail: Detail; onRetry: () => void; onAsk: (q: string) => void }) {
+// their channel and first message. A row opens the session in the reply tree (Explore's evidence sheet); it used to
+// ask the chat about its convN handle, which put the handle in the question, the title and the sidebar and drew an
+// empty answer (QA P1, 2026-09-27). The list is of sessions, not conversations: "116 messages" under "Busiest
+// conversations" read wrong beside a legend that caps a conversation at 40 (QA P15), so a session cut into several
+// conversations says how many.
+function Sessions({ detail, onRetry, onOpen }: { detail: Detail; onRetry: () => void; onOpen: (s: Session) => void }) {
   return (
     <section>
-      <h3 className="mb-2 text-[13px] font-semibold text-foreground">Busiest conversations</h3>
+      <h3 className="mb-2 text-[13px] font-semibold text-foreground">Busiest sessions</h3>
       {detail.state === "error" ? (
         <div className="rounded-lg bg-foreground/[0.04] px-3 py-2.5 text-[13px] text-muted-foreground">
-          The conversations did not load.{" "}
+          The sessions did not load.{" "}
           <button type="button" onClick={onRetry} className="font-medium text-pulse hover:underline">
             Try again
           </button>
@@ -289,20 +295,17 @@ function Sessions({ detail, onRetry, onAsk }: { detail: Detail; onRetry: () => v
             <li key={t.sessionId}>
               <button
                 type="button"
-                onClick={() => onAsk(`What did people say in conv${t.ref} in #${t.channel}?`)}
-                title="Ask about this conversation"
+                onClick={() => onOpen(t)}
+                title="Read this session"
                 className="group flex w-full items-start gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-foreground/[0.04]"
               >
                 <span className="min-w-0 flex-1">
                   <span className="line-clamp-2 text-[13.5px] leading-snug text-foreground">
                     <span className="text-muted-foreground">#{t.channel}</span> {t.opening}
                   </span>
-                  <span className="mt-0.5 block text-[12px] text-muted-foreground">
-                    {dayMonth(t.started)}, {plural(t.messages, "message", "messages")},{" "}
-                    engagement score {fmtInt(t.engagement)}
-                  </span>
+                  <span className="mt-0.5 block text-[12px] text-muted-foreground">{sessionWords(t)}</span>
                 </span>
-                <ArrowUpRight className="mt-0.5 size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
+                <ListTree className="mt-0.5 size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
               </button>
             </li>
           ))}
@@ -310,6 +313,13 @@ function Sessions({ detail, onRetry, onAsk }: { detail: Detail; onRetry: () => v
       )}
     </section>
   );
+}
+
+/** A busiest row's numbers: "15 Sep, 116 messages in 3 conversations, engagement score 45". A session of one
+ *  conversation is "15 Sep, 8 messages, engagement score 12". */
+export function sessionWords(t: Pick<Session, "started" | "messages" | "conversations" | "engagement">): string {
+  const parts = t.conversations > 1 ? ` in ${fmtInt(t.conversations)} conversations` : "";
+  return `${dayMonth(t.started)}, ${plural(t.messages, "message", "messages")}${parts}, engagement score ${fmtInt(t.engagement)}`;
 }
 
 // ---------- the people ----------
@@ -403,8 +413,8 @@ export function EmptyHint() {
         <li>{keys("Esc")} to start again</li>
       </ul>
       <p className="text-[13.5px]">
-        You will see the numbers behind it, the busiest conversations, and a question you can edit before you ask
-        it.
+        You will see the numbers behind it, the busiest sessions to read, and a question you can edit before you
+        ask it.
       </p>
     </div>
   );
