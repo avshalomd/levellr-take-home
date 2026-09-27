@@ -9,6 +9,11 @@ main thread (D16), topics and flags as two axes (D17), two retrieval tools and h
 (D10), numbers from code (D11), and the claim check (D12). The agent model and why it stayed on 2.5 Flash after a
 measured comparison are in D9; why topic editing is held back from production is in D31.
 
+D34 to D44 are the decisions of release `v1.1`, made to fix what the QA passes found ([docs/QA.md](docs/QA.md)): the
+model's history window (D34), answers kept to the community's own games (D35), the first-step read rules (D36), one
+scope check on every turn (D37), counted figures from this turn only (D38), and the rest. Where one changes an earlier
+decision, the earlier entry says so.
+
 ## D1. A Python ingest, a TypeScript app, one Postgres
 
 - **Choice:** the dataset is built by a Python pipeline run from the laptop (normalize, group, sample, suggest,
@@ -28,6 +33,9 @@ measured comparison are in D9; why topic editing is held back from production is
 - **Alternative:** the server's clock.
 - **Why:** the export is a snapshot; against the wall clock every relative question would come back empty or wrong
   the day after it was sent.
+- **Since v1.1:** dates written inside messages do not match the timestamps (docs/DATA.md, QA P8), so the
+  instructions say to quote such a date as the message writes it, add no year, and never call it upcoming or past
+  against now. This is a prompt rule only. A period asked for outside the data is D44.
 
 ## D3. The unit: pause-split sessions, long ones cut at the best silence
 
@@ -127,10 +135,11 @@ measured comparison are in D9; why topic editing is held back from production is
   `gemini-3.5-flash-lite` and `gemini-embedding-2`.
 - **Agent model:** Gemini 2.5 Flash. The alternative was 3.8 Flash, likely better at using tools. 2.5 Flash was
   chosen so as not to hit the key's cap through 3.8's higher cost, with 3.8 kept one setting away. After the build
-  both ran the same 35 questions on the same code (README, Eval). 3.8 Flash was judged right on 35 of 35 against 34
-  of 35, but took about three times as long (median 19.4 s against 6.7 s) and made more tool calls (68 against 42).
-  Production stays on 2.5 Flash: the quality is near equal, it is faster, and it spends less of the capped key. The
-  3.8 run stays in the eval docs as the comparison. One env var (`AI_MODEL`) switches it.
+  both ran the same 35 questions on the same code, the `v1.0` code at `96f625f` (README, Eval). 3.8 Flash was judged
+  right on 35 of 35 against 34 of 35, but took about three times as long (median 19.4 s against 6.7 s) and made twice
+  as many tool calls (110 against 55). Production stays on 2.5 Flash: the quality is near equal, it is faster, and it
+  spends less of the capped key. The 3.8 run stays in the eval docs as the comparison; it was not rerun on the `v1.1`
+  code. One env var (`AI_MODEL`) switches it.
 - **Jev for closed judgments, outside the provided key, stated openly.** Jev answers closed
   questions with calibrated probabilities and writes no text, which is what labels, rerank and the claim check need;
   the alternative is thousands of Flash calls on a capped key, parsed from prose. Its low price also makes relabelling
@@ -167,9 +176,9 @@ measured comparison are in D9; why topic editing is held back from production is
   questions in the eval are graded against SQL run at eval time.
 - **Checked after the answer:** every figure in a cited claim that neither its messages nor any tool result contains
   is flagged (`unbackedFigures` in `src/lib/agent/verify.ts`). A figure the answer tags `[aggregate]`, `[scan]` or
-  `[voices]` must come from that tool having run somewhere in the chat; if it never ran, the claim fails and the
-  figure is named under the answer (`sourcelessFigures` in `rates.ts`). Added after the eval caught
-  "60/100 [aggregate]" in an answer that had made no tool call.
+  `[voices]` must come from that tool having run in this turn; if it did not, the claim fails and the figure is named
+  under the answer (`sourcelessFigures` in `rates.ts`). Added after the eval caught "60/100 [aggregate]" in an answer
+  that had made no tool call. In `v1.0` a tool run anywhere in the chat was enough; D38 narrowed it to this turn.
 - **Alternative:** trust the model's arithmetic and its tags.
 - **Why:** models miscount; a community manager will repeat the number in a meeting.
 
@@ -184,8 +193,13 @@ measured comparison are in D9; why topic editing is held back from production is
 - **Alternative:** trust the model's citations.
 - **Why:** the brief asks for answers grounded in the messages, and a citation that does not support its sentence
   is worse than none.
-- **Known gaps in v1.0** (docs/QA.md): the check asks whether a message supports its sentence, so it passes a
-  supported sentence about another game (P2) and some paraphrases whose meaning drifted (P9).
+- **Changed in v1.1:** for a question kept to the community's own games, the same Jev call also asks whether each
+  cited message is about something else, and such a citation backs nothing (D35). The support question fails a claim
+  that changes or adds to the message's meaning (D42). A figure tagged as counted must come from this turn's tools
+  (D38). A Jev call refused by a busy pool is retried with longer waits (D40).
+- **Known gap in v1.1** (docs/QA.md, P9): a claim that says more than its cited message can still pass. In the
+  release-candidate QA, "pre-ordering and expressing excitement for new game plus, new pets" passed on "pre order
+  done 😍"; the next message, not cited, named the other two.
 
 ## D13. "What should we post?" is answered as suggestions
 
@@ -193,8 +207,14 @@ measured comparison are in D9; why topic editing is held back from production is
   suggestions, not findings.
 - **Alternative:** answer it as a finding, like any other question.
 - **Why:** the data shows what people talk about; what to post is a judgement the tool can support, not a fact.
-- **Known gap in v1.0:** the post answer can rest on the excitement scan alone, one message per idea, with no
-  engagement measure behind it (docs/QA.md, P4).
+- **Changed in v1.1** (docs/QA.md, P4: in `v1.0` three ideas rested on one message each, with no engagement measure
+  behind them): a post read ranks the relevant excited conversations by engagement, most engaged first (`scan.ts`,
+  `rank: "engagement"`). The instructions ask for a count of engagement by topic first, then that read, top 15; each
+  idea rests on messages from at least two conversations, or its own line ends "(only one conversation shows this)".
+  A topic's engagement score is given once, for that topic only, never to two ideas. The count is asked for, not
+  forced: forcing it produced over a thousand repeated calls in one step (D39).
+- **Known gap in v1.1:** the thin marker is a prompt rule only, added after the release-candidate QA, where two of
+  four ideas still rested on one message each.
 
 ## D14. UI scope
 
@@ -276,8 +296,11 @@ measured comparison are in D9; why topic editing is held back from production is
   prompt's examples name the Domains and Ebontide. A relabel which renames or removes those topics would break the
   rule. The topic list the agent sees is read from the data on every
   request; the rule should read a "general" flag on the topic in the same way (README, Roadmap).
-- **Known gap in v1.0:** production QA still found other games in an excitement answer (P6) and GTA 6 pricing in a
-  frustrations answer (P2), and the frustrations chart still ranks "other" and other games (P5; docs/QA.md).
+- **Held by code since v1.1:** production QA of `v1.0` found other games in an excitement answer (P6), GTA 6
+  pricing in a frustrations answer (P2), and "other" and other games ranked in the frustrations chart (P5). The rule
+  now holds in the scan and the claim check, not only in the prompt (D35), and the chart filter also covers
+  frustration questions (`activity-words.ts`). A topic the label set leaves unnamed is shown by a name made from its
+  key ("Other"), never the bare key (QA N6).
 
 ## D21. Embeddings: gemini-embedding-2, not embedding-001
 
@@ -288,14 +311,19 @@ measured comparison are in D9; why topic editing is held back from production is
   model; the ingest and query sides use the same model
   and settings. 768 dimensions keeps the index small. The two were not compared on this data.
 
-## D22. Deploys are by hand, and production is frozen at v1.0
+## D22. Deploys are by hand, and production runs a tagged release
 
 - **Choice:** Vercel git deploys are off (`vercel.json`); a production deploy is `vercel deploy --prod`, run by hand.
   Checked work was deployed until a freeze just before delivery; then production was frozen and tagged: `v1.0` is the
-  deployed commit `2ae6130`, and commits after it change docs only.
+  deployed commit `2ae6130`. The fixes from its QA went out as release `v1.1`, commit `58a906f`. Commits after a tag
+  change docs only.
+- **The deployed commit is readable (since v1.1):** `/api/health` reports it, from `APP_COMMIT` set at deploy time
+  (`vercel deploy --prod --yes --env APP_COMMIT=$(git rev-parse --short HEAD)`) or Vercel's own
+  `VERCEL_GIT_COMMIT_SHA`, else "local" (`src/app/api/health/commit.ts`). Production reports `"commit":"58a906f"`.
+  In `v1.0` every CLI deploy said "local", and the production QA could not tell which build it had tested (P16).
 - **Alternative:** deploy on every push to `main`.
 - **Why:** the capped key pays for every question the live app answers; nothing reaches it by accident on a push.
-  The tag lets a reviewer read the exact code the live app runs.
+  The tag lets a reviewer read the exact code the live app runs, and the health check shows it is that code.
 
 ## D23. The pricing topic tightened after the hand audit
 
@@ -317,7 +345,10 @@ measured comparison are in D9; why topic editing is held back from production is
 - **Why:** QA (docs/QA.md, Q1): "which of those are bugs?" answered from the previous turn's reads, and the check
   failed every claim although the same messages had backed them one turn earlier. The guard that matters, that the
   agent cannot cite what it never saw, holds either way.
-- **Known gap in v1.0:** a follow-up that calls no tool and cites nothing is not checked at all (docs/QA.md, P3).
+- **Changed in v1.1:** in `v1.0` a follow-up that called no tool and cited nothing was not checked at all (P3). Now
+  a follow-up that names a slice, or asks for more on something the last answer said, must read on its first step
+  (D36), and a turn with no tool call and no citation goes through the scope check (D37). A figure tagged as counted
+  still needs a tool in this turn, whatever earlier turns counted (D38).
 
 ## D25. A sentence that lists several things must be backed whole
 
@@ -335,6 +366,12 @@ measured comparison are in D9; why topic editing is held back from production is
 - **Why:** that rule fixed claims that were shown but never checked, but it also kept drafts: in the eval (O02),
   "60/100 [aggregate]" written beside an out-of-scope call stayed in the answer, above the answer written after
   reading. Cutting at the last tool call keeps the check's guarantee and drops the draft.
+- **Since v1.1, an empty step is asked again** (QA P1): a question opened from Explore came back with no words and no
+  tool call, so the loop ended before its forced last step and the page said the answer was not finished; two of
+  three runs of that question on Gemini 2.5 Flash were empty. A model step with no words and no tool call is asked
+  again once, made to call a tool when it was offered tools (`retryEmpty` in `agent.ts`). A turn that still ends with
+  no words is answered once from what the tools returned; with nothing read, that answer says what it could not
+  establish.
 
 ## D27. A weak check reads as a warning
 
@@ -352,6 +389,7 @@ measured comparison are in D9; why topic editing is held back from production is
 - **Why:** QA (Q4): 72 of 80 reads failed with nothing in the log. All were OpenRouter 429s: every Jev call shares
   OpenRouter's pool for the model, and direct TypeSafe is out of credit, so there was no second route. After the change
   a rerun read 80 of 80.
+- **Since v1.1:** the retry lives in `lib/llm/retry.ts`, shared with the claim check, which waits longer (D40).
 
 ## D29. A question is capped at 2,000 characters
 
@@ -413,3 +451,166 @@ measured comparison are in D9; why topic editing is held back from production is
 - **Why:** this is a take-home, and both can be taken down once the review is done. A reviewer can open the code and ask the live app a question without an account. The cost is that every
   question spends the provided capped key, which the README says next to the URL; the question length cap (D29)
   keeps a pasted document off it.
+
+## D34. The model is sent the last 6 answered exchanges (v1.1)
+
+- **Choice:** with a new question, the model is sent the last 6 questions that got an answer, each followed by that
+  answer (`chatWindow` in `src/app/api/chat/turn.ts`). The window always starts at a question. A question whose answer
+  has no words (it failed, or was stopped) is left out with it. Only the last answer keeps its tool results in full,
+  so "which of those are bugs?" can answer from them; the earlier answers are sent as the words the reader saw
+  (`slimWindow`). The checks after the agent still read the whole window with its tool results, and the claim check
+  every tool result in the chat (D24). A provider's refusal is shown as one plain line, and its reason is logged.
+- **Alternatives:** the `v1.0` rule, the last 12 messages of the chat; or send only the new question and the chat id
+  and read the history from the saved chat on the server.
+- **Why:** in `v1.0`, from the 7th question on, the 12-message window could open on an answer, and an answer from the
+  data opens with a tool call, which Gemini refuses unless a question comes before it (QA P18: questions 7 and 9 of a
+  nine-question chat failed, and "Try again" failed the same way). Six exchanges keep the same reach as twelve
+  messages. An answer with a scan carries 130 to 530 KB of tool results, and each later request sent them all again
+  to the model. Reading the history on the server is the better fix, since it also stops the request from growing;
+  it is the second roadmap item, because the client still sends the whole chat (QA N4: 1,264 KB after 12 turns, so
+  Vercel's 4.5 MB request limit is about 40 such turns away).
+
+## D35. What excites or frustrates people is kept to the community's own games, in the scan and the check (v1.1)
+
+- **Choice:** for a question about what excites or frustrates people, what resonates, or what to post (unless it
+  asks about other games or off-topic talk itself), two reads ask whether the talk is about the community's own games,
+  named by `dataset_meta.mood_target`, the sentiment target of D7:
+  - the scan asks Jev, in the same call as relevance, whether what the conversation says on the question is about
+    those games; one that bears on the question but is about something else is left out and counted apart, and the
+    tool output tells the model how many were left out (`scan.ts`);
+  - the claim check asks, in the same call per claim, whether each cited message is clearly about something else
+    (another game, a film or show, hardware, life outside the games); such a citation backs nothing, and the rewrite
+    is told why (`verify.ts`).
+  No Jev call is added: each is one more question in a call that was made anyway.
+- **Alternatives:** the `v1.0` rule, in the instructions only (D20); or leave out conversations by topic label, for
+  example every one labelled "Other games".
+- **Why:** the prompt rule did not hold. Production QA of `v1.0` found a frustrations answer whose pricing section
+  was built on #off-topic talk about GTA 6 prices, with all 18 claims passed (P2), and an excitement answer that ended
+  on other games' releases (P6). A topic label is the wrong filter: a conversation can carry several topics (588 of
+  2,362 sit in two or more, docs/anatomy.html), and a topic misses a clear subject in about 1 in 5 conversations (docs/DATA.md). The games are
+  read from the data, so this rule adds no topic or game name to the code. In the release-candidate QA, the top
+  frustrations answer had no GTA 6 and no pricing section, and the excitement answer said other games were left out.
+
+## D36. Some questions must read on their first step (v1.1)
+
+- **Choice:** the agent's first step is made to call a tool (`prepareStep` in `agent.ts`) when:
+  - a follow-up names a kind of conversation, a topic or a period ("which of those are bugs?", "and last week?"):
+    any tool but `out_of_scope` (`asksForSlice` in `flags.ts`; P3);
+  - a follow-up asks for more on something the last answer said ("tell me more about the second one", "details",
+    "why?"): `read_conversation`, `find` or `scan` (`asksForMore`; B1);
+  - a question asks for a number ("how many", "share", "average"): any tool, `out_of_scope` included, since revenue
+    is a number too (eval A06).
+  Two rules act later in the turn: a turn that has only counted must read before it answers a question about what
+  people say (from `v1.0`), and a turn whose `out_of_scope` call the scope check turned down must scan or find on its
+  next step, once (eval O02). Every way of asking for post ideas names the `excited` kind, so its read is not refused.
+- **Alternative:** instructions only, as in `v1.0`.
+- **Why:** each rule answers a turn that answered without reading. "Which of those are bugs?" answered "none are
+  bugs" with no tool call, no citation and no check (P3). "Tell me more about the second one" restated an earlier
+  turn's "56 bug reports" and "47/100" for a slice they did not describe (B1). "How many conversations were about
+  pricing last month?" gave a figure tagged `[aggregate]` that nothing had counted (A06). "What is the sentiment on
+  Reddit about Tides Remastered?", once the scope check kept it, was answered with no read, a mood tagged
+  `[aggregate]` that nothing had counted, and four made-up message handles (O02). The O02 read is forced once: forced
+  on every step with every tool offered, a question about DMs called `dataset_overview` six times. The instructions still say the same things; the code makes
+  the first step hold. The cost is one read on every follow-up of these kinds, even one the last answer could have
+  answered.
+
+## D37. One scope check on every turn, and a net in code (v1.1)
+
+- **Choice:** every turn's scope check reads the question with the reader's question before it (`turnBearsOn` in
+  `scope.ts`), so a follow-up ("tell me more", "why?") bears on the conversations as the question it follows did.
+  `out_of_scope` goes through it, as before. A net after the agent (`finish.ts`): a turn that called no tool and cites
+  nothing is put to the same check, one Jev call, and a question the conversations do not bear on (under 0.5) gets the
+  reply written in code, with its three suggested questions, in place of what the model wrote. A check that fails
+  leaves the answer as it is. The instructions also say `out_of_scope` is the only way to decline, in every turn.
+- **Alternative:** the `v1.0` rule: the check ran only when the model called `out_of_scope`, and the question was
+  read alone.
+- **Why:** QA N1: after three questions, "Can you write me a poem about pirates?" got a 12-line poem with no tool
+  call and no check, and a mid-chat weather question was declined in the model's own words with no suggestions; in a
+  fresh chat both got the proper reply. Measured on Jev with the earlier question: follow-ups 0.84 to 0.89; a poem,
+  the weather, the World Cup and a code request 0.02 to 0.05. "Thanks!" scored 0.24, so a thank-you answered with no
+  tool call gets the out-of-scope reply too.
+
+## D38. A figure tagged as counted is backed only by this turn's tools (v1.1)
+
+- **Choice:** a figure tagged `[scan]`, `[aggregate]` or `[voices]` is backed only when that tool ran in this turn
+  (`toolsRan(turn.steps)` in `finish.ts`). Otherwise its claim fails with a note, the one rewrite is told to drop the
+  figure or give the one a tool gave this turn, and it is kept only with fewer such figures; what is left is named
+  under the answer. Citations from earlier turns still verify (D24).
+- **Alternative:** the `v1.0` rule, a tool of that name having run anywhere in the chat (D11).
+- **Why:** QA B1: "tell me more about the second one", after a Domains answer, called no tool and wrote "among the 56
+  bug reports about the Domains ... 47/100 [scan]". Both numbers came from an earlier read of every topic since 24
+  Sep; SQL gives 114 Domains conversations flagged as bugs from 13 to 27 Sep. The tag passed because a scan had run
+  in the chat. A tag says "counted for this answer, over the slice it names"; a count carried over from another turn
+  is not that.
+- **Limit:** a restated figure with no tag is caught only when it sits in a cited claim that neither its messages nor
+  a tool result backs (D11).
+
+## D39. A step keeps each tool call once, at most six (v1.1)
+
+- **Choice:** each model step keeps each distinct tool call (same tool, same input) once, only calls to a tool the
+  step was offered, and at most 6; the rest are dropped before anything runs, and the drop is logged (`oneCallEach`
+  in `agent.ts`). Streamed, a call's input is held until the call arrives, so a dropped call draws nothing.
+- **Alternative:** rely on the step cap (8 steps), which bounds steps, not calls in a step.
+- **Why:** during the v1.1 eval, with the post question made to call `aggregate` alone on its first step, Gemini 2.5
+  Flash wrote 1,085 and then 1,232 `aggregate` calls in one step, two identical calls repeated, and the turn ran four
+  minutes. The forced count was removed (D13), and the cap stops any repeat of it. Six is a round bound, not a
+  measured one.
+
+## D40. The claim check retries a busy Jev call, with longer waits (v1.1)
+
+- **Choice:** a claim-check call that fails with a rate limit, a server error or a timeout is tried again after 1, 3,
+  8 and 15 seconds, each with ±25% jitter (`CHECK_RETRY_MS` in `verify.ts`). The retry helper moved to
+  `lib/llm/retry.ts`, shared with corroboration (D28) without an import cycle. A claim still refused is shown as not
+  checked, never as unbacked.
+- **Alternatives:** no retry, as in `v1.0`; corroboration's shorter waits (0.4, 1.2 and 3 s); a second route to Jev
+  (direct TypeSafe is out of credit, so there is none).
+- **Why:** every Jev call shares OpenRouter's pool for the model. With no retry, the release-candidate eval run left
+  24 of 169 cited claims unchecked. With the short waits, the full v1.1 run still left 18 of 154: the pool's per-minute
+  limit outlasted about 5 seconds of retries. With the long waits, a rerun of 11 questions left none unchecked (67 of
+  68 backed). The cost: a turn whose check meets a busy pool can wait up to about half a minute longer.
+
+## D41. An Explore row opens its session in the reply tree (v1.1)
+
+- **Choice:** a "Busiest sessions" row in Explore opens that session in the evidence panel's reply tree, one
+  conversation at a time with next and previous; Esc or the scrim closes it back to the selection
+  (`SelectionPanel.tsx`, `EvidenceSheet.tsx`). The list is headed "Busiest sessions", and a long one says "116
+  messages in 4 conversations". The panel's tab names the first cited message, and its heading is labelled as the
+  conversation's opening ("Opens with ...").
+- **Alternative:** the `v1.0` row, which asked the chat "What did people say in conv1268 in #remaster-discussion?".
+- **Why:** QA P1: that question showed an internal handle in the question, the chat title and the sidebar, and the
+  model answered it with nothing, two runs out of three. A row is a request to read a session, not a question for the
+  agent, so it opens the session directly and spends no model call. The rows were sessions labelled as conversations,
+  with up to 195 messages beside a legend that caps a conversation at 40 (P15), and a cited reply read as the
+  conversation's first line (P14).
+
+## D42. The support question also fails a changed meaning (v1.1)
+
+- **Choice:** the claim check asks whether the message supports the claim "with the same meaning", and says it does
+  not when the claim changes or adds to what the message says: a stronger or different judgement ("too easy" for "not
+  a fair challenge"), a reason or detail the message does not give, or the meaning of an abbreviation or a name it
+  does not spell out (`SUPPORT_QUESTION` in `verify.ts`).
+- **Alternative:** the `v1.0` question, which asked for support and ruled out the opposite and a mere shared subject.
+- **Why:** QA P9: paraphrases passed with their meaning shifted: "it isn't challenging" for a message meaning the mode
+  is not a fair challenge, and "'BF' (Bushido Final update)", a gloss the message never gives. The release-candidate
+  QA still saw a claim that says more than its cited message pass (D12, known gap).
+
+## D43. A change between periods reads "up 51%" (v1.1)
+
+- **Choice:** a count's change between periods reaches the model as a direction word and an unsigned figure ("up
+  51%", "down 12%", "no change"), and the instructions say "rose 51%", never "rose by +51%" (`trends.ts`). A chat
+  saved with the signed form still parses.
+- **Alternative:** the `v1.0` signed figure, "+51%" or "−12%".
+- **Why:** QA P17: given "+51%", the answer wrote "rose by +51%". The rate check compares the direction the answer
+  states with the one the count gave, so the words must carry it.
+
+## D44. A period outside the data is said to be outside it (v1.1)
+
+- **Choice:** when a count or a read asks for a period outside the conversations (13 to 27 Sep), the tool result
+  says first that it is outside them, and that nothing in it could be counted, which is not the same as none
+  (`outsideWords` in `for-model.ts`). The answer's first sentence says the conversations do not cover that period, then
+  gives the nearest count they do cover, said as such. A period partly outside is answered for the days inside.
+- **Alternative:** the `v1.0` behaviour: an empty count, which the model read as zero.
+- **Why:** QA P10: "How many conversations were about pricing last month?" was answered "there are no conversations
+  about pricing from last month", as if August had been read and found empty. In the release-candidate QA the answer
+  was "The conversations do not cover last month. From 13 Sep to 27 Sep, there were 173 conversations about Pricing,
+  editions and monetisation."

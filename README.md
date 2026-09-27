@@ -10,8 +10,33 @@ through the key design decisions, the grouping of messages into conversations, t
 (source: [`docs/anatomy.html`](docs/anatomy.html)).
 
 **Live:** https://levellr-take-home.vercel.app (public; every question spends the brief's capped Gemini key). It runs
-release tag [`v1.0`](https://github.com/avshalomd/levellr-take-home/tree/v1.0) (commit `2ae6130`): the chat, and Explore's topic x time grid,
-read-only. Commits after the tag change docs only.
+release tag [`v1.1`](https://github.com/avshalomd/levellr-take-home/tree/v1.1) (commit `58a906f`; `/api/health`
+reports `"commit":"58a906f"`): the chat, and Explore's topic x time grid, read-only. Commits after the tag change docs
+only. The first delivered version is tag [`v1.0`](https://github.com/avshalomd/levellr-take-home/tree/v1.0) (commit
+`2ae6130`).
+
+**What changed in v1.1.** Fixes for what the QA passes found ([docs/QA.md](docs/QA.md)), each with its decision in
+[DECISIONS.md](DECISIONS.md):
+
+- A long chat keeps answering: the model gets the last 6 answered exchanges, starting at a question, with failed turns
+  left out ([P18](docs/QA.md#production-qa-2026-09-27-late), D34).
+- An Explore "Busiest sessions" row opens that session in the reply tree instead of asking the chat about an internal
+  handle ([P1](docs/QA.md#production-qa-2026-09-27-late), D41).
+- Answers about what excites or frustrates people, and post ideas, keep to the community's own games: the scan and the
+  claim check both ask whether a conversation or a cited message is about them ([P2, P6](docs/QA.md#the-fixes-checked),
+  D35).
+- A follow-up that names a slice or asks for more must read before it answers, and so must a count question
+  ([P3, B1](docs/QA.md#the-fixes-checked), D36).
+- Every turn goes through the same scope check, mid-chat too ([N1](docs/QA.md#new-issues-by-severity), D37).
+- Post ideas are read by engagement, from at least two conversations, or marked thin
+  ([P4](docs/QA.md#the-fixes-checked), D13; partly fixed, see known limits).
+- A period outside the data is said to be outside it, never "none" ([P10](docs/QA.md#the-fixes-checked), D44).
+- The claim check's support question fails a claim that changes the message's meaning
+  ([P9](docs/QA.md#the-fixes-checked), D42; partly fixed), and a figure tagged as counted must come from this turn's
+  tools ([B1](docs/QA.md#new-issues-by-severity), D38).
+- The claim check retries a busy Jev call with longer waits (D40), and a step keeps each tool call once, at most six
+  (D39).
+- `/api/health` reports the deployed commit ([P16](docs/QA.md#the-fixes-checked), D22).
 
 ## The unit, and what it cannot count
 
@@ -61,9 +86,10 @@ npm run eval:report             # eval/results/report.md
 Python ingest groups the messages into conversations, labels each once with Jev (a probability per topic, sentiment,
 flags), embeds it and loads it into Neon. A Gemini Flash agent answers through typed tools over that data (`scan`
 reads a whole slice, `find` searches for a named thing, `aggregate` counts in SQL). After it answers, every cited
-claim is checked against the message it cites, and weak ones are rewritten once. The page streams the answer with
-citation chips, what the agent did, the check's result, and an evidence panel with the cited messages lit. The full
-walk-through is in [docs/DESIGN.md](docs/DESIGN.md).
+claim is checked against the message it cites, and weak ones are rewritten once. In a chat, the model is sent the
+last 6 answered exchanges and must read again before a follow-up that asks for a slice or for more. The page streams
+the answer with citation chips, what the agent did, the check's result, and an evidence panel with the cited messages
+lit. The full walk-through is in [docs/DESIGN.md](docs/DESIGN.md).
 
 ## Key decisions
 
@@ -79,21 +105,55 @@ Each with its alternative and reason in [DECISIONS.md](DECISIONS.md).
 5. **Two retrieval tools**: `scan` reads a whole slice for "what are people saying"; `find` searches for a named
    thing. A question about a topic reads only that topic (D10). Numbers come from SQL, never from the model (D11).
 6. **Every cited claim is checked**, weak ones rewritten once (D12), follow-ups checked against the whole chat (D24),
-   and a weak result shown as a warning (D27). A citation opens its conversation as a reply tree (D32).
+   and a weak result shown as a warning (D27). For what excites or frustrates people, a citation about another game
+   backs nothing (D35), and a figure tagged as counted must come from this turn's tools (D38). A citation opens its
+   conversation as a reply tree (D32).
 7. **Models:** agent on Gemini 2.5 Flash, to protect the capped key, kept after a measured comparison with 3.8 Flash
-   (D9); closed judgments on Jev, through the builder's own OpenRouter key, stated openly (D9).
+   on the `v1.0` code (D9); closed judgments on Jev, through the builder's own OpenRouter key, stated openly (D9).
 8. **Topic editing is held back:** built on a branch, and kept off the production database until it can be tested
    on another one (D31).
 
 ## Eval
 
-35 questions written from this data (`eval/questions.jsonl`): 6 lookups with hand-checked gold messages, 5 temporal,
-2 excited, 3 frustrated, 2 what-to-post, 7 aggregates graded against SQL, 4 false premises, 5 out of scope, 1
-voices, with two paraphrase pairs. The judge is Gemini 3.5 Flash-Lite, a different model from the agent and from Jev,
-and it reads every step's tool outputs and the cited messages in full.
+39 questions written from this data (`eval/questions.jsonl`): 6 lookups with hand-checked gold messages, 5 temporal,
+2 excited, 5 frustrated, 3 what-to-post, 8 aggregates graded against SQL, 4 false premises, 5 out of scope, 1
+voices, with two paraphrase pairs. Four were added for v1.1 from the production QA: F02 (top frustrations must not
+rest on other games, P2), F03 ("Which of those are bugs?" asked after F02 in the same chat, P3), P03 (post ideas on
+two or more conversations, P4) and A06 (a count for a period before the data, P10). The judge is Gemini 3.5
+Flash-Lite, a different model from the agent and from Jev, and it reads every step's tool outputs and the cited
+messages in full.
 
-**End to end, model comparison** (both models on the same code, commit `96f625f`, concurrency 3, no fallback model,
-same judge; [`eval/results/models/`](eval/results/models/)):
+**End to end, v1.1** (Gemini 2.5 Flash, same judge; [`eval/results/models/`](eval/results/models/)). The full run is
+`gemini-2.5-flash-v1.1.json`, on the v1.1 agent before the claim check's longer waits (D40). The rerun is
+`gemini-2.5-flash-v1.1-retry2.json`: 11 of the questions on the release code, after the longer waits.
+
+| | full run, 39 questions | rerun, 11 questions |
+|---|---|---|
+| judged correct | 37 correct, 2 partial (L05, L06), 0 wrong | 10 correct, 1 partial (A02), 0 wrong |
+| abstained when it should | 9/9 | 1/1 |
+| abstained when it should not | 0/30 | 0/10 |
+| invented figures | 0 | 0 |
+| cited claims backed, of those checked | 125/136 (91.9%) | 67/68 (98.5%) |
+| cited claims left unchecked | 18 of 154 | 0 of 68 |
+| invalid / not-retrieved citations | 0 / 0 | 0 / 0 |
+| latency p50 / p90 | 6.1 s / 14.0 s | 8.1 s / 9.7 s |
+
+- **The 18 unchecked claims** (in L01, L05, L06, C03 and H01) are Jev calls that OpenRouter's shared pool refused
+  with HTTP 429. The claim check then retried for about 5 seconds, and the pool's per-minute limit outlasted it. The
+  waits are now 1, 3, 8 and 15 seconds (D40), and the rerun of 11 questions on that code left none unchecked.
+- **The 11 checked claims not backed** include all four of V01's: it lists people's message counts from `voices` and
+  cites sample messages, which cannot back a count. The claim check is stricter in v1.1 (D35, D42), so the backed
+  share is not like for like with `v1.0`'s.
+- **The partials.** L05 and L06 were partial in the full run (each missed part of the rubric) and correct in the
+  rerun. A02 wrote the same five channels with the same counts in both runs, and the judge called it correct once and
+  partial once ("extra channels beyond the top 3"). One run each: the judge varies as well as the agent.
+- On the 35 questions shared with `v1.0`, the full run has 33 correct, 2 partial and 0 wrong; `v1.0` had 34 correct
+  and 1 wrong (X03). The four new questions were all correct.
+- Four targeted runs on the release candidate are kept beside these (`-v1.1-rc`, `-rc-retry`, `-rerun`, `-rc-fix`);
+  the commit messages say what each checked.
+
+**Model comparison, on the `v1.0` code** (both models on the same code, commit `96f625f`, the 35 questions of
+`v1.0`, concurrency 3, no fallback model, same judge). It was not rerun on v1.1.
 
 | | Gemini 2.5 Flash | Gemini 3.8 Flash |
 |---|---|---|
@@ -104,16 +164,17 @@ same judge; [`eval/results/models/`](eval/results/models/)):
 | cited claims backed | 129/131 (98.5%) | 130/136 (95.6%) |
 | invalid / not-retrieved citations | 0 / 0 | 0 / 0 |
 | latency p50 / p90 | 6.7 s / 12.3 s | 19.4 s / 27.0 s |
-| tool calls (all questions) | 42 | 68 |
+| tool calls, all questions | 55 | 110 |
 
 2.5 Flash's miss is X03: asked about a Tides Remastered "beta test" nobody mentions, it described one. Both models
 gave the same verdict to each paraphrase pair. **Production stays on 2.5 Flash** (D9): quality is
-near equal, 2.5 is about three times faster with fewer tool calls, and it is the model the key's email named. 3.8
-Flash is one env var away (`AI_MODEL`).
+near equal, 2.5 is about three times faster with half the tool calls, and it is the model the key's email named. 3.8
+Flash is one env var away (`AI_MODEL`). (Earlier versions of this README gave 42 and 68 tool calls: those are the
+questions that used each tool, summed, from the result files' `tool_use` field. The calls themselves are 55 and 110.)
 
 **Read it with care:** the questions and rubrics were written by the builder after reading the data, there is one LLM
-judge, and each model ran once. The numbers show direction and catch regressions; they are not a benchmark. An
-earlier 18-question run on 2.5 Flash (`eval/results/agent.json`), before the lookup-routing and period fixes and
+judge, and each configuration ran once. The numbers show direction and catch regressions; they are not a benchmark.
+An earlier 18-question run on 2.5 Flash (`eval/results/agent.json`), before the lookup-routing and period fixes and
 before the judge saw the tool outputs, scored 11 correct, 4 partial and 3 wrong.
 
 **Retrieval** (the 6 lookups, top 8; relevance pooled across the six arms and judged blind by Flash-Lite; "gold
@@ -165,25 +226,33 @@ calls (rerank, scan, claim check) are not in the ledger; they were not measured.
 - The eval is small and written by the builder (above).
 - Explore is read-only on `main`: topic editing is built but held back on a branch (roadmap, item 1).
 - No login: each browser sees its own saved chats. No Discord permalinks: the export has none.
-- Jev runs on a key outside the one provided, through OpenRouter's shared pool, which rate-limits under load (D28).
+- Jev runs on a key outside the one provided, through OpenRouter's shared pool, which rate-limits under load. Reads
+  and claim checks retry (D28, D40); a claim the pool still refuses is shown as not checked.
 
-**Found by the production QA of `v1.0`**, left open because production is frozen ([docs/QA.md](docs/QA.md)):
+**Still open in `v1.1`**, from the QA passes ([docs/QA.md](docs/QA.md#status-at-v11)):
 
-- **Explore's "Busiest conversations" rows return an empty answer (P1).** A row asks the chat about an internal
-  handle ("What did people say in conv1268 ...?"); the model returns nothing, and the page says the answer was not
-  finished. The handle also shows in the chat's title.
-- **The claim check can pass an off-topic citation (P2).** A frustrations answer built its pricing section from
-  #off-topic talk about GTA 6 prices, and all its claims passed. The check asks only whether the message supports
-  the sentence, and here it did.
-- **A follow-up can answer without reading (P3).** "Which of those are bugs?" answered "none are bugs" with no tool
-  call, no citations and no check, although the data has a `bug` flag and other answers found bugs in the same week.
-- **Post suggestions are thin (P4).** "What should we post about this week?" gave three ideas, each on one message,
-  with no engagement measure behind them.
-- **A long chat stops answering (P18).** From the 7th question on, the route sends the model a history that can
-  open on an earlier answer's tool call, which Gemini refuses; that question, and "Try again", end in an error, and
-  so does each later question whose history is cut the same way. A new chat works.
+- **Post ideas can still be thin (P4, partly fixed).** Post reads rank by engagement and the instructions ask for a
+  count by topic first, but in the release-candidate QA two of four ideas rested on one message each. The rule that
+  such an idea ends with "(only one conversation shows this)" was added after that QA and is in the instructions only.
+- **The claim check can pass a claim that says more than its message (P9, partly fixed).** The support question is
+  stricter, but in the release-candidate QA "pre-ordering and expressing excitement for new game plus, new pets"
+  still passed on "pre order done 😍". New game plus and new pets are in the next message, which was not cited.
+- **A long chat grows every request (N4).** The client still sends the whole chat with each question: 1,264 KB after
+  12 turns in the QA, so Vercel's 4.5 MB request limit is about 40 such turns away. That case offers a new chat, by
+  code, but was not exercised.
+- **A false-premise follow-up repeats the previous answer (N2).** After a Tides Remastered answer, "Why are people so
+  angry that Tides Remastered was cancelled?" corrected the premise and then restated most of the earlier answer.
+- **Two stray requests after a too-long question (N5).** The page asks for `/api/chats/<id>` twice after a 413 and
+  gets 404 twice. Nothing breaks.
+- **Explore's colour scale is set by the "Other" row (P15).** It tops out at 439, so the topic rows look pale.
 - **Dates written in messages disagree with the timestamps (P8).** The export looks time-shifted
-  ([docs/DATA.md](docs/DATA.md#profile)), so an answer can quote "a 9 July launch" as upcoming on 27 September.
+  ([docs/DATA.md](docs/DATA.md#profile)). The instructions say to quote such dates as written and never call them
+  upcoming or past; this is a prompt rule only, and no QA answer has quoted one since.
+- **A number restated without a tag is not caught.** A counted figure carried over from an earlier turn fails only
+  when it carries a `[scan]`, `[aggregate]` or `[voices]` tag (D38). An untagged restated figure is caught only if
+  it is in a cited claim and neither its messages nor a tool result contains it (D11).
+- **A mostly failed read is not worded as such (Q4).** The reads retry, but an answer whose corroboration reads
+  mostly failed has no special wording.
 
 ## Roadmap
 
@@ -201,12 +270,11 @@ In priority order.
    3. `npm run labels -- seed-spend`, so ingest's cost is recorded beside the relabels;
    4. in the app, price, run and remove a topic; check that the grid and the agent read the new labels;
    5. merge, then deploy.
-2. **Fix what the production QA found** ([docs/QA.md](docs/QA.md)): open an Explore row's conversation in the
-   evidence panel, and let an empty model turn fall through to the forced answer (P1); ask in the claim check, or in
-   the scan, whether a cited message is about this community's games (P2); start the model's history at a question,
-   or load it on the server from the saved chat, so a long chat keeps answering (P18); make a follow-up that asks for
-   a slice call a tool (P3); rank post ideas by engagement and ground each in more than one conversation, or say the
-   evidence is thin (P4); quote dates from messages as written (P8).
+2. **Keep the chat history on the server.** Send only the new question and the chat id, and read the history from
+   the saved chat, so a request no longer grows with the chat (N4) and no chat nears the 4.5 MB limit. Then close
+   what else is open above: check a thin post idea in code instead of the prompt (P4), catch a claim that says more
+   than its cited message (P9), answer a false-premise follow-up without repeating the last answer (N2), stop the
+   fetch of a chat that was never saved (N5), and scale Explore's colours without the "Other" row (P15).
 3. **Drive topic rules from data, not names.** The prompt and the chart code name the general topics ("other", other
    games) to leave them out of excitement and resonance rankings (D20), and the prompt's examples name the Domains and
    Ebontide. After a relabel those names can be gone. A `general` flag on a topic should drive the exclusion, and the
@@ -224,4 +292,5 @@ In priority order.
 
 From `git log`, Oslo time (UTC+2), Sunday 2026-09-27: the stack was laid before the brief arrived (tag `scaffold`,
 20:40). The first commit on the brief is `9d34778` at 21:40, and the delivered commit `2ae6130` (tag `v1.0`) is at
-23:01. Commits after it change docs only.
+23:01. v1.1 runs from the production QA commit `0325b28` at 23:05 to the merge `58a906f` (tag `v1.1`) at 01:15 on
+Monday 28 Sep.

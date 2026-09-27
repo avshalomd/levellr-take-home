@@ -1,15 +1,58 @@
 # QA
 
-Findings from two QA passes, logged during the build and routed to fixes:
+Findings from three QA passes, logged during the build and routed to fixes:
 
 - **Bug log (Q1-Q9):** a click-through of the app before delivery by a QA agent. "Step" is the step of its script
   where the finding was seen.
 - **Production QA (P1-P18):** an end-to-end pass on the live app just before the tag (P18 was reported from use
-  after it and reproduced the same night). Production was frozen at `v1.0`
-  after it, so **every P finding is open in `v1.0`**. The ones a reviewer is most likely to meet are in the README's
-  known limits, and their fixes are on its roadmap.
+  after it and reproduced the same night). Every P finding was open in `v1.0`.
+- **v1.1 release candidate QA (B1, N1-N6):** the fixes checked on the release branch, on localhost, before `v1.1`.
 
-Statuses are as of `v1.0` (commit `2ae6130`).
+The status of every finding in the release `v1.1` (commit `58a906f`) is in the first table below. The tables after it
+keep what each pass saw, with statuses as of the pass. The open ones are in the README's known limits.
+
+## Status at v1.1
+
+"Fixed" means the fix is in `v1.1`; "checked" says where it was seen to work. The release candidate QA ran on
+`f5767a1`; B1, N1, N6 and part of P4 were fixed after it, in `3e2d2f8`, `a23cde2` and `d267705`, and checked by unit
+tests and the eval, not in the browser.
+
+| id | status at v1.1 | fix, and where it was checked |
+|---|---|---|
+| Q1 | fixed | A follow-up that names a slice or asks for more must read first (D36); its citations are checked against the whole chat (D24). P3 and B1 below. |
+| Q2 | fixed in v1.0 | D27. |
+| Q3 | fixed in v1.0, with a gap | D25. A claim that says more than its message can still pass (P9). |
+| Q4 | fixed in v1.0, with a gap | D28. Open: an answer whose reads mostly failed has no wording of its own. |
+| Q5 | fixed | The chat's chips in v1.0; Explore's prefilled question in v1.1 (P7). |
+| Q6 | fixed in v1.0 | D29. |
+| Q7 | fixed in v1.0 | D30. |
+| Q8 | fixed | Excitement, resonance and post charts in v1.0; frustration charts in v1.1 (P5). |
+| Q9 | fixed | Held in code since v1.1 (D35); checked in the release candidate QA (P2). |
+| P1 | fixed | A busiest-session row opens the reply tree (D41), and an empty model step is asked again (D26). Checked in the release candidate QA. |
+| P2 | fixed | The scan and the claim check keep to the community's own games (D35). Checked in the release candidate QA; eval F02 correct. |
+| P3 | fixed | A follow-up that names a slice must read first (D36). Checked in the release candidate QA; eval F03 correct. |
+| P4 | **partly fixed, open** | Post reads rank by engagement (D13). Open: in the release candidate QA two of four ideas rested on one message each. The "(only one conversation shows this)" rule came after it and is a prompt rule only; eval P01 and P03 correct. |
+| P5 | fixed | The chart filter covers frustration questions, and a key never shows as a name (`dff61dd`, N6). Not exercised in the QA: no frustrations answer drew a by-topic chart. |
+| P6 | fixed | D35. Checked in the release candidate QA. |
+| P7 | fixed | Checked in the release candidate QA. |
+| P8 | **open (prompt rule only)** | The instructions say to quote message dates as written (D2). Not exercised: no answer in the QA quoted a date. |
+| P9 | **partly fixed, open** | A stricter support question (D42). Still seen in the release candidate QA. |
+| P10 | fixed | D44. Checked in the release candidate QA; eval A06 correct. |
+| P11 | mostly fixed | The text goes back in the box, with no "Try again". Open: N5. |
+| P12 | fixed (prompt rule) | "Each point once" is in the instructions. Seen to hold in the release candidate QA: each point once, sentence-case headings, no unexplained header. |
+| P13 | fixed | Checked in the release candidate QA. |
+| P14 | fixed | D41. Checked in the release candidate QA. |
+| P15 | **partly fixed, open** | Rows are "Busiest sessions" with their conversation count, and a partial week is marked. Open: the colour scale tops out at 439, set by the "Other" row. |
+| P16 | fixed | `/api/health` reports the commit (D22). Production reports `"commit":"58a906f"`. |
+| P17 | fixed | D43, and the steps line. Checked in the release candidate QA. |
+| P18 | fixed | The model's window starts at a question (D34). Checked in the release candidate QA: 12 questions in one chat, all answered. The request size risk stays open as N4. |
+| B1 | fixed | A figure tagged as counted needs a tool in this turn (D38), and "tell me more" reads first (D36). Unit tests; not rerun in the browser. |
+| N1 | fixed | One scope check on every turn, and a net for a turn with no tool and no citation (D37). Measured on Jev; eval O01-O03 declined 3 of 3; the mid-chat case not rerun in the browser. |
+| N2 | **open** | A false-premise follow-up repeats most of the previous answer. |
+| N3 | fixed | "Tell me more about the first one" now must read first (D36), so it shows a steps line. |
+| N4 | **open** | The client sends the whole chat with each question: 1,264 KB after 12 turns, about 40 turns from Vercel's 4.5 MB limit. That case offers a new chat, by code; not exercised. Roadmap item 2. |
+| N5 | **open** | Two 404s for `/api/chats/<id>` after a 413. |
+| N6 | fixed | An unnamed topic is named from its key ("Other"), `d267705`. |
 
 ## Bug log
 
@@ -135,7 +178,9 @@ covered Explore, desktop (1280 px) and mobile (375 px) widths, and dark and ligh
 deleted.
 
 **Verdict: BLOCKED, one item (B1).** Every P finding that was exercised is fixed or mostly fixed. B1 is a new
-failure: a follow-up states a wrong count and marks it as counted by code.
+failure: a follow-up states a wrong count and marks it as counted by code. B1 and N1 were then fixed on the release
+branch (`3e2d2f8`, `a23cde2`), and N6 and part of P4 (`d267705`), before the merge that is `v1.1`; see
+[Status at v1.1](#status-at-v11).
 
 **Test setup.** Turbopack refused to start: the checkout's `node_modules` is a symlink that points outside the
 project root. The run used `next dev --webpack` instead. On the first visit to `/c/[id]`, webpack compiled the route

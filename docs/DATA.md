@@ -23,7 +23,8 @@ June", and Tides Remastered's launch is "July 9th" in messages stamped 09-18 to 
 September. The brief's sample shows `msg_000054` at 2026-06-22 11:00Z; the export stamps the same message 2026-09-13
 21:09Z. The timestamps look shifted forward by about three months. The app trusts the timestamps
 ([DECISIONS.md, D2](../DECISIONS.md#d2-now-is-the-last-message)), so a date quoted from a message can contradict the
-window it sits in ([QA.md](QA.md), P8).
+window it sits in ([QA.md](QA.md), P8). Since `v1.1` the agent's instructions say to quote such a date as the message
+writes it and never call it upcoming or past against now (DECISIONS D2); that is a prompt rule, not a check.
 
 ### Channels
 
@@ -172,4 +173,6 @@ no topic reached 0.5.
 | help | Is asking the community for help, advice or an explanation a main thread of this conversation? A practical question about playing, fixing or finding something that someone answers counts, even in a longer chat; opinion questions, rhetorical questions and banter do not; in a one- or two-message conversation, the message itself. | 36.3% |
 | noise | Is this conversation noise for a community manager: jokes, memes, one-word reactions or off-topic chat with no feedback, question or information about the games? | 35.2% |
 
-**Sentiment** is measured towards "the Veil of Ages games and their developer" (D7), 0 to 1.
+**Sentiment** is measured towards "the Veil of Ages games and their developer" (D7), 0 to 1. The same target is
+stored as `dataset_meta.mood_target`, and since `v1.1` the scan and the claim check read it to keep answers about
+excitement, frustration and post ideas to the community's own games (DECISIONS D35).

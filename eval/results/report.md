@@ -1,8 +1,8 @@
 # Eval results
 
 Written by hand from the result files in this folder, with no model calls. `npm run eval:report` regenerates the
-retrieval section and an end-to-end section from `agent.json` only; the model comparison below comes from
-`models/*.json`. How to read these numbers, and their limits, is in the [README](../../README.md#eval).
+retrieval section and an end-to-end section from `agent.json` only; the v1.1 runs and the model comparison below
+come from `models/*.json`. How to read these numbers, and their limits, is in the [README](../../README.md#eval).
 
 ## Retrieval arms (`retrieval.json`, 2026-09-27 20:04 UTC, 6 lookup questions, top 8)
 
@@ -19,7 +19,47 @@ message is in the top 8.
 | vector + Jev rerank | 75% | 59% | 0.69 | 5/6 | 0.58 | 0.9 s |
 | **hybrid + Jev rerank (production)** | **74%** | **59%** | **0.78** | 5/6 | **0.75** | 0.9 s |
 
-## End to end, model comparison (`models/`, 35 questions, same code `96f625f`, judge gemini-3.5-flash-lite)
+## End to end, v1.1 (Gemini 2.5 Flash, judge gemini-3.5-flash-lite)
+
+39 questions: the 35 of `v1.0` plus F02, F03 (a follow-up to F02 in the same chat), P03 and A06, from the production
+QA. The full run is on the v1.1 agent before the claim check's longer waits; the rerun is 11 of the questions on the
+release code, after them.
+
+| | full run (`gemini-2.5-flash-v1.1.json`) | rerun (`gemini-2.5-flash-v1.1-retry2.json`) |
+|---|---|---|
+| run at (UTC) | 2026-09-27 23:12 | 2026-09-27 23:15 |
+| questions | 39 | 11 |
+| judged correct | 37 correct, 2 partial, 0 wrong | 10 correct, 1 partial, 0 wrong |
+| by kind | every kind 100% except lookup, 0.83 (L05, L06 partial) | every kind 100% except aggregate, 0.5 (A02 partial) |
+| declined or corrected when it should | 9/9 | 1/1 |
+| declined when it should not | 0/30 | 0/10 |
+| answers with invented facts (judge) | 0 | 0 |
+| cited claims supported, of those checked (Jev) | 125/136 (91.9%) | 67/68 (98.5%) |
+| cited claims left unchecked (OpenRouter 429s) | 18 of 154 | 0 of 68 |
+| made-up citation ids / cited but never read | 0 / 0 | 0 / 0 |
+| paraphrase pairs given the same verdict | 2/2 | not measured (one question of a pair) |
+| latency p50 / p90 | 6.1 s / 14.0 s | 8.1 s / 9.7 s |
+
+The rerun's questions: L05, L06, T02, E01, F01, A02, X01, C03, T04, E02, F02. The unchecked claims of the full run
+were in L01 (5), L05 (3), L06 (8), C03 (1) and H01 (1). All four of V01's cited claims were checked and not backed: it
+lists message counts from `voices` and cites sample messages.
+
+| id | run | verdict | judge's reason |
+|---|---|---|---|
+| L05 | full | partial | It misses that players on update night said the update was not live yet on Switch, and the complaint that the Switch 2 version lacked it. |
+| L06 | full | partial | It gives the boot crashes and memory add-ons, and misses the crashes tied to the Kuroshima DLC, the Ebontide sword and selling tagged items. |
+| A02 | rerun | partial | It lists channels beyond the top 3. The same five channels and counts were judged correct in the full run. |
+
+Earlier runs during v1.1, kept beside these (the commit messages say what each checked):
+
+| file | run at (UTC) | questions | result |
+|---|---|---|---|
+| `gemini-2.5-flash-v1.1-rerun.json` | 2026-09-27 22:37 | 8 | 8 correct; 26/26 cited claims backed (the questions that moved in a full run, after the O02 fix) |
+| `gemini-2.5-flash-v1.1-rc.json` | 2026-09-27 22:41 | 39 | 39 correct; 136/145 checked claims backed (93.8%), 24 of 169 unchecked; p50 6.2 s, p90 14.2 s |
+| `gemini-2.5-flash-v1.1-rc-retry.json` | 2026-09-27 22:43 | 9 | 9 correct; 38/40 backed, 0 unchecked (the claim check's first retry) |
+| `gemini-2.5-flash-v1.1-rc-fix.json` | 2026-09-27 23:07 | 9 | 9 correct; 41/41 backed (after the B1, N1 and N6 fixes) |
+
+## End to end, model comparison on the `v1.0` code (`models/`, 35 questions, same code `96f625f`, judge gemini-3.5-flash-lite)
 
 | | Gemini 2.5 Flash (production) | Gemini 3.8 Flash |
 |---|---|---|
@@ -33,7 +73,10 @@ message is in the top 8.
 | made-up citation ids / cited but never read | 0 / 0 | 0 / 0 |
 | paraphrase pairs given the same verdict | 2/2 | 2/2 |
 | latency p50 / p90 | 6.7 s / 12.3 s | 19.4 s / 27.0 s |
-| tool calls, all questions | 42 | 68 |
+| tool calls, all questions | 55 | 110 |
+
+Tool calls are counted from each run's `tools` list. An earlier version of this report gave 42 and 68, the
+`tool_use` field, which counts the questions that used each tool, summed.
 
 The one answer 2.5 Flash got wrong:
 
