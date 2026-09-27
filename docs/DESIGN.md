@@ -46,9 +46,11 @@ specific statement links to the message behind it. When the data cannot answer a
    - sentiment, from 0 to 1
    - flags for the brief: `p_excited`, `p_frustrated`, `p_bug`, `p_feature`, `p_help`, `p_noise`
    - I'll audit about 30 of these labels by hand and put the result in the README.
-5. **Models.** The agent runs on Gemini 2.5 Flash, pending your answer on 3.8 Flash. Embeddings use
-   `gemini-embedding-001` at 768 dimensions, normalized. Closed yes/no judgments go to Jev through OpenRouter:
-   labels, rerank, scan relevance and the claim check. Everything else stays on their key.
+5. **Models.** The agent runs on Gemini 2.5 Flash (chosen over 3.8 Flash to protect the capped key; one env var to
+   switch). Bulk text runs on 3.5 Flash-Lite. Embeddings use `gemini-embedding-2` at 768 dimensions: the brief named
+   `gemini-embedding-001`, but the key serves both, and embedding-2 is the newer model and returns normalized vectors
+   at 768 (001 does not at that size). Closed yes/no judgments go to Jev through OpenRouter: labels, rerank, scan
+   relevance and the claim check. Everything else stays on their key.
 6. **Retrieval uses the reference's two tools**, which is the core of what they score:
    - `scan`: Jev reads every conversation in a slice (a time window, topic, channel or flag) and keeps the relevant
      ones. This serves "what are people saying / excited / frustrated".
