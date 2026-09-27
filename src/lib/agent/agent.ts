@@ -15,7 +15,7 @@ import { instructions } from "./instructions";
 import { answerModel, chatModel } from "./model";
 import { msgTag } from "@/lib/refs";
 import { asksForSlice, isRefusal, lastQuestion } from "./flags";
-import { asksWhatPeopleSay, needsRead } from "./grounding";
+import { asksWhatPeopleSay, needsRead, triedToRead } from "./grounding";
 import { makeTools } from "./tools";
 import { isOffTopic } from "./off-topic";
 import { isInScope } from "./scope";
@@ -221,9 +221,15 @@ export async function makeAgent(writer?: UIMessageStreamWriter) {
               // grounding.ts). The step must call a reading tool; the step after it answers.
               needsRead(steps, lastQuestion(messages))
               ? { activeTools: ["scan", "find"], toolChoice: "required" as const }
-              : scopeTurnedDown(steps)
-                ? { activeTools: toolNames.filter((t) => t !== "out_of_scope") }
-                : undefined,
+              : // Turned down with nothing read yet, the step right after reads, once (eval 2026-09-28, O02: "What
+                // is the sentiment on Reddit about Tides Remastered?" was answered with no read, a mood tagged
+                // [aggregate] that nothing had counted, and four made-up message refs). Forced on every step
+                // instead, with every tool offered, a question about DMs called dataset_overview six times.
+                scopeTurnedDown(steps.slice(-1)) && !triedToRead(steps)
+                ? { activeTools: ["scan", "find"], toolChoice: "required" as const }
+                : scopeTurnedDown(steps)
+                  ? { activeTools: toolNames.filter((t) => t !== "out_of_scope") }
+                  : undefined,
     maxRetries: 1,
     temperature: 0.2,
   });

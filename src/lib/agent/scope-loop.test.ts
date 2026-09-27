@@ -42,10 +42,12 @@ const usage = {
   outputTokens: { total: 1, text: 1, reasoning: undefined },
 };
 const seen: string[][] = []; // the tools offered to the model at each step
+const choices: (string | undefined)[] = []; // and whether it had to call one
 let script: Array<"out_of_scope" | "find" | "text"> = [];
 const model = new MockLanguageModelV4({
-  doGenerate: async (opts: { tools?: Array<{ name: string }> }) => {
+  doGenerate: async (opts: { tools?: Array<{ name: string }>; toolChoice?: { type: string } }) => {
     seen.push((opts.tools ?? []).map((t) => t.name));
+    choices.push(opts.toolChoice?.type);
     const next = script.shift() ?? "text";
     return next === "text"
       ? {
@@ -75,6 +77,7 @@ const { makeAgent } = await import("./agent");
 
 beforeEach(() => {
   seen.length = 0;
+  choices.length = 0;
   decideMock.mockReset();
 });
 
@@ -89,6 +92,11 @@ describe("an out_of_scope call in the agent loop", () => {
     expect(seen[0]).toContain("out_of_scope");
     expect(seen[1]).not.toContain("out_of_scope");
     expect(seen[1]).toContain("find");
+    // Eval 2026-09-28 (O02): turned down, the model answered with no read and made-up refs. The next step reads, and
+    // the one after it is free to answer.
+    expect(choices.slice(0, 3)).toEqual(["auto", "required", "auto"]);
+    expect(seen[1]).toEqual(["scan", "find"]);
+    expect(seen[2]).not.toContain("out_of_scope");
     expect(r.text).toBe("Count the grid squares to the target.");
   });
 
