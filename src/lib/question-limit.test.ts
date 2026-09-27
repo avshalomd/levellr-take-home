@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { QUESTION_MAX, questionLength, tooLongWords } from "./question-limit";
+import { QUESTION_MAX, questionLength, tooLong, tooLongWords } from "./question-limit";
 
 // QA Q6: no cap on a question's length, so a pasted document would have gone to Gemini on the capped key.
 describe("a question's length", () => {
@@ -11,5 +11,10 @@ describe("a question's length", () => {
   it("says in one line how long it was and what the cap is", () => {
     expect(QUESTION_MAX).toBe(2_000);
     expect(tooLongWords(100_000)).toBe("That question is 100,000 characters long. Keep it under 2,000 and ask again.");
+  });
+
+  it("is too long past the cap, not at it", () => {
+    expect(tooLong({ parts: [{ type: "text", text: "x".repeat(QUESTION_MAX) }] })).toBe(false);
+    expect(tooLong({ parts: [{ type: "text", text: "x".repeat(QUESTION_MAX + 1) }] })).toBe(true);
   });
 });

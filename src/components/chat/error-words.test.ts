@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chatErrorWords, isDropped } from "./error-words";
+import { chatErrorWords, errorAction, isDropped } from "./error-words";
 
 describe("chatErrorWords", () => {
   it("turns each browser's network failure into words about the connection", () => {
@@ -31,5 +31,29 @@ describe("a refusal the route wrote", () => {
       "That question is 5,000 characters long. Keep it under 2,000 and ask again.",
     );
     expect(chatErrorWords("{not json")).toBe("{not json");
+  });
+});
+
+describe("a chat too long to send", () => {
+  it("says so, not the platform's page (QA P18)", () => {
+    expect(chatErrorWords("Request Entity Too Large\n\nFUNCTION_PAYLOAD_TOO_LARGE\n\nfra1::abc")).toBe(
+      "This chat has grown too long to send. Start a new chat to ask more.",
+    );
+  });
+});
+
+describe("errorAction", () => {
+  const refused = "The model could not answer this turn. Try again, or start a new chat.";
+  it("offers a retry once, then a new chat when the retry failed the same way (QA P18)", () => {
+    expect(errorAction(refused)).toBe("retry");
+    expect(errorAction(refused, refused)).toBe("new-chat");
+    expect(errorAction("The free model is busy right now. Try again in a few seconds.", refused)).toBe("retry");
+  });
+  it("offers nothing for a refusal the route wrote: the question goes back in the box (QA P11)", () => {
+    expect(errorAction('{"error":"That question is 2,519 characters long. Keep it under 2,000 and ask again."}')).toBeNull();
+  });
+  it("offers nothing when the day's allowance is spent, and a new chat when the chat is too long to send", () => {
+    expect(errorAction("Today's free model allowance is used up. It resets at midnight UTC.")).toBeNull();
+    expect(errorAction("Request Entity Too Large FUNCTION_PAYLOAD_TOO_LARGE")).toBe("new-chat");
   });
 });
