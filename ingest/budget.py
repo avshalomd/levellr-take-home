@@ -16,6 +16,8 @@ CAP_USD = 3.00
 # USD per million input tokens, for the pre-call estimate. A finished call is charged with the caller's own figure.
 PRICE_PER_MTOK = {
     "llm": 0.10,  # the suggestion call on Gemini Flash-Lite, input (suggest.py prices output itself)
+    "jev": 0.042,  # Jev 1.13 (typesafe/jev-1.13 via OpenRouter), input only: Jev writes no text
+    "embed": 0.20,  # gemini-embedding-2, input only (the reference's list price; the API returns no usage figure)
 }
 
 

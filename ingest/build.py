@@ -57,17 +57,20 @@ def main(manifest_path: Path) -> None:
     chars = sorted(len(c.transcript) for c in convs)
     eng = sorted(c.engagement for c in convs)
     ctx = sum(len(c.context_ids) for c in convs)
-    session = lambda cid: cid.rsplit(":w", 1)[0]
-    ctx_window = sum(session(conv_of[p]) == session(c.id) for c in convs for p in c.context_ids)
+    session_of = {c.id: c.session_id for c in convs}
+    ctx_window = sum(session_of[conv_of[p]] == c.session_id for c in convs for p in c.context_ids)
     replies = [m for m in msgs if m.reply_to]
     orphan = sum(1 for m in replies if m.reply_to not in conv_of)
     print(f"{len(msgs)} messages, {len(convs)} conversations ({Counter(c.kind for c in convs)}) in "
           f"{len({c.channel for c in convs})} channels")
     print(f"messages per conversation: p50 {pct(sizes, .5)}, p90 {pct(sizes, .9)}, max {sizes[-1]}; "
-          f"single-message {sum(s == 1 for s in sizes)}; full windows ({sizes[-1]}) {sum(s == sizes[-1] for s in sizes)}")
+          f"single-message {sum(s == 1 for s in sizes)}; full pieces ({sizes[-1]}) {sum(s == sizes[-1] for s in sizes)}")
+    cut = [c for c in convs if c.piece == 0 and c.n_pieces > 1]
+    print(f"sessions {sum(c.piece == 0 for c in convs)}: {len(cut)} cut into {sum(c.n_pieces for c in cut)} pieces "
+          f"(pieces per cut session: {dict(sorted(Counter(c.n_pieces for c in cut).items()))})")
     print(f"engagement: p50 {pct(eng, .5)}, p90 {pct(eng, .9)}, max {eng[-1]}")
     print(f"replies {len(replies)}: {sum(c.n_replies for c in convs)} with the parent in the same conversation, "
-          f"{ctx} parents attached as context ({ctx_window} from an earlier window of the same session, "
+          f"{ctx} parents attached as context ({ctx_window} from an earlier piece of the same session, "
           f"{ctx - ctx_window} from an earlier session), {orphan} whose parent is not in the export")
     print(f"transcript chars: median {pct(chars, .5)}, p95 {pct(chars, .95)}, max {chars[-1]}, "
           f"total {sum(chars):,} (~{sum(chars) // 4:,} tokens)")

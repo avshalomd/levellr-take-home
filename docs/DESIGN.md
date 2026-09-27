@@ -29,9 +29,11 @@ specific statement links to the message behind it. When the data cannot answer a
 1. **"Now" is the last message, 2026-09-27 19:30Z.** "The last 3 days" is counted back from there. The agent's
    prompt states this, and the answer names the window it used.
 2. **The unit is a conversation.** Within each channel, messages are split into sessions wherever the gap between
-   two messages is over 15 minutes. A session with more than 30 messages is cut into windows of 30. When a reply's
-   parent falls in an earlier window, the parent is attached as context: it can be read, but it is not counted
-   again.
+   two messages is over 15 minutes. A session with more than 40 messages is cut into pieces of 20–40, each cut
+   placed before the longest pause in the allowed range (ties: the earliest), so pieces end where the talk paused;
+   each piece keeps its session id and position so the agent can read the neighbouring pieces. When a reply's
+   parent falls in an earlier piece or session, the parent is attached as context: it can be read, but it is not
+   counted again.
    - The alternatives, measured: merging the reply trees into the sessions makes groups of up to 2,000 messages.
      Reply trees alone leave the 63% of messages that are not replies unassigned.
    - This gives about 2k–3k conversations. The exact count gets written down after the build.
