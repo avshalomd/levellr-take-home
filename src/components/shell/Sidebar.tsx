@@ -4,7 +4,7 @@ import { useEffect, useMemo, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { Plus, Trash2 } from "lucide-react";
+import { ChartNoAxesColumn, MessageCircle, Plus, Trash2 } from "lucide-react";
 import { undoable } from "./undoable";
 import { NewChatLink, useNewChat } from "./new-chat";
 import { toast } from "sonner";
@@ -12,12 +12,18 @@ import { cn } from "@/lib/utils";
 import { chatIdOf, clipTitle, groupChats, type ChatSummary } from "./history";
 import { chatsStore } from "./chats-store";
 
-// The app's left rail: a new chat and this browser's saved chats. From the reference, less its brand (the header
-// above carries the name and the data's window here) and its Ask/Explore links (Explore is not built tonight). The
-// list reloads whenever a chat finishes an answer (Chat dispatches "chats:changed"), so a new conversation appears in
+// The app's left rail: a new chat, the two places (Ask and Explore), and this browser's saved chats. From the reference,
+// less its brand (the header above carries the name and the data's window here). The list reloads whenever a chat finishes an answer (Chat dispatches "chats:changed"), so a new conversation appears in
 // it without a page load.
 
 export const CHATS_CHANGED = "chats:changed";
+
+const NAV = [
+  { href: "/", label: "Ask", icon: MessageCircle, active: (p: string) => p === "/" || p.startsWith("/c/") },
+  { href: "/explore", label: "Explore", icon: ChartNoAxesColumn, active: (p: string) => p.startsWith("/explore") },
+];
+
+const PlainLink = ({ onNavigate, ...props }: React.ComponentProps<typeof Link> & { onNavigate?: () => void }) => <Link {...props} onClick={onNavigate} />;
 
 const spring = { type: "spring", bounce: 0, duration: 0.35 } as const;
 
@@ -100,7 +106,7 @@ export function Sidebar({ onNavigate, onDeleted }: { onNavigate?: () => void; on
   };
 
   return (
-    <nav aria-label="Chats" className="flex h-full w-full flex-col px-3 pt-3 pb-3 lg:pt-1">
+    <nav aria-label="App" className="flex h-full w-full flex-col px-3 pt-3 pb-3 lg:pt-1">
       {/* Short of the drawer's close button in its top-right corner, below 1024px. */}
       <NewChatLink
         onNavigate={onNavigate}
@@ -110,6 +116,29 @@ export function Sidebar({ onNavigate, onDeleted }: { onNavigate?: () => void; on
         <Plus className="size-4 text-pulse" strokeWidth={2.25} />
         New chat
       </NewChatLink>
+
+      <ul className="mt-4 space-y-0.5">
+        {NAV.map(({ href, label, icon: Icon, active }) => {
+          const on = active(pathname);
+          const Item = href === "/" ? NewChatLink : PlainLink;
+          return (
+            <li key={href}>
+              <Item
+                href={href}
+                onNavigate={onNavigate}
+                aria-current={on ? "page" : undefined}
+                className={cn(
+                  "flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[14px] transition-colors",
+                  on ? "bg-foreground/[0.06] font-medium text-foreground" : "text-foreground/70 hover:bg-foreground/[0.04] hover:text-foreground",
+                )}
+              >
+                <Icon className={cn("size-4", on ? "text-pulse" : "text-muted-foreground")} />
+                {label}
+              </Item>
+            </li>
+          );
+        })}
+      </ul>
 
       <div className="-mx-3 mt-6 min-h-0 flex-1 overflow-y-auto px-3 [scrollbar-width:thin]">
         {chats === null ? (
