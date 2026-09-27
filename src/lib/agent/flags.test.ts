@@ -31,6 +31,18 @@ describe("aboutOwnGames and asksWhatToPost", () => {
     expect(asksWhatToPost("Any ideas for a post on Discord?")).toBe(true);
     expect(asksWhatToPost("What did people post in #off-topic?")).toBe(false);
   });
+  it("names the excited kind for every post question, so its read is not refused", () => {
+    for (const q of [
+      "What should we post about this week?",
+      "What post ideas would land best with the community this week?",
+      "Give me three post ideas for our Tides Remastered audience.",
+      "Any ideas for a post on Discord?",
+      "What could we post on Friday?",
+    ]) {
+      expect(asksWhatToPost(q), q).toBe(true);
+      expect(flagsNamed(q).has("excited"), q).toBe(true);
+    }
+  });
 });
 
 // Production QA 2026-09-27 (P3): "Which of those are bugs?" answered from the last answer's words with no tool call.

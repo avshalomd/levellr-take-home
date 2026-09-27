@@ -32,6 +32,12 @@ const FLAG_NAMES: Record<string, RegExp[]> = {
     /\bresonat\w*/i,
     /\bshould we post\b/i,
     /\bpost about\b/i,
+    // Eval 2026-09-28 (P03): "What post ideas would land best ...?" had its excited read refused, and the agent read
+    // six times over. Every way asksWhatToPost reads a post question names `excited` too.
+    /\bwhat to post\b/i,
+    /\b(?:could|can|do) (?:we|i) post\b/i,
+    /\bpost(?:ing)? ideas?\b/i,
+    /\bideas? for (?:a |our )?posts?\b/i,
     /\bgleder\w*/i,
   ],
   bug: [

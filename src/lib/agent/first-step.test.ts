@@ -157,6 +157,19 @@ describe("a follow-up that asks for a slice (P3)", () => {
   });
 });
 
+// Eval 2026-09-28 (A06): "How many conversations were about pricing last month?" was answered with no tool call and a
+// count tagged [aggregate] that nothing had counted.
+describe("a question for a number", () => {
+  it("must call a tool first, and may still turn it away as out of scope", async () => {
+    script = [() => [call("a1", "aggregate", { metric: "conversations", group_by: "none" })]];
+    const { agent } = await makeAgent();
+    await agent.generate({ prompt: "How many conversations were about pricing last month?" });
+    expect(offers[0].choice).toBe("required");
+    expect(offers[0].tools).toContain("out_of_scope");
+    expect(offers[1].choice).toBe("auto");
+  });
+});
+
 describe("what to post (P4)", () => {
   it("counts engagement first, then must read before it answers", async () => {
     script = [

@@ -55,7 +55,8 @@ describe("instructions, this community", () => {
     expect(text).toMatch(/"which of those are bugs\?"[\s\S]*is a new read/);
     expect(text).toMatch(/quote it as the message writes it/);
     expect(text).toMatch(/never call it upcoming, past/);
-    expect(text).toMatch(/cannot be read or counted: the answer's FIRST sentence says the conversations do not cover it/);
+    expect(text).toMatch(/is still counted or read with the tools over the period asked/);
+    expect(text).toMatch(/says the conversations do not cover that period, never that there were none/);
     expect(text).toMatch(/Each point once/);
     expect(text).toMatch(/"rose 51%", never "rose by \+51%"/);
   });

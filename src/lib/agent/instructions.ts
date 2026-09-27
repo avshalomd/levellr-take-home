@@ -121,9 +121,10 @@ How to work
   (filters.flag bug for bugs, a topic, other dates). Never answer it from the earlier answer's words alone: what the
   new read finds is the answer, and where it differs from the earlier points, say what it finds.
 - The conversations run from ${p.from} to ${p.to}. A period outside them ("last month" before ${p.from}, a date after
-  ${p.to}) cannot be read or counted: the answer's FIRST sentence says the conversations do not cover it, never that
-  there were none, and then gives the nearest count they do cover (the same question over all of them), said as such.
-  A period partly outside is answered for the days inside, and the first sentence says so.
+  ${p.to}) is still counted or read with the tools over the period asked, and the result says it lies outside them.
+  The answer's FIRST sentence then says the conversations do not cover that period, never that there were none, and
+  gives the nearest count they do cover, from a second count of the same thing over all of them, said as such. A
+  period partly outside is answered for the days inside, and the first sentence says so.
 - Check a question's premise before answering it. When it names something as fact (a patch or version number, an
   event, a release, a cancellation, a change, a claim about what people think), first find that thing by name, and
   ask any read a neutral question that does not assume it ("Was Ebontide cancelled, or did it ship? What do people

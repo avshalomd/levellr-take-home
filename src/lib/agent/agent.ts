@@ -15,7 +15,7 @@ import { instructions } from "./instructions";
 import { answerModel, chatModel } from "./model";
 import { msgTag } from "@/lib/refs";
 import { asksForSlice, asksWhatToPost, isRefusal, lastQuestion } from "./flags";
-import { needsRead } from "./grounding";
+import { asksWhatPeopleSay, needsRead } from "./grounding";
 import { makeTools } from "./tools";
 import { isOffTopic } from "./off-topic";
 import { isInScope } from "./scope";
@@ -139,6 +139,11 @@ export async function makeAgent(writer?: UIMessageStreamWriter) {
           : // A follow-up that asks for a kind, a topic or a period reads that slice before it answers (P3, flags.ts).
             stepNumber === 0 && followsUp(messages) && asksForSlice(lastQuestion(messages), topics)
             ? { activeTools: toolNames.filter((t) => t !== "out_of_scope"), toolChoice: "required" as const }
+            : // A question for a number gets it from a tool (D11). Eval 2026-09-28 (A06): told the data's dates,
+              // "How many conversations were about pricing last month?" was answered with no tool call, and a count
+              // tagged [aggregate] that nothing had counted. out_of_scope stays offered: revenue is a number too.
+              stepNumber === 0 && !asksWhatPeopleSay(lastQuestion(messages))
+              ? { toolChoice: "required" as const }
             : // A turn that has only counted may not answer a question about what people say: counts carry no
               // messages, and such an answer quoted threads and a cause with nothing to cite (QA 2026-09-26,
               // grounding.ts). The step must call a reading tool; the step after it answers.
