@@ -1,11 +1,20 @@
 import "server-only";
-import { generateText, isStepCount, ToolLoopAgent, type ModelMessage, type UIMessageStreamWriter } from "ai";
+import {
+  generateText,
+  isStepCount,
+  ToolLoopAgent,
+  wrapLanguageModel,
+  type LanguageModel,
+  type LanguageModelMiddleware,
+  type ModelMessage,
+  type UIMessageStreamWriter,
+} from "ai";
 import { profile } from "@/lib/data/profile";
 import { topicLabels } from "@/lib/data/read";
 import { instructions } from "./instructions";
 import { answerModel, chatModel } from "./model";
 import { msgTag } from "@/lib/refs";
-import { isRefusal, lastQuestion } from "./flags";
+import { asksForSlice, asksWhatToPost, isRefusal, lastQuestion } from "./flags";
 import { needsRead } from "./grounding";
 import { makeTools } from "./tools";
 import { isOffTopic } from "./off-topic";
@@ -27,6 +36,72 @@ export const answeredOffTopic = ({ steps }: { steps: ReadonlyArray<StepLike> }) 
 export const scopeTurnedDown = (steps: ReadonlyArray<StepLike>) =>
   steps.some((s) => s.toolResults.some((r) => isInScope(r.output)));
 
+/** Whether the turn is a follow-up in a chat: an earlier answer is in the messages. */
+const followsUp = (messages: ReadonlyArray<ModelMessage>) => messages.some((m) => m.role === "assistant");
+
+// Production QA 2026-09-27 (P1): a question opened from Explore came back as start-step, finish-step, finish, with no
+// text and no tool call; the loop ends on a step without a tool call, so the forced last step never ran and the page
+// said "This answer was not finished". Reproduced on Gemini 2.5 Flash: two of three runs of the same question were
+// empty. A step that comes back with nothing (no words, no tool call) is asked again once, made to call a tool when it
+// was offered tools and free to choose, so the loop goes on to read and then answer. A second empty step is left
+// as it is: the answer is then written from what the tools returned (finish.ts, answerFromTools).
+type CallOptions = Parameters<NonNullable<LanguageModelMiddleware["wrapStream"]>>[0]["params"];
+type Streamed = Awaited<ReturnType<Parameters<NonNullable<LanguageModelMiddleware["wrapStream"]>>[0]["doStream"]>>;
+type StreamPart = Streamed["stream"] extends ReadableStream<infer P> ? P : never;
+type Content = Awaited<
+  ReturnType<Parameters<NonNullable<LanguageModelMiddleware["wrapGenerate"]>>[0]["doGenerate"]>
+>["content"][number];
+
+/** A part that is something the reader or the loop can use: words, a tool call, a file, or an error to report. */
+export function isContent(p: StreamPart | Content): boolean {
+  if (p.type === "text-delta") return p.delta.trim() !== "";
+  if (p.type === "text") return p.text.trim() !== "";
+  return p.type === "tool-call" || p.type === "tool-input-start" || p.type === "file" || p.type === "error";
+}
+
+const forceTool = (params: CallOptions): CallOptions =>
+  params.tools?.length && (!params.toolChoice || params.toolChoice.type === "auto")
+    ? { ...params, toolChoice: { type: "required" } }
+    : params;
+
+export const retryEmpty: LanguageModelMiddleware = {
+  wrapGenerate: async ({ doGenerate, params, model }) => {
+    const first = await doGenerate();
+    if (first.content.some(isContent)) return first;
+    console.warn("empty model step, asked again", { model: model.modelId, toolChoice: params.toolChoice?.type });
+    return model.doGenerate(forceTool(params));
+  },
+  // Streamed, the parts are held until the first one with content: a step with content passes through unchanged,
+  // held parts first; one that finishes with none is asked again, and the reader never sees the empty one.
+  wrapStream: async ({ doStream, params, model }) => {
+    const first = await doStream();
+    const reader = first.stream.getReader();
+    const held: StreamPart[] = [];
+    for (let r = await reader.read(); !r.done; r = await reader.read()) {
+      held.push(r.value);
+      if (!isContent(r.value)) continue;
+      const stream = new ReadableStream<StreamPart>({
+        start: (c) => held.forEach((part) => c.enqueue(part)),
+        pull: async (c) => {
+          const next = await reader.read();
+          if (next.done) c.close();
+          else c.enqueue(next.value);
+        },
+        cancel: (why) => reader.cancel(why),
+      });
+      return { ...first, stream };
+    }
+    console.warn("empty model step, asked again", { model: model.modelId, toolChoice: params.toolChoice?.type });
+    return model.doStream(forceTool(params));
+  },
+};
+
+/** A model whose empty steps are asked again (retryEmpty). A gateway model named by a string is left as it is. */
+export const steady = (model: LanguageModel): LanguageModel =>
+  typeof model === "string"
+    ? model
+    : wrapLanguageModel({ model: model as Parameters<typeof wrapLanguageModel>[0]["model"], middleware: retryEmpty });
+
 export async function makeAgent(writer?: UIMessageStreamWriter) {
   const p = await profile();
   // The topics by name and key, so a question about a topic is read as that topic (QA 2026-09-27: "What are people
@@ -35,7 +110,7 @@ export async function makeAgent(writer?: UIMessageStreamWriter) {
   const brief = instructions(p, topics);
   const tools = makeTools(writer, p);
   const toolNames = Object.keys(tools) as (keyof typeof tools)[];
-  const model = chatModel();
+  const model = steady(chatModel());
   const agent = new ToolLoopAgent({
     model,
     instructions: brief,
@@ -50,20 +125,28 @@ export async function makeAgent(writer?: UIMessageStreamWriter) {
     prepareStep: ({ stepNumber, messages, steps }) =>
       stepNumber >= MAX_STEPS - 1
         ? {
-            model: answerModel(),
+            model: steady(answerModel()),
             messages: flattenForAnswer(messages),
             activeTools: [],
             toolChoice: "none" as const,
             instructions: brief + NO_TOOLS_LEFT,
           }
-        : // A turn that has only counted may not answer a question about what people say: counts carry no messages,
-          // and such an answer quoted threads and a cause with nothing to cite (QA 2026-09-26, grounding.ts). The step
-          // must call a reading tool; the step after it answers.
-          needsRead(steps, lastQuestion(messages))
-          ? { activeTools: ["scan", "find"], toolChoice: "required" as const }
-          : scopeTurnedDown(steps)
-            ? { activeTools: toolNames.filter((t) => t !== "out_of_scope") }
-            : undefined,
+        : // What to post is ranked by what resonates (D5, D13): the first step counts engagement by topic, and the
+          // read comes after it. Production QA 2026-09-27 (P4): the answer rested on an excitement read alone, one
+          // message per idea, with nothing to say which subjects drew the most replies and reactions.
+          stepNumber === 0 && asksWhatToPost(lastQuestion(messages))
+          ? { activeTools: ["aggregate"], toolChoice: "required" as const }
+          : // A follow-up that asks for a kind, a topic or a period reads that slice before it answers (P3, flags.ts).
+            stepNumber === 0 && followsUp(messages) && asksForSlice(lastQuestion(messages), topics)
+            ? { activeTools: toolNames.filter((t) => t !== "out_of_scope"), toolChoice: "required" as const }
+            : // A turn that has only counted may not answer a question about what people say: counts carry no
+              // messages, and such an answer quoted threads and a cause with nothing to cite (QA 2026-09-26,
+              // grounding.ts). The step must call a reading tool; the step after it answers.
+              needsRead(steps, lastQuestion(messages))
+              ? { activeTools: ["scan", "find"], toolChoice: "required" as const }
+              : scopeTurnedDown(steps)
+                ? { activeTools: toolNames.filter((t) => t !== "out_of_scope") }
+                : undefined,
     maxRetries: 1,
     temperature: 0.2,
   });
@@ -76,7 +159,7 @@ export async function makeAgent(writer?: UIMessageStreamWriter) {
 export async function answerFromTools(history: ModelMessage[]): Promise<string> {
   try {
     const r = await generateText({
-      model: answerModel(),
+      model: steady(answerModel()),
       system: instructions(await profile()) + NO_TOOLS_LEFT,
       messages: flattenForAnswer(history),
       temperature: 0.2,
