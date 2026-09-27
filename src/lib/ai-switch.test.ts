@@ -23,7 +23,14 @@ describe("AI_SIMULATE_DOWN", () => {
 // Which model answers is decided by two env vars, and an env file is where they go wrong: a line left as `NAME=`
 // is an empty string, not "unset".
 describe("AI_MODEL and AI_MODEL_FALLBACK", () => {
-  const vars = ["OPENROUTER_API_KEY", "AI_MODEL", "AI_MODEL_FALLBACK", "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY"];
+  const vars = [
+    "OPENROUTER_API_KEY",
+    "AI_MODEL",
+    "AI_MODEL_FALLBACK",
+    "ANTHROPIC_API_KEY",
+    "OPENAI_API_KEY",
+    "GOOGLE_GENERATIVE_AI_API_KEY",
+  ];
   const saved: Record<string, string | undefined> = {};
   beforeEach(() => {
     for (const v of vars) {

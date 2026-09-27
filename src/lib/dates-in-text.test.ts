@@ -6,7 +6,16 @@ const digits = (s: string) => withoutDates(s).match(/\d+/g) ?? [];
 
 describe("withoutDates", () => {
   it("takes out dates and release numbers", () => {
-    for (const s of ["after the 9 September patch", "on Sept 9th, 2026", "on 2026-09-09", "in September 2026", "after patch 42.3", "the 42.3 update", "after 42.3", "v1.2.3"])
+    for (const s of [
+      "after the 9 September patch",
+      "on Sept 9th, 2026",
+      "on 2026-09-09",
+      "in September 2026",
+      "after patch 42.3",
+      "the 42.3 update",
+      "after 42.3",
+      "v1.2.3",
+    ])
       expect(digits(s), s).toEqual([]);
   });
   it("leaves counts and rates", () => {

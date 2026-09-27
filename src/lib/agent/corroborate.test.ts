@@ -26,17 +26,18 @@ vi.mock("@/lib/data/db", () => ({
 const { corroborate, messagesToAsk, poolOf, tally, questionKey } = await import("./corroborate");
 
 const m = (ref: number, conv: string, over: Partial<MessageRef> = {}): MessageRef => ({
-  id: `t1_${ref}`,
+  id: `msg_${ref}`,
   ref,
-  kind: "comment",
-  channel: "Discussion",
-  thread_id: `t3_${conv}`,
+  kind: "message",
+  channel: "game-chat",
+  thread_id: conv,
   reply_to: null,
   conversation_id: conv,
   in_window: true,
   author: `u${ref}`,
   ts: `2026-09-0${(ref % 9) + 1}T10:00:00Z`,
   text: `message ${ref}`,
+  n_reactions: ref,
   score: ref,
   removed: false,
   is_bot: false,

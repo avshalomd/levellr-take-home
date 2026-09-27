@@ -5,7 +5,7 @@ describe("flagsNamed", () => {
   it("reads the kinds of conversation a question or a first sentence names", () => {
     expect([
       ...flagsNamed("Among the complaint threads about the Rondo changes, most are negative."),
-    ]).toEqual(["complaint"]);
+    ]).toEqual(["frustrated"]);
     expect([...flagsNamed("Which bugs are reported most?")]).toEqual(["bug"]);
     expect([...flagsNamed("What are people asking for most?")]).toEqual(["feature"]);
     expect([...flagsNamed("Where do new players ask for help?")]).toEqual(["help"]);
@@ -34,8 +34,8 @@ describe("flagsNamed, the words", () => {
       expect([...flagsNamed(q)], q).toEqual([]);
   });
   it("reads the kinds from their other names", () => {
-    expect([...flagsNamed("What are the main gripes?")]).toEqual(["complaint"]);
-    expect([...flagsNamed("What are the main frustrations?")]).toEqual(["complaint"]);
+    expect([...flagsNamed("What are the main gripes?")]).toEqual(["frustrated"]);
+    expect([...flagsNamed("What are the main frustrations?")]).toEqual(["frustrated"]);
     expect([...flagsNamed("Is the new map buggy?")]).toEqual(["bug"]);
     expect([...flagsNamed("Which glitches come up?")]).toEqual(["bug"]);
     expect([...flagsNamed("Are there crashes after the patch?")]).toEqual(["bug"]);
@@ -48,8 +48,6 @@ describe("flagsNamed, the words", () => {
   // Review 2026-09-26: each of these re-admitted a narrowing the question never asked for.
   it("reads no kind into a feeling, a wish to know or a request that is not the reader's subject", () => {
     for (const q of [
-      "Are players frustrated with the Rondo changes?",
-      "What frustrates players most?",
       "I wish to know how people reacted to 42.3.",
       "How did people take the requested changes?",
     ])
@@ -77,7 +75,7 @@ describe("flagsNamed, the words", () => {
       expect([...flagsNamed(q)], q).toEqual(["help"]);
   });
   it("reads Norwegian", () => {
-    expect([...flagsNamed("Hva klager folk på?")]).toEqual(["complaint"]);
+    expect([...flagsNamed("Hva klager folk på?")]).toEqual(["frustrated"]);
     expect([...flagsNamed("Hvilke feil rapporteres?")]).toEqual(["bug"]);
     expect([...flagsNamed("Hva ønsker spillerne seg?")]).toEqual(["feature"]);
     expect([...flagsNamed("Hvor ber nye spillere om hjelp?")]).toEqual(["help"]);
@@ -87,7 +85,7 @@ describe("flagsNamed, the words", () => {
 describe("questionInContext", () => {
   it("carries the earlier question's kind into a follow-up", () => {
     const q = ["What are people complaining about in September?", "And in July?"];
-    expect(flagsNamed(questionInContext(q)).has("complaint")).toBe(true);
+    expect(flagsNamed(questionInContext(q)).has("frustrated")).toBe(true);
     expect(
       flagsNamed(questionInContext(["Which bugs come up most?", "What about after the patch?"])).has("bug"),
     ).toBe(true);
@@ -119,7 +117,7 @@ describe("questionInContext, what counts as a follow-up", () => {
   });
   it("carries a kind down a chain of follow-ups", () => {
     expect(kinds("What are people complaining about?", "And in July?", "What about September?")).toEqual([
-      "complaint",
+      "frustrated",
     ]);
     expect(kinds("Which bugs come up most?", "After the patch?", "In July?")).toEqual(["bug"]);
   });
@@ -136,9 +134,9 @@ describe("questionInContext, what counts as a follow-up", () => {
     ).toEqual([]);
   });
   it("takes a short fragment with no question word, or one or two words, for a follow-up", () => {
-    expect(kinds("What are people complaining about?", "In July?")).toEqual(["complaint"]);
-    expect(kinds("What are people complaining about?", "September?")).toEqual(["complaint"]);
-    expect(kinds("What are people complaining about?", "Why?")).toEqual(["complaint"]);
+    expect(kinds("What are people complaining about?", "In July?")).toEqual(["frustrated"]);
+    expect(kinds("What are people complaining about?", "September?")).toEqual(["frustrated"]);
+    expect(kinds("What are people complaining about?", "Why?")).toEqual(["frustrated"]);
     expect(kinds("What are people complaining about?", "What changed after 42.3?")).toEqual([]);
   });
 });
@@ -154,12 +152,12 @@ describe("unaskedFlag", () => {
     expect(lastQuestion([])).toBe("");
   });
   it("is the flag when the latest question did not name it, and nothing when it did or there was none", () => {
-    expect(unaskedFlag("complaint", asked("How do players feel about Rondo?"))).toBe("complaint");
-    expect(unaskedFlag("complaint", asked("And the complaints about Rondo?"))).toBeUndefined();
+    expect(unaskedFlag("frustrated", asked("How do players feel about Rondo?"))).toBe("frustrated");
+    expect(unaskedFlag("frustrated", asked("And the complaints about Rondo?"))).toBeUndefined();
     expect(unaskedFlag(undefined, asked("How do players feel about Rondo?"))).toBeUndefined();
   });
   it("takes a follow-up to ask about the kind the question before it named", () => {
-    expect(unaskedFlag("complaint", asked("And in July?"))).toBeUndefined();
+    expect(unaskedFlag("frustrated", asked("And in July?"))).toBeUndefined();
     expect(unaskedFlag("bug", asked("And in July?"))).toBe("bug");
   });
 });

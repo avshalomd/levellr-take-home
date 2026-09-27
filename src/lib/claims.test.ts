@@ -4,12 +4,21 @@ import { claimsOf, plainClaim, pruneWeak, shownCitations, type ClaimSupport } fr
 
 const cite = (id: string, support: number | null, status = "ok") => ({ id, support, status });
 // The claims exactly as the verifier would store them for a text: claimsOf gives the sentences, the test the scores.
-const checked = (text: string, scores: Record<string, number | null>, status: Record<string, string> = {}): ClaimSupport[] =>
-  claimsOf(text).map((c) => ({ claim: c.claim, citations: c.ids.map((id) => cite(id, scores[id] ?? null, status[id])) }));
+const checked = (
+  text: string,
+  scores: Record<string, number | null>,
+  status: Record<string, string> = {},
+): ClaimSupport[] =>
+  claimsOf(text).map((c) => ({
+    claim: c.claim,
+    citations: c.ids.map((id) => cite(id, scores[id] ?? null, status[id])),
+  }));
 
 describe("claimsOf", () => {
   it("reads bullets and sentences as claims, with their refs", () => {
-    expect(claimsOf("Mostly stutter.\n- Frame drops after the patch [msg1, msg2]. Also crashes [msg3].")).toEqual([
+    expect(
+      claimsOf("Mostly stutter.\n- Frame drops after the patch [msg1, msg2]. Also crashes [msg3]."),
+    ).toEqual([
       { claim: "Mostly stutter.", ids: [] },
       { claim: "Frame drops after the patch.", ids: ["msg1", "msg2"] },
       { claim: "Also crashes.", ids: ["msg3"] },
@@ -26,16 +35,22 @@ describe("claimsOf", () => {
   });
 
   it("starts a sentence at a digit or a quote, as the answer's hover claims do", () => {
-    expect(claimsOf("Crashes rose [msg1]. 34% mention it [msg2].").map((c) => c.ids)).toEqual([["msg1"], ["msg2"]]);
+    expect(claimsOf("Crashes rose [msg1]. 34% mention it [msg2].").map((c) => c.ids)).toEqual([
+      ["msg1"],
+      ["msg2"],
+    ]);
   });
 });
 
 describe("pruneWeak", () => {
-  const text = "People report stutter.\n- Frame drops after the patch [msg1, msg2, msg3].\n- Crashes on start [msg4, msg5].";
+  const text =
+    "People report stutter.\n- Frame drops after the patch [msg1, msg2, msg3].\n- Crashes on start [msg4, msg5].";
 
   it("drops a citation that does not back its claim when another one does", () => {
     const out = pruneWeak(text, checked(text, { msg1: 0.9, msg2: 0.2, msg3: 0.7, msg4: 0.3, msg5: 0.1 }));
-    expect(out).toBe("People report stutter.\n- Frame drops after the patch [msg1, msg3].\n- Crashes on start [msg4, msg5].");
+    expect(out).toBe(
+      "People report stutter.\n- Frame drops after the patch [msg1, msg3].\n- Crashes on start [msg4, msg5].",
+    );
   });
 
   it("keeps every citation of a claim nothing backs, and every unchecked one", () => {
@@ -80,7 +95,11 @@ describe("shownCitations", () => {
     expect(citedTags(pruneWeak(text, [claim]))).toEqual(shownCitations(claim));
   });
   it("keeps every citation of a claim none backs, less one to a message that does not exist", () => {
-    const [claim] = checked("- Stutter [msg1, msg2, msg9].", { msg1: 0.2, msg2: 0.3 }, { msg9: "unknown-id" });
+    const [claim] = checked(
+      "- Stutter [msg1, msg2, msg9].",
+      { msg1: 0.2, msg2: 0.3 },
+      { msg9: "unknown-id" },
+    );
     expect(shownCitations(claim)).toEqual(["msg1", "msg2"]);
   });
 });

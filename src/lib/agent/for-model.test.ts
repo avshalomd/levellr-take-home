@@ -37,7 +37,7 @@ describe("what the model reads back", () => {
     expect(aggregateForModel(agg("conversations", 51))).toContain("2026-08-24: 51 (n=51)");
   });
 
-  const ok = (flag?: "complaint"): ScanResult => ({
+  const ok = (flag?: "frustrated"): ScanResult => ({
     status: "ok",
     question: "q",
     filters: { topic: "updates", ...(flag ? { flag } : {}) },
@@ -51,11 +51,11 @@ describe("what the model reads back", () => {
   });
 
   it("says a flag-filtered count is a share of the flagged slice, not of the topic", () => {
-    const t = scanForModel(ok("complaint"), 400);
+    const t = scanForModel(ok("frustrated"), 400);
     expect(t).toContain(
-      "Scanned 129 conversations (conversations touching topic updates, only complaints); 80 relevant",
+      "Scanned 129 conversations (conversations touching topic updates, only frustrated conversations); 80 relevant",
     );
-    expect(t).toContain("All 129 were already complaints");
+    expect(t).toContain("All 129 were already frustrated conversations");
     expect(t).toContain("use aggregate");
   });
 
@@ -84,7 +84,7 @@ describe("voicesForModel", () => {
           author: "Deep-Pen420",
           messages: 40,
           conversations: 12,
-          score: -3,
+          reactions: 3,
           started: 2,
           first_ts: "2026-07-01T10:00:00Z",
           last_ts: "2026-09-20T09:00:00Z",
@@ -93,7 +93,7 @@ describe("voicesForModel", () => {
     });
     expect(out).toContain("The 1 most active of 312 people in conversations touching topic updates");
     expect(out).toContain(
-      "Deep-Pen420: 40 messages in 12 conversations, started 2, -3 net votes, 2026-07-01 to 2026-09-20",
+      "Deep-Pen420: 40 messages in 12 conversations, started 2, 3 reactions, 2026-07-01 to 2026-09-20",
     );
   });
   it("says plainly when nobody wrote", () => {
@@ -110,9 +110,9 @@ describe("voicesForModel", () => {
 // note beside each number telling it the question had not asked about them. The call is refused instead.
 describe("refusalWords", () => {
   it("tells the model the call was not run, why, and to read again without the flag", () => {
-    const t = refusalWords("complaint");
+    const t = refusalWords("frustrated");
     expect(t.startsWith(REFUSED)).toBe(true);
-    expect(t).toContain("the question does not ask about complaints");
+    expect(t).toContain("the question does not ask about frustrated conversations");
     expect(t).toContain("Nothing was read");
     expect(t).toContain("without filters.flag");
     expect(t).toContain("narrow by topic or dates instead");
@@ -348,7 +348,7 @@ describe("conversationsForModel on a hit saved in an older or slimmer shape", ()
         author: "someone",
         ts: "2026-09-10T10:00:00Z",
         text: "The anti-cheat is useless this season.",
-        score: 5,
+        reactions: 5,
         removed: false,
         is_bot: false,
       },
@@ -415,13 +415,12 @@ describe("counts in the one unit, the conversation", () => {
       period: periodOf(filters, window),
     });
 
-  it("says the unit and its limits beside a count of messages, people or votes, and not beside a count of conversations", () => {
-    for (const m of ["messages", "authors", "net_votes"] as const) {
+  it("says the unit and its limits beside a count of messages, people or engagement, and not beside a count of conversations", () => {
+    for (const m of ["messages", "authors", "engagement"] as const) {
       const t = out(m, "none", [{ key: "all", value: 10, n: 2 }]);
       expect(t).toContain("each conversation dated by the day it starts");
-      expect(t).toContain("Every count includes bots' and removed messages.");
       expect(t).toMatch(
-        /single messages by their own time, posts apart from replies, bots' or removed messages counted apart or left out/,
+        /Counts of single messages by their own time, and one person's own messages or reactions are not available/,
       );
       expect(t).toContain("the answer's first sentence says what was counted instead");
     }
@@ -430,12 +429,14 @@ describe("counts in the one unit, the conversation", () => {
     );
   });
 
-  it("names net votes, and gives them per day over the period like any count", () => {
-    const t = out("net_votes", "none", [{ key: "all", value: 3100, n: 200 }], {
+  it("names engagement, and gives it per day over the period like any count", () => {
+    const t = out("engagement", "none", [{ key: "all", value: 3100, n: 200 }], {
       since: "2026-09-01",
       until: "2026-09-11",
     });
-    expect(t).toContain("net votes on the conversations' messages by none");
+    expect(t).toContain(
+      "engagement (distinct authors + replies + reactions, summed over the conversations) by none",
+    );
     expect(t).toContain("all: 3100, 310.0 per day over 10 days");
   });
 
@@ -446,6 +447,6 @@ describe("counts in the one unit, the conversation", () => {
     ]);
     expect(t).toContain("2026-07: 3100, 100.0 per day over 31 days");
     expect(t).toContain("2026-09: 2400, 100.0 per day over 24 days");
-    expect(t).toContain("the first and last periods are partial");
+    expect(t).toContain("The first and last periods of the conversations are partial");
   });
 });

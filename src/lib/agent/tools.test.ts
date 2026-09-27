@@ -22,12 +22,12 @@ vi.mock("@/lib/data/aggregate", () => ({
 vi.mock("@/lib/data/read", () => ({
   conversationIdOf: vi.fn(),
   getConversation: vi.fn(),
+  topicLabels: async () => [{ key: "updates", name: "updates", description: "" }],
   getOverview: vi.fn(async () => ({
     topics: [{ key: "cheating-bans", name: "Cheating & Bans", n: 900 }],
     releases: [{ version: "43.1" }],
   })),
 }));
-vi.mock("@/lib/labels/store", () => ({ active: async () => ({ labels: [{ key: "updates" }] }) }));
 // The scope check (scope.ts) asks Jev; never over the network here. Default: the question is off-topic.
 const decideMock = vi.fn<(a: { state: { question: string } }) => Promise<unknown>>(async () => ({
   answers: { bears: { type: "noul", noul: 0.1 } },
@@ -61,10 +61,10 @@ describe("a flag the question never named", () => {
   // place and the refused call showed as a step that did not finish.
   it("refuses the call before it reads anything, telling the model to read again without it", async () => {
     const out = await tools.scan.execute!(
-      { question: "Reaction to 42.3?", filters: { topic: "updates", flag: "complaint" } },
+      { question: "Reaction to 42.3?", filters: { topic: "updates", flag: "frustrated" } },
       opts(reaction),
     );
-    expect(out).toMatchObject({ status: "refused", flag: "complaint" });
+    expect(out).toMatchObject({ status: "refused", flag: "frustrated" });
     const model = await tools.scan.toModelOutput!({
       toolCallId: "t1",
       input: {} as never,
@@ -73,7 +73,7 @@ describe("a flag the question never named", () => {
     expect(model).toMatchObject({ type: "text" });
     expect((model as { value: string }).value.startsWith(REFUSED)).toBe(true);
     expect((model as { value: string }).value).toMatch(
-      /does not ask about complaints[\s\S]*without filters\.flag/,
+      /does not ask about frustrated conversations[\s\S]*without filters\.flag/,
     );
     expect(scanMock).not.toHaveBeenCalled();
   });
@@ -114,11 +114,11 @@ describe("a flag the question never named", () => {
       opts(reaction),
     );
     await tools.scan.execute!(
-      { question: "Complaints?", filters: { flag: "complaint" } },
+      { question: "Complaints?", filters: { flag: "frustrated" } },
       opts(asked("What do people complain about after 42.3?")),
     );
     await tools.aggregate.execute!(
-      { metric: "conversations", group_by: "week", filters: { flag: "complaint" } },
+      { metric: "conversations", group_by: "week", filters: { flag: "frustrated" } },
       opts(asked("What are people complaining about?", "And in July?")),
     );
     expect(scanMock).toHaveBeenCalledTimes(2);
@@ -134,6 +134,7 @@ describe("what the tools add around a call (QA 2026-09-26, round 5)", () => {
     about: "",
     from: "2026-06-18",
     to: "2026-09-24",
+    now: "2026-09-24T23:00:00.000Z",
   });
   const q = asked("How do players feel about the latest update?");
   const ok = {

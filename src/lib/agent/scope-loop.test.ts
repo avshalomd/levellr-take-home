@@ -33,9 +33,9 @@ vi.mock("@/lib/data/aggregate", () => ({
 vi.mock("@/lib/data/read", () => ({
   conversationIdOf: vi.fn(),
   getConversation: vi.fn(),
-  getOverview: vi.fn(async () => ({ topics: [], releases: [] })),
+  getOverview: vi.fn(async () => ({ topics: [] })),
+  topicLabels: async () => [],
 }));
-vi.mock("@/lib/labels/store", () => ({ active: async () => ({ labels: [] }) }));
 
 const usage = {
   inputTokens: { total: 1, noCache: 1, cacheRead: undefined, cacheWrite: undefined },

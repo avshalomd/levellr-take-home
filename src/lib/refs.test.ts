@@ -16,8 +16,8 @@ describe("normalizeCitations", () => {
   });
 
   it("removes raw Reddit ids and conversation handles the reader should never see", () => {
-    expect(normalizeCitations("The thread [t3_1wajhn1] says so.")).toBe("The thread says so.");
-    expect(normalizeCitations("One reply (t1_p8rxa77) disagrees.")).toBe("One reply disagrees.");
+    expect(normalizeCitations("The thread [msg_000123] says so.")).toBe("The thread says so.");
+    expect(normalizeCitations("One reply (msg_000054) disagrees.")).toBe("One reply disagrees.");
     expect(normalizeCitations("In conv123 players agree [msg9].")).toBe("In players agree [msg9].");
     expect(normalizeCitations("Mixed [msg9, t1_abcdef].")).toBe("Mixed [msg9].");
   });
@@ -41,17 +41,21 @@ describe("normalizeCitations", () => {
 
   // Review 2026-09-26: the pass dropped every word beside the refs, so a count, a tool tag and a quoted sentence went.
   it("never drops a count, a tool tag or other words beside the refs", () => {
-    expect(normalizeCitations("Lag led (212 of 840 conversations, msg12).")).toBe("Lag led (212 of 840 conversations, [msg12]).");
+    expect(normalizeCitations("Lag led (212 of 840 conversations, msg12).")).toBe(
+      "Lag led (212 of 840 conversations, [msg12]).",
+    );
     expect(normalizeCitations("Lag led [scan, msg12].")).toBe("Lag led [scan] [msg12].");
     expect(normalizeCitations("Lag led [msg12, aggregate, Sept].")).toBe("Lag led [aggregate] [msg12].");
-    expect(normalizeCitations("Fans were happy (as msg12 put it, love the map).")).toBe("Fans were happy (as [msg12] put it, love the map).");
-    expect(normalizeCitations("bots [msg12 — the September thread about the new map rotation and its fans]")).toBe(
-      "bots ([msg12] — the September thread about the new map rotation and its fans)",
+    expect(normalizeCitations("Fans were happy (as msg12 put it, love the map).")).toBe(
+      "Fans were happy (as [msg12] put it, love the map).",
     );
+    expect(
+      normalizeCitations("bots [msg12 — the September thread about the new map rotation and its fans]"),
+    ).toBe("bots ([msg12] — the September thread about the new map rotation and its fans)");
     expect(normalizeCitations("bots [212 threads, scan, msg12]")).toBe("bots (212 threads, [msg12]) [scan]");
   });
 
-  it("leaves no \"[msg\" in the text that is not a whole citation", () => {
+  it('leaves no "[msg" in the text that is not a whole citation', () => {
     const decorated = [
       "a [msg41525 — Sept]",
       "a [msg41525, Sept]",
@@ -70,14 +74,21 @@ describe("normalizeCitations", () => {
 
   // Production QA 2026-09-26: "…the 43.1 release on 2026-09-09 [dataset_overview]." reached the reader.
   it("drops a bracketed tool name or snake_case token, keeps step tags and link text", () => {
-    expect(normalizeCitations("It coincides with the 43.1 release [dataset_overview].")).toBe("It coincides with the 43.1 release.");
+    expect(normalizeCitations("It coincides with the 43.1 release [dataset_overview].")).toBe(
+      "It coincides with the 43.1 release.",
+    );
     expect(normalizeCitations("Lag [dataset_overview, msg12].")).toBe("Lag [msg12].");
     expect(normalizeCitations("212 of 840 [scan] [msg12].")).toBe("212 of 840 [scan] [msg12].");
     expect(normalizeCitations("See [the_docs](https://x.y).")).toBe("See [the_docs](https://x.y).");
   });
 
   it("is idempotent", () => {
-    for (const s of ["a (msg1, msg2) b msg3 [t3_zzzzz]", "a (212 of 840 conversations, msg12)", "a [scan, msg12]", "a (as msg12 put it, love the map)"]) {
+    for (const s of [
+      "a (msg1, msg2) b msg3 [t3_zzzzz]",
+      "a (212 of 840 conversations, msg12)",
+      "a [scan, msg12]",
+      "a (as msg12 put it, love the map)",
+    ]) {
       const once = normalizeCitations(s);
       expect(normalizeCitations(once), s).toBe(once);
     }

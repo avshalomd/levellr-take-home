@@ -17,6 +17,7 @@ vi.mock("@/lib/data/profile", () => ({
     events: null,
   }),
 }));
+vi.mock("@/lib/data/db", () => ({ query: async () => [] }));
 vi.mock("@/lib/data/scan", () => ({ scan: (...a: unknown[]) => scanMock(...a), MAX_SCAN: 2500 }));
 vi.mock("@/lib/data/search", () => ({ searchConversations: vi.fn() }));
 vi.mock("@/lib/data/voices", () => ({ topVoices: vi.fn() }));
@@ -34,8 +35,8 @@ vi.mock("@/lib/data/read", () => ({
   conversationIdOf: vi.fn(),
   getConversation: vi.fn(),
   getOverview: vi.fn(),
+  topicLabels: async () => [],
 }));
-vi.mock("@/lib/labels/store", () => ({ active: async () => ({ labels: [] }) }));
 
 const usage = {
   inputTokens: { total: 1, noCache: 1, cacheRead: undefined, cacheWrite: undefined },
