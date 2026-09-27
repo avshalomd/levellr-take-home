@@ -1,4 +1,5 @@
 import "server-only";
+import { communityInProse } from "@/lib/community";
 import { query } from "./db";
 
 // What the dataset is, in the words its manifest gave (datasets/levellr.json -> dataset_meta), and when "now" is.
@@ -36,7 +37,8 @@ export function profileOf(m: Meta): Profile {
   const now = str(nowRaw) || str((nowRaw as Meta | undefined)?.ts) || str(window.now) || str(window.to);
   const nowDate = now ? new Date(now) : null;
   return {
-    community: str(source.community) || "the community",
+    // As it reads in a sentence ("the Veil of Ages Discord"), not the export's label (QA Q7).
+    community: communityInProse(str(source.community)),
     platform: str(source.platform).replace(/-json$/, "") || "discord",
     about: str(source.about),
     from: str(window.from).slice(0, 10),

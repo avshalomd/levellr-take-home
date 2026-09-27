@@ -22,6 +22,7 @@ import { evidenceOf } from "./evidence";
 import { VerificationBar } from "./VerificationBar";
 import { Welcome } from "./Welcome";
 import { chatErrorWords, DROPPED_LOADING, isDropped } from "./error-words";
+import { QUESTION_MAX } from "@/lib/question-limit";
 
 type ToolPart = Extract<ChatMessage["parts"][number], { type: `tool-${string}` }>;
 const isToolPart = (p: ChatMessage["parts"][number]): p is ToolPart => p.type.startsWith("tool-");
@@ -564,6 +565,7 @@ function Composer({
               }
             }}
             rows={1}
+            maxLength={QUESTION_MAX}
             aria-label="Ask a question"
             placeholder="Ask what people are saying…"
             className="grow-field max-h-40 min-h-9 flex-1 resize-none bg-transparent py-1.5 text-[16px] leading-6 outline-none placeholder:text-muted-foreground/80"

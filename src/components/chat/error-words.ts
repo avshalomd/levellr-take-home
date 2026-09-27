@@ -16,5 +16,14 @@ export function chatErrorWords(message: string | undefined): string {
   if (isDropped(m)) return "The connection dropped before the answer finished. Check your connection and try again.";
   // A page instead of an error (a 404 or a platform error page): its HTML reached the chat raw.
   if (/^<!doctype|<html[\s>]/i.test(m)) return "The server could not answer. Try again in a moment.";
+  // A refusal the route wrote for people ({ error: "..." }, e.g. a question past the length cap) arrives as its JSON.
+  if (m.startsWith("{")) {
+    try {
+      const said = (JSON.parse(m) as { error?: unknown }).error;
+      if (typeof said === "string" && said.trim()) return said.trim();
+    } catch {
+      /* not JSON after all: shown as it came */
+    }
+  }
   return m;
 }

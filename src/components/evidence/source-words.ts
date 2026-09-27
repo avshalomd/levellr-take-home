@@ -2,6 +2,8 @@
 // Reddit, reactions on Discord, a plain score anywhere else) and where it was posted (r/<community>, #channel). Nothing here names a community: the platform and community come from the data (dataset_meta.source),
 // the channel from the message. Pure, so it is unit-tested (source-words.test.ts).
 
+import { communityTitle } from "@/lib/community";
+
 export type Source = { platform?: string; community?: string };
 export type EngagementKind = "votes" | "reactions" | "score";
 
@@ -38,7 +40,7 @@ export function engagement(source: Source | undefined, score: number): { kind: E
  */
 export function placeWords(source: Source | undefined, channel: string | undefined): { where: string; tag: string | null } {
   const p = platformOf(source);
-  const community = source?.community?.trim() || "";
+  const community = communityTitle(source?.community); // without the export's "(Levellr sample)" (QA Q7)
   const ch = channel?.trim() || "";
   if (p === "discord") return { where: ch ? `#${ch.replace(/^#/, "")}` : community, tag: ch && community ? community : null };
   if (community) return { where: community, tag: ch || null };

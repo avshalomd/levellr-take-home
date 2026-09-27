@@ -24,3 +24,12 @@ describe("isDropped", () => {
     expect(isDropped(undefined)).toBe(false);
   });
 });
+
+describe("a refusal the route wrote", () => {
+  it("shows its line, not its JSON (QA Q6)", () => {
+    expect(chatErrorWords('{"error":"That question is 5,000 characters long. Keep it under 2,000 and ask again."}')).toBe(
+      "That question is 5,000 characters long. Keep it under 2,000 and ask again.",
+    );
+    expect(chatErrorWords("{not json")).toBe("{not json");
+  });
+});

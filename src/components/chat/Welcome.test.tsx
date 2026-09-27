@@ -23,7 +23,8 @@ describe("Welcome", () => {
 
   it("says what the data is once the overview lands", () => {
     const html = renderToStaticMarkup(<Welcome overview={overview} onAsk={() => {}} />);
-    expect(html).toContain("What is Veil of Ages talking about?");
+    // The community in a sentence, with its article (QA Q7).
+    expect(html).toContain("What is the Veil of Ages talking about?");
     expect(html).toContain("10 messages in 5 conversations from 3 people");
     expect(html).not.toContain("data-skeleton");
   });

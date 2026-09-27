@@ -714,8 +714,8 @@ describe("pickChart, two periods and a subject's mood", () => {
     expect(c).toMatchObject({ id: "sep", groupBy: "period", metric: "conversations_per_day" });
     expect(c!.title).toBe("Conversations per day by topic, 1–31 Aug against 1–24 Sep");
     expect(c!.rows.map((r) => [r.key, r.value.toFixed(2)])).toEqual([
-      ["updates · 1–31 Aug", "10.00"],
-      ["updates · 1–24 Sep", "9.38"],
+      ["Updates · 1–31 Aug", "10.00"],
+      ["Updates · 1–24 Sep", "9.38"],
       ["Performance & Access · 1–31 Aug", "2.13"],
       ["Performance & Access · 1–24 Sep", "4.71"],
     ]);
@@ -751,5 +751,45 @@ describe("pickChart, two periods and a subject's mood", () => {
     ];
     expect(activitySummary(counts, names).text).toBe("Counted conversations by topic twice");
     expect(activitySummary(counts, names).text).not.toMatch(/read/i);
+  });
+});
+
+// QA Q8: "What should we post" drew a raw lower-case "other" row and ranked "Other games" (158), which D20 leaves out.
+describe("an engagement-by-topic chart under an excitement question", () => {
+  const byTopic = {
+    type: "tool-aggregate",
+    state: "output-available",
+    toolCallId: "e",
+    input: { metric: "engagement", group_by: "topic", filters: {} },
+    output: {
+      metric: "engagement",
+      groupBy: "topic",
+      rows: [
+        { key: "other-games-off-topic", value: 158, n: 1 },
+        { key: "other", value: 120, n: 1 },
+        { key: "domains", value: 90, n: 1 },
+        { key: "tides-remastered", value: 80, n: 1 },
+      ],
+    },
+  };
+  const topics = new Map([
+    ["other-games-off-topic", "Other games"],
+    ["domains", "Domains"],
+    ["tides-remastered", "Tides Remastered"],
+  ]);
+
+  it("leaves other games and the residual topic out of the ranking", () => {
+    const c = pickChart([byTopic], topics, "What should we post about this week?");
+    expect(c!.rows.map((r) => r.key)).toEqual(["domains", "tides-remastered"]);
+  });
+
+  it("keeps them when the question asks about them, or is not about excitement", () => {
+    expect(pickChart([byTopic], topics, "Which topics are busiest, other games included?")!.rows).toHaveLength(4);
+    expect(pickChart([byTopic], topics, "What are people excited about in other games?")!.rows).toHaveLength(4);
+  });
+
+  it("never shows a raw key", () => {
+    expect(rowLabel("other", "topic", topics)).toBe("Other");
+    expect(rowLabel("some-new-topic", "topic", topics)).toBe("Some new topic");
   });
 });

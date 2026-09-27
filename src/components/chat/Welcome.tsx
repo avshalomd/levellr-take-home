@@ -2,6 +2,7 @@
 
 import { ArrowUpRight } from "lucide-react";
 import type { Overview } from "@/lib/data/read";
+import { communityInProse } from "@/lib/community";
 import { BRIEF_QUESTIONS, topicQuestion } from "@/lib/starters";
 import { cn } from "@/lib/utils";
 import { shortDate } from "./evidence";
@@ -27,7 +28,7 @@ export function Welcome({ overview, onAsk }: { overview: Overview | null; onAsk:
   return (
     <div className="pt-4 pb-8 sm:pt-14">
       <h1 className="text-[30px] leading-[1.1] font-semibold tracking-[-0.025em] text-balance sm:text-[38px]">
-        What is {meta.source?.community ?? "the Veil of Ages Discord"} talking about?
+        What is {communityInProse(meta.source?.community, "the Veil of Ages Discord")} talking about?
       </h1>
       {overview ? (
         <p className="mt-4 max-w-[36rem] text-[16px] leading-relaxed text-foreground/70">

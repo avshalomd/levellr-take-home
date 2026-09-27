@@ -55,7 +55,7 @@ async function main() {
   if (after.checked) {
     const cor = await corroborate(after.checked, result.steps);
     console.log(
-      `corroboration: ${JSON.stringify({ status: cor.status, pool: (cor as { pool?: number }).pool, found: (cor as { found?: number }).found })}`,
+      `corroboration: ${JSON.stringify({ status: cor.status, pool: (cor as { pool?: number }).pool, found: (cor as { found?: number }).found, failed: (cor as { failed?: number }).failed })}`,
     );
   }
   console.log(`\n${((Date.now() - t0) / 1000).toFixed(1)} s`);

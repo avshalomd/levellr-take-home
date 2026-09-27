@@ -23,7 +23,7 @@ vi.mock("@/lib/data/db", () => ({
   query: async (_: string, [ids]: [string[]]) => ids.map((id) => ({ id, thread_title: `Thread ${id}` })),
 }));
 
-const { corroborate, messagesToAsk, poolOf, tally, questionKey } = await import("./corroborate");
+const { corroborate, messagesToAsk, poolOf, tally, questionKey, transient, withRetry } = await import("./corroborate");
 
 const m = (ref: number, conv: string, over: Partial<MessageRef> = {}): MessageRef => ({
   id: `msg_${ref}`,
@@ -250,5 +250,34 @@ describe("corroborate", () => {
     const out = await corroborate(v([]), [result("scan", { status: "ok", relevant: 1, relevantIds: ["a"] })]);
     expect(out).toMatchObject({ status: "done", claims: [] });
     expect(decideMock).not.toHaveBeenCalled();
+  });
+});
+
+// QA Q4: 72 of 80 reads failed on prod, every one an OpenRouter 429 under a burst of 20, and nothing was logged.
+describe("retrying a read", () => {
+  const rateLimited = new Error("The decision model failed: Rate limit exceeded (HTTP 429)");
+  const noSleep = async () => {};
+
+  it("counts a rate limit, a server error and a timeout as worth another try, a refusal not", () => {
+    expect(transient(rateLimited)).toBe(true);
+    expect(transient(new Error("The decision model failed: HTTP 503: upstream"))).toBe(true);
+    expect(transient(Object.assign(new Error("took too long"), { kind: "timeout" }))).toBe(true);
+    expect(transient(new Error("The decision model failed: HTTP 402: no credits"))).toBe(false);
+    expect(transient(new Error("The decision model left questions unanswered: c0"))).toBe(false);
+  });
+
+  it("tries again after a rate limit and returns the answer", async () => {
+    const fn = vi.fn().mockRejectedValueOnce(rateLimited).mockRejectedValueOnce(rateLimited).mockResolvedValue("ok");
+    await expect(withRetry(fn, [1, 1, 1], noSleep)).resolves.toBe("ok");
+    expect(fn).toHaveBeenCalledTimes(3);
+  });
+
+  it("gives up after the last delay, and at once on a lasting failure", async () => {
+    const always = vi.fn().mockRejectedValue(rateLimited);
+    await expect(withRetry(always, [1, 1], noSleep)).rejects.toBe(rateLimited);
+    expect(always).toHaveBeenCalledTimes(3);
+    const refused = vi.fn().mockRejectedValue(new Error("HTTP 402: no credits"));
+    await expect(withRetry(refused, [1, 1], noSleep)).rejects.toThrow("402");
+    expect(refused).toHaveBeenCalledTimes(1);
   });
 });
