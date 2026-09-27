@@ -20,7 +20,7 @@ vi.mock("@/lib/data/read", () => ({
     refs.filter((r) => r < 100).map((ref) => ({ ref, text: TEXTS[ref] ?? `text of message ${ref}` })),
 }));
 
-const { verify, SUPPORT_QUESTION } = await import("./verify");
+const { verify, SUPPORT_QUESTION, WHOLE_QUESTION } = await import("./verify");
 const { toolFigures } = await import("./rates");
 
 beforeEach(() => {
@@ -193,6 +193,69 @@ describe("verify", () => {
 
   it("leaves a sentence with one side as one claim: ', another patch' is not a side", async () => {
     await verify("Lag rose after 43.1, another patch fixed it [msg22].", new Set(["msg22"]));
-    expect(Object.keys(decideMock.mock.calls[0][0].questions)).toEqual(["msg22"]);
+    // One side, keyed by the ref; its comma also asks whether msg22 backs all of it (QA 2026-09-27, lists).
+    expect(Object.keys(decideMock.mock.calls[0][0].questions)).toEqual(["msg22", "msg22_all"]);
+  });
+});
+
+// QA 2026-09-27: a follow-up answered from the previous turn's reads, with no tool call, had every claim fail as
+// "not retrieved". The route now passes every ref any turn's tools showed (agent.ts chatToolSteps); only a ref no tool
+// ever showed stays unable to back a claim.
+describe("verify, a follow-up", () => {
+  it("backs a claim citing a message an earlier turn's tools showed, and not one no tool showed", async () => {
+    const shownInChat = new Set(["msg11", "msg12"]); // msg11 from turn 1, msg12 from turn 2
+    const v = await verify("The screen goes gray [msg11]. A boss takes no damage [msg12]. Queues are long [msg13].", shownInChat);
+    expect(v.claims.map((c) => c.citations[0].status)).toEqual(["ok", "ok", "not-retrieved"]);
+    expect(v).toMatchObject({ cited: 3, supported: 2 });
+  });
+
+  it("fails a claim that tags a figure with a counting tool that never ran in the chat, and lists the figure", async () => {
+    const v = await verify(
+      "60/100 players call it a bug [aggregate] [msg11]. Most mention the boss [msg12].",
+      new Set(["msg11", "msg12"]),
+      undefined,
+      undefined,
+      new Set(["scan"]),
+    );
+    expect(v.claims[0]).toMatchObject({ support: 0, notes: ["It tags 60/100 [aggregate], but no aggregate ran in this chat."] });
+    expect(v.supported).toBe(1);
+    expect(v.sourceless).toEqual([{ tool: "aggregate", figure: "60/100" }]);
+    const ran = await verify("About 60 threads [aggregate] [msg11].", new Set(["msg11"]), undefined, undefined, new Set(["aggregate"]));
+    expect(ran.sourceless).toBeUndefined();
+    expect(ran.supported).toBe(1);
+  });
+});
+
+// QA 2026-09-27: "excited about pre-orders, New Game Plus, and new pets [1]" passed on "pre order done", and "remakes
+// of childhood shows and cheaters in PC crossplay [14]" on a message only about PC cheaters.
+describe("verify, a sentence that lists several things", () => {
+  // Jev: each message supports part of any claim (0.9), and backs a whole list only when `whole` says so.
+  const jev = (whole: Record<string, number>) =>
+    decideMock.mockImplementation(async ({ questions }: { questions: Record<string, unknown> }) => ({
+      answers: Object.fromEntries(
+        Object.keys(questions).map((k) => [k, { noul: k.endsWith("_all") ? (whole[k] ?? 0.1) : 0.9 }]),
+      ),
+    }));
+
+  it("does not back a list on one message about one of its items, and says why for the rewrite", async () => {
+    jev({});
+    const v = await verify("Players are excited about pre-orders, New Game Plus, and new pets [msg1].", new Set(["msg1"]));
+    expect(v.claims[0].support).toBeCloseTo(0.1);
+    expect(v.supported).toBe(0);
+    expect(v.claims[0].notes?.[0]).toMatch(/back only some of them/);
+    expect(decideMock.mock.calls[0][0].questions.msg1_all.instructions).toBe(WHOLE_QUESTION("msg1", "claim"));
+  });
+
+  it("backs a list one message backs whole, or several messages back in parts", async () => {
+    jev({ msg1_all: 0.8 });
+    expect((await verify("They want pets and New Game Plus [msg1].", new Set(["msg1"]))).supported).toBe(1);
+    jev({});
+    const parts = await verify("They want pets, New Game Plus and co-op [msg1, msg2, msg3].", new Set(["msg1", "msg2", "msg3"]));
+    expect(parts.supported).toBe(1);
+  });
+
+  it("asks nothing more of a sentence that lists nothing", async () => {
+    await verify("The screen goes gray after a few deaths [msg11].", new Set(["msg11"]));
+    expect(Object.keys(decideMock.mock.calls[0][0].questions)).toEqual(["msg11"]);
   });
 });

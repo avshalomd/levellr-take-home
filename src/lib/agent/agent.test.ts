@@ -1,6 +1,6 @@
 import type { ModelMessage } from "ai";
 import { describe, expect, it } from "vitest";
-import { flattenForAnswer } from "./agent";
+import { chatToolSteps, flattenForAnswer, retrievedRefs, toolsRan } from "./agent";
 
 // The forced last step: a history of tool calls becomes one plain brief, so no model has a tool call to imitate.
 describe("flattenForAnswer", () => {
@@ -39,5 +39,35 @@ describe("flattenForAnswer", () => {
     expect(text).toContain('LOOKED UP (find): {"query":"EU server shutdown"}');
     expect(text).toContain("RESULT (find):\n3 conversations: maintenance notice [t3_a]");
     expect(text).not.toContain("instructions");
+  });
+});
+
+// QA 2026-09-27: a follow-up's claims are checked against every message any turn's tools showed, read from the UI
+// messages the chat sends with the question.
+describe("chatToolSteps", () => {
+  const chat = [
+    { parts: [{ type: "text", text: "What are people saying about Domains?" }] },
+    {
+      parts: [
+        { type: "tool-scan", state: "output-available", output: { status: "ok", hits: [{ quote: "[msg11570] screen goes gray" }] } },
+        { type: "tool-find", state: "input-available", input: { query: "boss" } },
+        { type: "tool-read_conversation", state: "output-available", output: { messages: [{ ref: 10114, reply_to: null }] } },
+        { type: "tool-aggregate", state: "output-available", output: { status: "refused", reason: "too broad" } },
+        { type: "text", text: "People say [msg11570]." },
+      ],
+    },
+    { parts: [{ type: "text", text: "which of those are bugs?" }] },
+  ];
+
+  it("reads every earlier turn's tool results, and no call that has no result", () => {
+    const steps = chatToolSteps(chat);
+    expect(steps.flatMap((s) => s.content.map((p) => p.toolName))).toEqual(["scan", "read_conversation", "aggregate"]);
+    expect([...retrievedRefs(steps)].sort()).toEqual(["msg10114", "msg11570"]);
+  });
+
+  it("counts a tool as run only when it gave a result, not a refusal", () => {
+    const ran = toolsRan(chatToolSteps(chat));
+    expect(ran.has("scan")).toBe(true);
+    expect(ran.has("find")).toBe(false);
   });
 });

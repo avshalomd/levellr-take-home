@@ -58,21 +58,25 @@ const rate = (v: Verification) => {
   return checked ? v.supported / checked : 1;
 };
 
+const squash = (t: string) => t.replace(/\s+/g, " ").trim();
+
 export async function checkAndRevise(
   answer: string,
-  retrieved: Set<string>,
+  retrieved: ReadonlySet<string>,
   history: ModelMessage[],
   on: { verification?: (v: Verification) => void; revision?: (r: RevisionPart) => void } = {},
   // The per-day rates the tools gave (rates.ts knownRates). A stated rate that matches none of them is corrected like a
   // weak claim (QA 2026-09-26: "9 per day in September" when the counts gave 11.3 per day over 24 days).
   known?: ReadonlyArray<KnownRate>,
+  // The tools that gave a result in this chat (agent.ts toolsRan): a figure tagged with one that never ran fails.
+  ran?: ReadonlySet<string>,
 ): Promise<Checked> {
   // Every number the tools worked out: a cited claim's figure must be one of these or in its messages (verify.ts).
   const figures = toolFigures(history);
   // The changes between periods the tools gave (trends.ts): "rose" about a topic whose rate fell is corrected like a
   // wrong rate (production QA 2026-09-26: "the September lift in … Updates & Feedback", which fell 6%).
   const trends = toolTrends(history);
-  const first = await verify(answer, retrieved, known, figures);
+  const first = await verify(answer, retrieved, known, figures, ran);
   const weak = weakClaims(first);
   const rates = first.rates ?? [];
   const directions = directionMismatches(answer, trends);
@@ -84,14 +88,17 @@ export async function checkAndRevise(
     // The same prose marks as the page (components/chat/evidence.ts proseMarks), so the claims checked are the ones shown.
     const text = proseMarks(normalizeCitations(await rewrite(answer, weak, history, rates, directions)));
     if (!text.trim()) throw new Error("the rewrite came back empty");
-    const second = await verify(text, retrieved, known, figures);
+    const second = await verify(text, retrieved, known, figures, ran);
     // Kept only if it is at least as well supported, still cites, and states no more unmatched rates or wrong
     // directions than before. A rewrite asked for only because of those must state FEWER of them (D43; review
     // 2026-09-26: with "<=", a rewrite that fixed nothing replaced the answer, reworded, for the cost of a second check).
     const wrongBefore = rates.length + directions.length;
     const wrongAfter = (second.rates?.length ?? 0) + directionMismatches(text, trends).length;
     const fewerRates = weak.length ? wrongAfter <= wrongBefore : wrongAfter < wrongBefore;
-    const kept = rate(second) >= rate(first) && second.cited > 0 && fewerRates;
+    // A rewrite that changed no words is not kept (QA 2026-09-27): kept, it said "Some wording was tightened" under an
+    // answer whose wording had not changed.
+    const changed = squash(text) !== squash(answer);
+    const kept = changed && rate(second) >= rate(first) && second.cited > 0 && fewerRates;
     const revision: RevisionPart = {
       status: "done",
       kept,

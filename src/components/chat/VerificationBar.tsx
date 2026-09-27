@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, CircleCheck } from "lucide-react";
+import { ChevronDown, CircleAlert, CircleCheck } from "lucide-react";
 import type { RevisionPart } from "@/lib/agent/revise";
 import type { VerificationPart } from "@/lib/agent/ui-types";
 import { cn } from "@/lib/utils";
@@ -25,6 +25,16 @@ export function VerificationBar({ v, revision }: { v?: VerificationPart; revisio
         {words.text}
       </p>
     );
+  if (words.state === "quiet" && words.weak)
+    return (
+      <div className="text-[13px] text-muted-foreground">
+        <p className="flex items-center gap-2">
+          <CircleAlert className="size-4 shrink-0 text-warn" aria-label="Not backed" />
+          {words.text}
+        </p>
+        {words.note && <p className="mt-1 pl-6">{words.note}</p>}
+      </div>
+    );
   if (words.state === "quiet") return <p className="text-[13px] text-muted-foreground">{words.text}</p>;
 
   const claims = v?.status === "done" ? v.claims.filter((c) => c.citations.length) : [];
@@ -38,7 +48,12 @@ export function VerificationBar({ v, revision }: { v?: VerificationPart; revisio
         aria-expanded={open}
         className="group relative flex items-center gap-2 text-left before:absolute before:inset-x-0 before:-inset-y-[2px] hover:text-foreground"
       >
-        <CircleCheck className="size-4 shrink-0 text-pulse" aria-hidden />
+        {/* A check mark only beside a result that mostly holds; fewer than half backed gets a warning (QA 2026-09-27). */}
+        {words.weak ? (
+          <CircleAlert className="size-4 shrink-0 text-warn" aria-label="Weakly backed" />
+        ) : (
+          <CircleCheck className="size-4 shrink-0 text-pulse" aria-hidden />
+        )}
         <span>{words.text}</span>
         <ChevronDown className={cn("size-3.5 shrink-0 opacity-60 transition-transform duration-200", open && "rotate-180")} aria-hidden />
       </button>

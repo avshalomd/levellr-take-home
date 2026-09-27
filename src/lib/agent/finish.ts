@@ -1,11 +1,11 @@
 import "server-only";
 import type { ModelMessage, UIMessageStreamWriter } from "ai";
-import { answerText, numberTagsOnly, proseMarks, stripToolMarkup } from "@/components/chat/evidence";
+import { answerText, isToolPart, numberTagsOnly, proseMarks, stripToolMarkup } from "@/components/chat/evidence";
 import { claimsOf } from "@/lib/claims";
 import { normalizeCitations } from "@/lib/refs";
-import { answerFromTools, retrievedRefs } from "./agent";
+import { answerFromTools, retrievedRefs, toolsRan } from "./agent";
 import { groundingOf, type Grounding } from "./grounding";
-import { knownRates } from "./rates";
+import { knownRates, sourcelessFigures } from "./rates";
 import { checkAndRevise, citeAnswer, correctCounts, type RevisionPart } from "./revise";
 import { countMismatches, toolTrends } from "./trends";
 import type { ChatMessage, VerificationPart } from "./ui-types";
@@ -33,13 +33,17 @@ type StepLike = { content: ReadonlyArray<unknown> };
 /** Every step's text, joined as the reader's page joins it (components/chat/evidence.ts answerText). Review 2026-09-26:
  *  the route and the eval passed result.text, which in AI SDK 7 is the last step's only. */
 export function stepsText(steps: ReadonlyArray<StepLike>): string {
-  return answerText(
-    steps.map((s) =>
-      s.content
-        .map((p) => ((p as { type?: string }).type === "text" ? ((p as { text?: string }).text ?? "") : ""))
-        .join(""),
-    ),
-  );
+  // Only what was written after the last tool call (components/chat/evidence.ts isToolPart, the page's same cut).
+  let texts: string[] = [];
+  for (const s of steps) {
+    texts.push("");
+    for (const part of s.content) {
+      const p = part as { type?: string; text?: string };
+      if (isToolPart(p.type ?? "")) texts = [""];
+      else if (p.type === "text") texts[texts.length - 1] += p.text ?? "";
+    }
+  }
+  return answerText(texts);
 }
 
 export type AfterAgent = {
@@ -66,8 +70,11 @@ export function afterCite(r: RevisionPart, cited: RevisionPart | undefined): Rev
   return r.status === "failed" || !r.kept ? cited : r;
 }
 
+/** `earlier`: the chat's earlier tool results, in the shape of steps (agent.ts chatToolSteps). A citation of a message an
+ *  earlier turn's tools showed backs a claim as one of this turn's does, and a figure tagged with a tool that ran in an
+ *  earlier turn has a count behind it (QA 2026-09-27). The eval runs one question a chat and passes none. */
 export async function afterAgent(
-  turn: { steps: ReadonlyArray<StepLike>; history: ModelMessage[] },
+  turn: { steps: ReadonlyArray<StepLike>; history: ModelMessage[]; earlier?: ReadonlyArray<StepLike> },
   write: (chunk: Chunk) => void = () => {},
 ): Promise<AfterAgent> {
   // Every step's text, tidied as the reader's page tidies it (components/chat/evidence.ts evidenceOf), so what is
@@ -75,6 +82,9 @@ export async function afterAgent(
   const tidy = (t: string) => numberTagsOnly(proseMarks(normalizeCitations(stripToolMarkup(t))));
   let answer = tidy(stepsText(turn.steps));
   const retrieved = retrievedRefs(turn.steps);
+  const chat = [...(turn.earlier ?? []), ...turn.steps];
+  const shown = turn.earlier?.length ? retrievedRefs(chat) : retrieved;
+  const ran = toolsRan(chat);
   const cites = () => claimsOf(answer).some((c) => c.ids.length);
   let grounding = groundingOf(cites(), turn.steps);
 
@@ -161,10 +171,11 @@ export async function afterAgent(
         // The per-day rates the tools gave, this turn and before: a stated rate that matches none is corrected (rates.ts).
         const checked = await checkAndRevise(
           answer,
-          retrieved,
+          shown,
           turn.history,
           { revision: (r) => revise(afterCite(r, cited)) },
           knownRates(turn.history),
+          ran,
         );
         answer = checked.text;
         out.checked = checked.verification;
@@ -184,7 +195,13 @@ export async function afterAgent(
         answer = counted.text;
         if (counted.rates.length) line = { status: "uncited", read: grounding.read, rates: counted.rates };
       }
-      verdict(line);
+      const sourceless = sourcelessFigures(answer, ran);
+      verdict(sourceless.length ? { ...line, sourceless } : line);
+    } else if (answer.trim()) {
+      // An answer that used no tool and cites nothing gets no line (a question back, a greeting), unless it tags a
+      // figure as counted when nothing in the chat counted it (QA 2026-09-27, eval: "60/100 [aggregate]", no tool call).
+      const sourceless = sourcelessFigures(answer, ran);
+      if (sourceless.length) verdict({ status: "uncited", read: false, sourceless });
     }
   } finally {
     // Every way out closes what it opened (review 2026-09-26): a part left "running" is saved that way, and a reopened

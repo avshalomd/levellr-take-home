@@ -141,6 +141,17 @@ describe("checkAndRevise", () => {
     expect(r.revision).toMatchObject({ status: "done", kept: false });
   });
 
+  // QA 2026-09-27: a rewrite that changed nothing was kept, and the page said "Some wording was tightened".
+  it("does not keep a rewrite that changed no words", async () => {
+    verifyMock
+      .mockResolvedValueOnce(v([{ claim: "b", ids: ["msg2"], support: 0.1 }]))
+      .mockResolvedValueOnce(v([{ claim: "b", ids: ["msg2"], support: 0.6 }]));
+    generateTextMock.mockResolvedValueOnce({ text: "B  [msg2].\n" });
+    const r = await checkAndRevise("B [msg2].", new Set(["msg2"]), []);
+    expect(r.text).toBe("B [msg2].");
+    expect(r.revision).toMatchObject({ status: "done", kept: false });
+  });
+
   it("falls back to the original answer when the rewrite fails", async () => {
     verifyMock.mockResolvedValueOnce(v([{ claim: "b", ids: ["msg2"], support: 0.1 }]));
     generateTextMock.mockRejectedValueOnce(new Error("429 busy"));

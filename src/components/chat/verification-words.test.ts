@@ -144,3 +144,38 @@ describe("corroborationWords", () => {
     expect(corroborationWords(undefined)).toBeNull();
   });
 });
+
+// QA 2026-09-27: "✓ Checked: 0 of 3 claims are backed" read as a pass. Fewer than half backed gets a warning.
+describe("verificationWords, a weak result", () => {
+  it("never shows a pass beside none or a minority backed", () => {
+    expect(verificationWords(done(0, 3))).toMatchObject({
+      text: "None of the 3 claims could be backed by the messages they cite",
+      weak: true,
+    });
+    expect(verificationWords(done(0, 1))).toMatchObject({ text: "The claim could not be backed by the message it cites", weak: true });
+    expect(verificationWords(done(0, 2))?.text).toBe("Neither claim could be backed by the messages they cite");
+    expect(verificationWords(done(1, 3))).toMatchObject({
+      text: "Only 1 of 3 claims is backed by the messages they cite",
+      weak: true,
+    });
+    expect(verificationWords(done(2, 5))?.text).toBe("Only 2 of 5 claims are backed by the messages they cite");
+  });
+
+  it("keeps the pass for a result that mostly holds", () => {
+    expect(verificationWords(done(2, 3))?.weak).toBeUndefined();
+    expect(verificationWords(done(1, 2))?.weak).toBeUndefined();
+    expect(verificationWords(done(3, 3))?.weak).toBeUndefined();
+  });
+
+  it("names a figure tagged as counted when nothing in the chat counted it", () => {
+    const sourceless = [{ tool: "aggregate", figure: "60/100" }];
+    expect(verificationWords({ status: "uncited", read: false, sourceless })).toEqual({
+      state: "quiet",
+      text: "No messages are cited here, and nothing in this chat counted its figures.",
+      note: "“60/100” is marked as counted, but no count ran in this chat.",
+      weak: true,
+    });
+    const v = { ...done(2, 2), sourceless } as VerificationPart;
+    expect(verificationWords(v)).toMatchObject({ weak: true, note: "“60/100” is marked as counted, but no count ran in this chat." });
+  });
+});

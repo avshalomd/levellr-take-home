@@ -7,9 +7,10 @@ import {
   createUIMessageStreamResponse,
   toUIMessageStream,
 } from "ai";
-import { makeAgent } from "@/lib/agent/agent";
+import { chatToolSteps, makeAgent } from "@/lib/agent/agent";
 import { corroborate } from "@/lib/agent/corroborate";
 import { afterAgent } from "@/lib/agent/finish";
+import { QUESTION_MAX, questionLength, tooLongWords } from "@/lib/question-limit";
 import type { ChatMessage } from "@/lib/agent/ui-types";
 import { finishTurn, startTurn } from "@/lib/data/chats";
 import { ownerId } from "@/lib/owner";
@@ -50,6 +51,9 @@ export async function POST(req: Request) {
       { error: "Send { messages: [...] } ending with the user's question." },
       { status: 400 },
     );
+  // Only the question being asked is capped: earlier answers in the chat are the app's own and may be long (QA Q6).
+  const asked = questionLength(parsed.data.messages.at(-1) as Parameters<typeof questionLength>[0]);
+  if (asked > QUESTION_MAX) return Response.json({ error: tooLongWords(asked) }, { status: 413 });
   const { id } = parsed.data;
   const messages = parsed.data.messages as unknown as ChatMessage[];
   const startedAt = Date.now();
@@ -113,7 +117,10 @@ export async function POST(req: Request) {
       // Every step's messages: in AI SDK 7 result.response is the last step's only, so the rates, changes and figures
       // this turn's tools gave would never reach the checks, nor its results the cite pass.
       const history = [...input, ...(await result.responseMessages)];
-      const after = await afterAgent({ steps, history }, (chunk) => writer.write(chunk));
+      // The chat's earlier tool results, all of them, not only the last 12 messages the model is sent: a follow-up
+      // that cites what an earlier turn read is checked against it (QA 2026-09-27, verify.ts).
+      const earlier = chatToolSteps(messages);
+      const after = await afterAgent({ steps, history, earlier }, (chunk) => writer.write(chunk));
 
       // Then how many of the conversations this turn found back each claim, beyond the few it cites.
       if (after.checked) {

@@ -106,3 +106,25 @@ export function rateMismatches(answer: string, known: ReadonlyArray<KnownRate>):
     }
   return out;
 }
+
+/** A figure the answer tags [aggregate], [scan] or [voices] when that tool gave no result anywhere in the chat. */
+export type SourcelessFigure = { tool: string; figure: string };
+
+const COUNTING_TAG = /\[(scan|aggregate|voices)\]/g;
+
+/** Every figure in `text` tagged with a counting tool that did not run in this chat (`ran`, agent.ts toolsRan). The
+ *  eval saw "60/100 [aggregate]" in an answer that made no tool call at all: the tag said "counted" and nothing had
+ *  been. The figure is the last word with a digit before the tag, or the three words before it. Pure. */
+export function sourcelessFigures(text: string, ran: ReadonlySet<string>): SourcelessFigure[] {
+  const out: SourcelessFigure[] = [];
+  let from = 0;
+  for (const m of text.matchAll(COUNTING_TAG)) {
+    const before = text.slice(from, m.index).replace(/\[[^\]]*\]/g, " ");
+    from = m.index + m[0].length;
+    if (ran.has(m[1])) continue;
+    const words = before.split(/\s+/).filter(Boolean);
+    const figure = [...words].reverse().find((w) => /\d/.test(w)) ?? words.slice(-3).join(" ");
+    out.push({ tool: m[1], figure: figure.replace(/^[("'“]+|[)"'”.,;:!?]+$/g, "") });
+  }
+  return out;
+}

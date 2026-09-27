@@ -111,6 +111,23 @@ describe("evidenceOf", () => {
     expect(answerText(["A.", " ", "B."])).toBe("A.\n\nB.");
   });
 
+  // Eval 2026-09-27, O02: a draft written beside a tool call stayed above the answer written after reading. The page
+  // shows only what was written after the last tool call, as the post-agent pipeline checks (lib/agent/finish.ts).
+  it("shows only the text written after the last tool call", () => {
+    const message = {
+      id: "a",
+      role: "assistant",
+      parts: [
+        { type: "step-start" },
+        part("About 60/100 players want it [aggregate]."),
+        { type: "tool-out_of_scope", state: "output-available", toolCallId: "c1", input: {}, output: { status: "refused" } },
+        { type: "step-start" },
+        part("Lag is back [msg1]."),
+      ],
+    } as unknown as ChatMessage;
+    expect(evidenceOf(message).text).toBe("Lag is back [msg1].");
+  });
+
   it("leaves out a weak citation beside a backed one, and makes the claim's other backers openable", () => {
     const more = { id: "t1_x", ref: 55, kind: "comment", channel: "Discussion", thread_id: "t3_y", reply_to: null, conversation_id: "c9", in_window: true, author: "alwaysHK", ts: "2026-09-01T10:00:00Z", text: "same here", score: 4, removed: false, is_bot: false, threadTitle: "Stutter", support: 0.8 };
     const message = {

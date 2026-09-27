@@ -5,7 +5,7 @@ import { topicLabels } from "@/lib/data/read";
 import { instructions } from "./instructions";
 import { answerModel, chatModel } from "./model";
 import { msgTag } from "@/lib/refs";
-import { lastQuestion } from "./flags";
+import { isRefusal, lastQuestion } from "./flags";
 import { needsRead } from "./grounding";
 import { makeTools } from "./tools";
 import { isOffTopic } from "./off-topic";
@@ -121,6 +121,35 @@ export function flattenForAnswer(messages: ModelMessage[]): ModelMessage[] {
 }
 
 /** Every message id the agent was shown this turn: a citation to anything else was not read, whatever it says. */
+/** A chat's earlier tool results, as the UI messages sent with a question carry them, in the shape of a turn's steps, so
+ *  retrievedRefs and toolsRan read them as they read this turn's. QA 2026-09-27: "which of those are bugs?" answered
+ *  from what the previous turn read, with no tool call, and every claim failed the check as "not retrieved". Only a
+ *  part with its output counts; a call the reader stopped has none. */
+export function chatToolSteps(
+  messages: ReadonlyArray<{ parts: ReadonlyArray<unknown> }>,
+): { content: { type: "tool-result"; toolName: string; output: unknown }[] }[] {
+  return messages.map((m) => ({
+    content: m.parts.flatMap((part) => {
+      const p = part as { type: string; toolName?: string; state?: string; output?: unknown };
+      const name = p.type === "dynamic-tool" ? p.toolName : p.type.startsWith("tool-") ? p.type.slice(5) : undefined;
+      return name && p.state === "output-available"
+        ? [{ type: "tool-result" as const, toolName: name, output: p.output }]
+        : [];
+    }),
+  }));
+}
+
+/** The tools that gave a result in these steps; a refused call ran nothing. */
+export function toolsRan(steps: ReadonlyArray<{ content: ReadonlyArray<unknown> }>): Set<string> {
+  const ran = new Set<string>();
+  for (const s of steps)
+    for (const part of s.content) {
+      const p = part as { type: string; toolName?: string; output?: unknown };
+      if (p.type === "tool-result" && p.toolName && !isRefusal(p.output)) ran.add(p.toolName);
+    }
+  return ran;
+}
+
 export function retrievedRefs(steps: ReadonlyArray<{ content: ReadonlyArray<unknown> }>): Set<string> {
   const refs = new Set<string>();
   // A message the tools returned is either a message object (it has a numeric ref and a reply_to field - a

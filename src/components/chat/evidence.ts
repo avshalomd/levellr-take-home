@@ -131,6 +131,13 @@ export function answerText(stepTexts: ReadonlyArray<string>): string {
   return stepTexts.filter((t) => t.trim()).join("\n\n");
 }
 
+/** A tool part, in a saved message ("tool-scan", "dynamic-tool") or in a step's content ("tool-call", "tool-result").
+ *  The answer is the text written after the last of them: text written before a tool call, in its step or an earlier
+ *  one, is a draft the model went on from, never the answer (eval 2026-09-27, O02: "…60/100 [aggregate]" written
+ *  beside an out_of_scope call stayed in the final answer, above the one written after reading). The page
+ *  (evidenceOf) and the post-agent pipeline (lib/agent/finish.ts stepsText) both cut here. */
+export const isToolPart = (type: string) => type.startsWith("tool-") || type === "dynamic-tool";
+
 type HitLike = { id: string; thread_title: string; relevance: number | null; messages: MessageRef[] };
 
 export function evidenceOf(message: ChatMessage): Evidence {
@@ -149,6 +156,8 @@ export function evidenceOf(message: ChatMessage): Evidence {
   };
 
   for (const part of message.parts) {
+    // Text before a tool call is a draft, never the answer (isToolPart).
+    if (isToolPart(part.type)) stepTexts.splice(0, stepTexts.length, "");
     if (part.type === "step-start") stepTexts.push("");
     else if (part.type === "text") stepTexts[stepTexts.length - 1] += part.text;
     else if (part.type === "data-verification") verification = part.data;

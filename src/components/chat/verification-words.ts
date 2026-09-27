@@ -6,7 +6,14 @@ import type { VerificationPart } from "@/lib/agent/ui-types";
 // claims are then rewritten once (the revision part) and checked again, so the sentence moves through three states:
 // checking, tightening, checked. It reports; it never alarms. Kept free of React so it is unit-tested.
 
-export type VerificationWords = { state: "checking" | "tightening" | "checked" | "quiet"; text: string; note?: string };
+// `weak`: fewer than half the checked claims are backed. The bar then shows a warning, never a check mark: "✓ Checked:
+// 0 of 3 claims are backed" read as a pass (QA 2026-09-27).
+export type VerificationWords = {
+  state: "checking" | "tightening" | "checked" | "quiet";
+  text: string;
+  note?: string;
+  weak?: true;
+};
 
 const claims = (n: number) => `${n} ${n === 1 ? "claim" : "claims"}`;
 
@@ -23,12 +30,19 @@ export function verificationWords(v?: VerificationPart, r?: RevisionPart): Verif
   // quoting thread titles read as checked (QA 2026-09-26, lib/agent/grounding.ts).
   // Its rates are checked against the counts, though (open item 2026-09-26): one still wrong after the correction is
   // said, in the words a cited answer's line uses.
-  if (v.status === "uncited")
+  if (v.status === "uncited") {
+    const note = [ratesNote(v.rates), sourcelessNote(v.sourceless)].filter(Boolean).join(" ");
     return {
       state: "quiet",
-      text: v.read ? "No messages are cited here, so this answer was not checked against any." : "Counts only: no messages are cited, so this answer was not checked against any.",
-      ...(ratesNote(v.rates) ? { note: ratesNote(v.rates) } : {}),
+      text: v.read
+        ? "No messages are cited here, so this answer was not checked against any."
+        : v.sourceless?.length
+          ? "No messages are cited here, and nothing in this chat counted its figures."
+          : "Counts only: no messages are cited, so this answer was not checked against any.",
+      ...(note ? { note } : {}),
+      ...(v.sourceless?.length ? { weak: true as const } : {}),
     };
+  }
   // An answer that cites no message - a refusal, a question back, a count from the tools - has no line: the missing
   // chips already say it, and "nothing to check" under "I can't access live weather data." read as a fault (QA 2026-09-25).
   if (v.cited === 0) return null;
@@ -38,22 +52,41 @@ export function verificationWords(v?: VerificationPart, r?: RevisionPart): Verif
   const n = v.cited - unchecked;
   if (n === 0) return { state: "quiet", text: "The claims could not be checked this time." };
   const all = n === 1 ? "the claim is" : n === 2 ? "both claims are" : `all ${n} claims are`;
+  const weak = v.supported * 2 < n || Boolean(v.sourceless?.length);
+  const none = n === 2 ? "Neither claim" : `None of the ${n} claims`;
   const text =
     (v.supported === n
       ? `Checked: ${all} backed by the messages they cite`
-      : `Checked: ${v.supported} of ${claims(n)} ${n === 1 ? "is" : "are"} backed by the messages they cite`) +
+      : v.supported === 0
+        ? n === 1
+          ? "The claim could not be backed by the message it cites"
+          : `${none} could be backed by the messages they cite`
+        : weak
+          ? `Only ${v.supported} of ${claims(n)} ${v.supported === 1 ? "is" : "are"} backed by the messages they cite`
+          : `Checked: ${v.supported} of ${claims(n)} are backed by the messages they cite`) +
     (unchecked ? `; ${unchecked} more could not be checked` : "");
   // A kept cite pass only added citations (r.cite), so it gets no note: "tightened" said wording changed when none had
   // (review 2026-09-26).
   const tightened = r?.status === "done" && r.kept && !r.cite ? "Some wording was tightened to match what the messages say." : "";
-  const note = [tightened, ratesNote(v.rates)].filter(Boolean).join(" ") || undefined;
-  return { state: "checked", text, note };
+  const note = [tightened, ratesNote(v.rates), sourcelessNote(v.sourceless)].filter(Boolean).join(" ") || undefined;
+  return { state: "checked", text, note, ...(weak ? { weak: true as const } : {}) };
 }
 
 /** A per-day rate that still matches none the counts gave, after the correction (lib/agent/rates.ts, QA 2026-09-26). */
 function ratesNote(rates: ReadonlyArray<unknown> | undefined): string {
   const n = rates?.length ?? 0;
   return n ? (n === 1 ? "One per-day rate here does not match the counts it comes from." : `${n} per-day rates here do not match the counts they come from.`) : "";
+}
+
+const TOOL_NAMES: Record<string, string> = { aggregate: "count", scan: "scan", voices: "count of voices" };
+
+/** A figure tagged as counted by a tool that never ran in the chat (lib/agent/rates.ts sourcelessFigures, QA
+ *  2026-09-27): which figure, and that nothing counted it. */
+function sourcelessNote(s: ReadonlyArray<{ tool: string; figure: string }> | undefined): string {
+  if (!s?.length) return "";
+  return s
+    .map((f) => `${f.figure ? `“${f.figure}”` : "A figure"} is marked as counted, but no ${TOOL_NAMES[f.tool] ?? f.tool} ran in this chat.`)
+    .join(" ");
 }
 
 /** A claim as plain words: it is cut from the answer's markdown, and "**Praised:** …" showed its asterisks. */

@@ -20,8 +20,10 @@ vi.mock("./revise", () => ({
   checkAndRevise: (...a: Parameters<typeof checkAndRevise>) => checkAndRevise(...a),
 }));
 const answerFromTools = vi.fn<(history: unknown) => Promise<string>>();
-vi.mock("./agent", () => ({
-  retrievedRefs: () => new Set(["msg11", "msg12"]),
+const retrievedRefs = vi.fn<(steps: unknown) => Set<string>>(() => new Set(["msg11", "msg12"]));
+vi.mock("./agent", async (orig) => ({
+  retrievedRefs: (steps: unknown) => retrievedRefs(steps),
+  toolsRan: (await orig<typeof import("./agent")>()).toolsRan,
   answerFromTools: (h: unknown) => answerFromTools(h),
 }));
 
@@ -66,6 +68,7 @@ async function run(text: string, steps: unknown[]) {
 beforeEach(() => {
   answerFromTools.mockReset().mockResolvedValue("");
   citeAnswer.mockReset();
+  retrievedRefs.mockReset().mockImplementation(() => new Set(["msg11", "msg12"]));
   checkAndRevise.mockReset().mockImplementation(async (answer) => ({ text: answer, verification }));
   vi.spyOn(console, "warn").mockImplementation(() => {});
   vi.spyOn(console, "error").mockImplementation(() => {});
@@ -253,16 +256,32 @@ describe("afterAgent, a rewrite that runs after a kept cite pass", () => {
 // is shown every step's (components/chat/evidence.ts). A claim written before a tool call was never checked, and a
 // short last line made the grounding "uncited" and a cite pass replace the whole answer with a rewrite of that line.
 describe("afterAgent, an answer written across steps", () => {
-  it("checks every step's text, joined as the reader's page joins it", async () => {
-    const first = { content: [{ type: "text", text: "Lag is back since 43.1 [msg11]." }, ...read.content] };
-    const last = { content: [{ type: "text", text: "That is the picture." }] };
+  it("checks every step's text after the last tool call, joined as the reader's page joins it", async () => {
+    const first = { content: [{ type: "text", text: "Lag is back since 43.1 [msg11]." }] };
+    const last = { content: [{ type: "text", text: "That is the picture [msg12]." }] };
     const out = await afterAgent({ steps: [first, last] as never, history: [] });
     expect(citeAnswer).not.toHaveBeenCalled();
-    expect(checkAndRevise.mock.calls[0][0]).toBe("Lag is back since 43.1 [msg11].\n\nThat is the picture.");
-    expect(out.text).toBe("Lag is back since 43.1 [msg11].\n\nThat is the picture.");
+    expect(checkAndRevise.mock.calls[0][0]).toBe("Lag is back since 43.1 [msg11].\n\nThat is the picture [msg12].");
+    expect(out.text).toBe("Lag is back since 43.1 [msg11].\n\nThat is the picture [msg12].");
   });
 
-  it("stepsText joins steps on a blank line and skips steps with no words", () => {
+  // Eval 2026-09-27, O02: "…60/100 [aggregate]" written beside a tool call stayed in the final answer above the one
+  // written after reading. Text before the last tool call is a draft: neither shown nor checked.
+  it("leaves out text written before the last tool call, in its step or an earlier one", async () => {
+    const draft = {
+      content: [
+        { type: "text", text: "About 60/100 players want it [aggregate]." },
+        { type: "tool-call", toolName: "scan" },
+        ...read.content,
+      ],
+    };
+    const last = { content: [{ type: "text", text: "Lag is back [msg11]." }] };
+    const out = await afterAgent({ steps: [draft, last] as never, history: [] });
+    expect(checkAndRevise.mock.calls[0][0]).toBe("Lag is back [msg11].");
+    expect(out.text).toBe("Lag is back [msg11].");
+  });
+
+  it("stepsText joins steps on a blank line, skips steps with no words, and starts after the last tool call", () => {
     const t = (text: string) => ({ type: "text", text });
     expect(
       stepsText([
@@ -270,7 +289,8 @@ describe("afterAgent, an answer written across steps", () => {
         { content: [{ type: "tool-call" }] },
         { content: [t("C.")] },
       ]),
-    ).toBe("A. B.\n\nC.");
+    ).toBe("C.");
+    expect(stepsText([{ content: [t("A.")] }, { content: [t("B.")] }])).toBe("A.\n\nB.");
   });
 });
 
@@ -314,5 +334,38 @@ describe("afterAgent, an answer that cites", () => {
     );
     expect(out.text.replace(/\[msg\d+(?:, msg\d+)*\]/g, "")).not.toMatch(/msg/);
     expect(checkAndRevise.mock.calls[0][0]).toBe(out.text);
+  });
+});
+
+// QA 2026-09-27: "which of those are bugs?" was answered from the previous turn's reads with no tool call, and every
+// claim failed the check as "not retrieved". And the eval saw "60/100 [aggregate]" when no tool had run at all.
+describe("afterAgent across a chat's turns", () => {
+  const earlier = [{ content: [result("scan", { status: "ok", hits: [] }), result("aggregate", { rows: [] })] }];
+
+  it("checks a follow-up's citations against every tool result in the chat, not only this turn's", async () => {
+    retrievedRefs.mockImplementation((steps) =>
+      (steps as unknown[]).includes(earlier[0]) ? new Set(["msg7"]) : new Set<string>(),
+    );
+    const text = "One bug stands out: the screen goes gray after a few deaths [msg7].";
+    const out = await afterAgent({ steps: [{ content: [{ type: "text", text }] }] as never, history: [], earlier });
+    expect(checkAndRevise).toHaveBeenCalledOnce();
+    expect([...checkAndRevise.mock.calls[0][1]]).toEqual(["msg7"]);
+    // What this turn's own tools showed stays apart (the cite pass offers only those).
+    expect(out.retrieved.size).toBe(0);
+  });
+
+  it("says a figure tagged as counted has no count behind it when no tool ran in the chat", async () => {
+    const { verification } = await run("About 60/100 players want it back [aggregate].", []);
+    expect(verification).toEqual({ status: "uncited", read: false, sourceless: [{ tool: "aggregate", figure: "60/100" }] });
+  });
+
+  it("says nothing of a tagged figure when that tool ran in an earlier turn", async () => {
+    const chunks: { type: string }[] = [];
+    const text = "About 60 conversations mention it [aggregate].";
+    await afterAgent(
+      { steps: [{ content: [{ type: "text", text }] }] as never, history: [], earlier },
+      (c) => void chunks.push(c as never),
+    );
+    expect(chunks.some((c) => c.type === "data-verification")).toBe(false);
   });
 });
