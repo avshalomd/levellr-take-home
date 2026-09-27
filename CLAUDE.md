@@ -114,6 +114,10 @@ The app stack is the reference's: Next.js 16, React 19, TypeScript, Tailwind v4 
 Postgres, Zod 4, AI SDK 7 (`@ai-sdk/google`, `@ai-sdk/react`), Vitest. A clean kit of it is
 `~/projects/takehome-harness/template/.claude/scaffold/`, with the Jev client in `src/lib/llm/decide.ts`; its
 `scripts/scaffold.sh` lays it and proves it with `npm run check`.
+**Laid on 2026-09-27 before the clock** (tag `scaffold`), `npm run check` green. Two changes from the kit: the
+chat-page packages are added (`@ai-sdk/react`, `motion`, `react-markdown`, `remark-gfm`), and `src/lib/llm/`
+`decide.ts` and `errors.ts` come from the reference, so Jev goes through OpenRouter first (checked live: a call
+through `decide()` answered from `typesafe/jev-1.13`).
 
 **Deploy only when he asks:** `vercel deploy --prod --yes`, then open the URL and ask one question. Git deploys
 are off on purpose. On Hobby a function runs at most 300 s and takes at most 4.5 MB per request, so data is
