@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { daysBefore, instructions } from "./instructions";
+import { instructions, timeBefore } from "./instructions";
 
 // The standing instructions are prose, so this only pins the rules behind the reader's numbers and this community's
 // facts: "now" is the last message, the channels and their games, the brief's three questions, and the one unit.
@@ -30,8 +30,9 @@ describe("instructions, the rules carried over", () => {
 describe("instructions, this community", () => {
   it("counts relative dates back from the last message, not the clock", () => {
     expect(text).toMatch(/Now is 2026-09-27 19:30 UTC, the time of the last message/);
-    expect(text).toMatch(/"The last 3 days" or "the last few days" is since\s+2026-09-24/);
-    expect(text).toMatch(/the last 7 days, since 2026-09-20/);
+    expect(text).toMatch(/"The last 3 days" or "the last\s+few days" is since 2026-09-24T19:30Z/);
+    expect(text).toMatch(/the last 7 days, since\s+2026-09-20T19:30Z/);
+    expect(text).toMatch(/Never set `until` for a\s+period that runs to now/);
   });
   it("names the channels and the game each is about", () => {
     expect(text).toMatch(/new-release-discussion, new-release-spoilers: Bushido/);
@@ -54,10 +55,10 @@ describe("instructions, this community", () => {
   });
 });
 
-describe("daysBefore", () => {
-  it("is the day the given number of days before now", () => {
-    expect(daysBefore("2026-09-27T19:30:00.000Z", 3)).toBe("2026-09-24");
-    expect(daysBefore("2026-09-27T19:30:00.000Z", 7)).toBe("2026-09-20");
+describe("timeBefore", () => {
+  it("is the moment the given number of days before now, to the minute", () => {
+    expect(timeBefore("2026-09-27T19:30:00.000Z", 3)).toBe("2026-09-24T19:30Z");
+    expect(timeBefore("2026-09-27T19:30:00.000Z", 7)).toBe("2026-09-20T19:30Z");
   });
 });
 

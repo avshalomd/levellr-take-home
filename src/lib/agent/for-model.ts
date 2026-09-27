@@ -93,16 +93,22 @@ export type DataWindow = { from: string; to: string };
 const DAY = 86_400_000;
 const dayOf = (iso: string) => Date.parse(`${iso.slice(0, 10)}T00:00:00Z`);
 const isoOf = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+/** A date or a timestamp, as ms: a bare day is its midnight UTC. */
+const timeOf = (iso: string) => (iso.trim().length <= 10 ? dayOf(iso) : Date.parse(iso.trim().replace(" ", "T")));
 
 /** The days a slice's dates actually cover, clipped to the data: "since 2026-09-01, until 2026-10-01" over data that ends
  *  24 September is 24 days, not 30. `until` is exclusive, as the tools take it. Null when an end is open and the data's
  *  own span is not known. */
 export function periodOf(f: Filters, w?: DataWindow): { since: string; until: string; days: number } | null {
-  const start = Math.max(f.since ? dayOf(f.since) : -Infinity, w?.from ? dayOf(w.from) : -Infinity);
-  const end = Math.min(f.until ? dayOf(f.until) : Infinity, w?.to ? dayOf(w.to) + DAY : Infinity);
+  // A bound with a time ("2026-09-24T19:30Z", the last 3 days back from the last message) is taken to the minute: cut
+  // to its day, the last 3 days counted as 4 (eval 2026-09-27). The day count is rounded, so 3.2 days is 3.
+  const start = Math.max(f.since ? timeOf(f.since) : -Infinity, w?.from ? dayOf(w.from) : -Infinity);
+  const end = Math.min(f.until ? timeOf(f.until) : Infinity, w?.to ? dayOf(w.to) + DAY : Infinity);
   if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+  // A start with a time keeps it, so the answer can say "from 24 Sep 19:30 UTC".
+  const at = (ms: number) => (ms % DAY ? `${new Date(ms).toISOString().slice(0, 16)}Z` : isoOf(ms));
   return {
-    since: isoOf(start),
+    since: at(start),
     until: isoOf(Math.max(start, end)),
     days: Math.max(0, Math.round((end - start) / DAY)),
   };

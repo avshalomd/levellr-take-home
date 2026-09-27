@@ -64,8 +64,8 @@ const filters = z
       .describe(
         "one Discord channel by its exact name, e.g. new-release-general, remaster-discussion; dataset_overview lists them",
       ),
-    since: isoDate.optional().describe("ISO date, inclusive, e.g. 2026-09-09"),
-    until: isoDate.optional().describe("ISO date, exclusive, e.g. 2026-10-01"),
+    since: isoDate.optional().describe("ISO date or time (UTC), inclusive, e.g. 2026-09-17 or 2026-09-24T19:30Z"),
+    until: isoDate.optional().describe("ISO date or time (UTC), exclusive, e.g. 2026-09-20; left out for a period that runs to now"),
     flag: z
       .enum(["excited", "frustrated", "bug", "feature", "help"])
       .optional()

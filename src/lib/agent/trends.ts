@@ -35,8 +35,8 @@ export function changeAgainst(
   next: CountLike,
   nameOf: (key: string, f: SliceFilters) => string,
 ): Change | undefined {
-  if (!RATED.has(next.metric) || !next.period?.days || !next.filters.since || !next.filters.until)
-    return undefined;
+  // A period that runs to now has no \`until\` (the instructions say to leave it out), so only \`since\` is required.
+  if (!RATED.has(next.metric) || !next.period?.days || !next.filters.since) return undefined;
   const prev = [...earlier]
     .reverse()
     .find(
@@ -45,7 +45,6 @@ export function changeAgainst(
         c.groupBy === next.groupBy &&
         !!c.period?.days &&
         !!c.filters.since &&
-        !!c.filters.until &&
         CATEGORIES.every((k) => (c.filters[k] ?? "") === (next.filters[k] ?? "")) &&
         (time(c.filters.until, Infinity) <= time(next.filters.since, -Infinity) ||
           time(next.filters.until, Infinity) <= time(c.filters.since, -Infinity)),
