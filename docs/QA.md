@@ -4,7 +4,8 @@ Findings from two QA passes, logged during the build and routed to fixes:
 
 - **Bug log (Q1-Q9):** a click-through of the app before delivery by a QA agent. "Step" is the step of its script
   where the finding was seen.
-- **Production QA (P1-P17):** an end-to-end pass on the live app just before the tag. Production was frozen at `v1.0`
+- **Production QA (P1-P18):** an end-to-end pass on the live app just before the tag (P18 was reported from use
+  after it and reproduced the same night). Production was frozen at `v1.0`
   after it, so **every P finding is open in `v1.0`**. The ones a reviewer is most likely to meet are in the README's
   known limits, and their fixes are on its roadmap.
 
@@ -75,3 +76,51 @@ synthetic keydown).
 | P15 | Explore details. | The busiest "conversations" say "116 messages" and "195 messages", but a conversation holds at most 40. These are sessions. The colour scale tops out at 439, set by the "Other" row, so topic rows look pale. The first week column is labelled "7" but holds only 13 Sep. "Multiplayer and co-op" wraps as "co- / op" on mobile. | Label the counts as the session; scale colours without the residual row, or state which row sets the scale; label a partial week with the days it holds. | polish | open |
 | P16 | `/api/health`. | Returns `"commit":"local"` for a CLI deploy, and production was redeployed partway through this QA with no way to tell which commit went out. | Health reports the git SHA (inject it at deploy time), so a QA run can say what it tested. | polish | open |
 | P17 | Wording. | "rose by +51%" (double sign). The steps line "Read the same 210 conversations twice, for two questions and searched once" is hard to parse. | "rose 51%"; "Read 210 conversations for two questions, and searched once". | polish | open |
+| P18 | One long chat of nine questions: scans, follow-ups ("which of those are bugs?", "tell me more about the second one"), an out-of-scope question and a count. The 7th was "What are people saying about Tides Remastered?". | The 7th question fails after 3 s: the error bar reads "The model could not answer: Please ensure that function call turn comes immediately after a user turn or after a function response turn." and leaves an empty answer in the chat. "Try again" fails the same way. The 8th question worked and the 9th failed again. The input stays enabled throughout, so the chat looks usable but stops answering. Root cause in the route (`src/app/api/chat/route.ts:86`): see below. | Every question in a chat gets an answer, however long the chat. | major | open |
+
+**P18, the long chat that stops answering.** Reported from production use after the pass: partway through a long
+chat, no further question got an answer. The production logs show the same Gemini error three times in that chat
+(23:23 to 23:29 Oslo time) before it was deleted. Reproduced in the browser on `v1.0` in a new chat, one question
+at a time, with the request each question sent:
+
+| question | time | request | result |
+|---|---|---|---|
+| 1. What are people saying about the Domains? | 14 s | 1 message, 0.2 KB | answered (scan) |
+| 2. which of those are bugs? | 8 s | 3, 214 KB | answered (no tool) |
+| 3. what's the revenue? | 4 s | 5, 219 KB | answered (out of scope) |
+| 4. What are people excited about? | 13 s | 7, 221 KB | answered (scan) |
+| 5. How many conversations mention crashes? | 27 s | 9, 348 KB | answered (scan) |
+| 6. tell me more about the second one | 8 s | 11, 495 KB | answered (read_conversation) |
+| 7. What are people saying about Tides Remastered? | 3 s | 13, 517 KB | **error**; "Try again": 13, 517 KB, **error** |
+| 8. What are people frustrated about? | 20 s | 15, 518 KB | answered (scan) |
+| 9. which of those are bugs? | 3 s | 17, 754 KB | **error** |
+
+No console errors. Every response was HTTP 200 carrying an error part in its stream. Three direct POSTs to
+`/api/chat` isolate the cause: a 13-message chat whose 2nd message (the first answer) starts with a tool call fails
+with the same error; the same chat cut to 11 messages answers; a 13-message chat whose 2nd message is a plain-text
+answer also answers.
+
+*Root cause.* The route sends the model only the last 12 UI messages: `convertToModelMessages(messages.slice(-12),
+...)` (`src/app/api/chat/route.ts:86`). A request always ends with the new question, so from the 7th question on it
+holds an odd number of messages (13, 15, ...), and the 12-message window starts on an **assistant** message: the
+answer given six questions earlier. When that answer began with a tool call (almost every answer from the data: a
+scan, a search, a count, an out-of-scope reply), the model input opens with a function-call turn that follows no
+user turn, and Gemini refuses the whole request. Converting the same history locally shows it: 11 messages start
+`user`, 13 start `assistant[tool-call]`. So which questions fail depends only on the answer six questions back: in
+the run above, question 8 worked because the answer at the cut (question 2's) had no tool call, and question 9
+failed on question 3's out-of-scope call. "Try again" resends the same history and fails the same way, and every
+failure adds an empty answer to the chat and saves it (question 7's and 9's are empty in the saved chat). The error
+bar shows the provider's own words, which tell the reader nothing they can do.
+
+*Ruled out.* Request size: the largest request was 754 KB, far under Vercel's 4.5 MB limit. The route's 200-message
+cap is 100 questions away. The 2,000-character cap applies only to the new question (`route.ts:55`). The input is
+never disabled (the Composer has no `disabled` on the textarea). Quota: the error comes back in 2 to 3 s from a
+request Gemini rejected for its shape. Request size is still a slower risk: each answer with a scan carries its tool
+results back in every later request (130 to 530 KB each in the saved chats), so a chat of 10 to 30 such answers
+would reach the 4.5 MB limit and get a 413 from the platform.
+
+*Fix* (not applied; production is frozen): start the window at a user message, e.g. take the last 12 messages and
+drop any leading assistant messages before `convertToModelMessages`, with a test that a 13-message chat converts to
+input whose first message is the user's. Better, and it also removes the size risk: send only the new question and
+the chat id, and read the history from the saved chat on the server. Also drop an empty failed answer from the
+history, and show a plain line for a provider error instead of its text.

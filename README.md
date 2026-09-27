@@ -176,6 +176,9 @@ calls (rerank, scan, claim check) are not in the ledger; they were not measured.
   call, no citations and no check, although the data has a `bug` flag and other answers found bugs in the same week.
 - **Post suggestions are thin (P4).** "What should we post about this week?" gave three ideas, each on one message,
   with no engagement measure behind them.
+- **A long chat stops answering (P18).** From the 7th question on, the route sends the model a history that can
+  open on an earlier answer's tool call, which Gemini refuses; that question, and "Try again", end in an error, and
+  so does each later question whose history is cut the same way. A new chat works.
 - **Dates written in messages disagree with the timestamps (P8).** The export looks time-shifted
   ([docs/DATA.md](docs/DATA.md#profile)), so an answer can quote "a 9 July launch" as upcoming on 27 September.
 
@@ -197,8 +200,9 @@ In priority order.
    5. merge, then deploy.
 2. **Fix what the production QA found** ([docs/QA.md](docs/QA.md)): open an Explore row's conversation in the
    evidence panel, and let an empty model turn fall through to the forced answer (P1); ask in the claim check, or in
-   the scan, whether a cited message is about this community's games (P2); make a follow-up that asks for a slice
-   call a tool (P3); rank post ideas by engagement and ground each in more than one conversation, or say the
+   the scan, whether a cited message is about this community's games (P2); start the model's history at a question,
+   or load it on the server from the saved chat, so a long chat keeps answering (P18); make a follow-up that asks for
+   a slice call a tool (P3); rank post ideas by engagement and ground each in more than one conversation, or say the
    evidence is thin (P4); quote dates from messages as written (P8).
 3. **Drive topic rules from data, not names.** The prompt and the chart code name the general topics ("other", other
    games) to leave them out of excitement and resonance rankings (D20), and the prompt's examples name the Domains and
