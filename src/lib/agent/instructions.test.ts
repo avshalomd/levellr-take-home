@@ -22,7 +22,7 @@ describe("instructions, the rules carried over", () => {
   });
   it("filters to a flag only when the question asks for it", () => {
     expect(text).toMatch(
-      /Filter to a flag \(excited, frustrated, bugs, requests for changes, help\) only when/,
+      /Filter to a flag \(excited, frustrated, bug, requests for changes, help\) only when/,
     );
   });
 });
