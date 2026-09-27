@@ -30,7 +30,7 @@ describe("what the model reads back", () => {
   it("gives mood on the app's 0-100 scale and names the slice", () => {
     const t = aggregateForModel(agg("avg_sentiment", 0.238));
     expect(t).toContain("2026-08-24: 24/100 (n=51)");
-    expect(t).toContain("over conversations touching the topic \"cheating\", from 2026-08-24, before 2026-08-31");
+    expect(t).toContain("over conversations touching the topic \"Cheating\", from 2026-08-24, before 2026-08-31");
     expect(t).not.toContain("0.238");
   });
 
@@ -66,7 +66,7 @@ describe("what the model reads back", () => {
   it("says a flag-filtered count is a share of the flagged slice, not of the topic", () => {
     const t = scanForModel(ok("frustrated"), 400);
     expect(t).toContain(
-      "Scanned 129 conversations (conversations touching the topic \"updates\", only frustrated conversations); 80 relevant",
+      "Scanned 129 conversations (conversations touching the topic \"Updates\", only frustrated conversations); 80 relevant",
     );
     expect(t).toContain("All 129 were already frustrated conversations");
     expect(t).toContain("use aggregate");
@@ -104,14 +104,14 @@ describe("voicesForModel", () => {
         },
       ],
     });
-    expect(out).toContain("The 1 most active of 312 people in conversations touching the topic \"updates\"");
+    expect(out).toContain("The 1 most active of 312 people in conversations touching the topic \"Updates\"");
     expect(out).toContain(
       "Deep-Pen420: 40 messages in 12 conversations, started 2, 3 reactions, 2026-07-01 to 2026-09-20",
     );
   });
   it("says plainly when nobody wrote", () => {
     expect(voicesForModel({ ...base, rows: [] })).toBe(
-      "Nobody wrote in conversations touching the topic \"updates\".",
+      "Nobody wrote in conversations touching the topic \"Updates\".",
     );
   });
   it("names an author filter in the slice", () => {
@@ -176,8 +176,8 @@ describe("a count and the days it covers", () => {
   it("gives each row a per-day rate and the period's length, and says to compare rates", () => {
     const july = count("2026-07-01", "2026-08-01", 144);
     const september = count("2026-09-01", "2026-09-25", 109);
-    expect(july).toContain("cosmetics-store: 144, 4.6 per day over 31 days (n=144)");
-    expect(september).toContain("cosmetics-store: 109, 4.5 per day over 24 days (n=109)");
+    expect(july).toContain("Cosmetics store: 144, 4.6 per day over 31 days (n=144)");
+    expect(september).toContain("Cosmetics store: 109, 4.5 per day over 24 days (n=109)");
     expect(september).toContain("Period: 2026-09-01 to 2026-09-24, 24 days.");
     expect(september).toContain(
       "To compare periods of different lengths, compare the per-day rates, never the raw counts",
@@ -312,7 +312,7 @@ describe("a read, as the model reads it (QA 2026-09-26, round 5)", () => {
     );
     expect(t).not.toContain("11/100");
     expect(conversationsForModel([hit as never])).toBe(
-      "## conversation conv7 · Discussion · topic updates · relevance 90% · 2026-09-10\n[msg1] a: lag",
+      "## conversation conv7 · Discussion · topic Updates · relevance 90% · 2026-09-10\n[msg1] a: lag",
     );
   });
   it("says the topic breakdown overlaps, and lists every topic of a conversation, primary first (D46)", () => {
@@ -320,9 +320,9 @@ describe("a read, as the model reads it (QA 2026-09-26, round 5)", () => {
       "By topic, a conversation counts under each topic it touches, so the topic counts can add up to more than 1170.",
     );
     expect(conversationsForModel([{ ...hit, topics: ["updates", "performance"] } as never])).toMatch(
-      /^## conversation conv7 · Discussion · topics updates, performance · /,
+      /^## conversation conv7 · Discussion · topics Updates, Performance · /,
     );
-    expect(conversationsForModel([{ ...hit, topics: ["updates"] } as never])).toMatch(/· topic updates ·/);
+    expect(conversationsForModel([{ ...hit, topics: ["updates"] } as never])).toMatch(/· topic Updates ·/);
   });
   it("carries a note on how the read was made", () => {
     expect(scanForModel({ ...read(), notes: ["This read covered one topic only."] }, 2500)).toContain(
@@ -514,5 +514,17 @@ describe("outsideWords", () => {
     expect(scanForModel({ status: "empty", question: "q", filters: {}, notes: [note] }, 2500)).toBe(
       `No conversations match these filters.\nNote: ${note}`,
     );
+  });
+});
+
+// v1.1 QA (N6): the catch-all "other" has no stored name, and the post answer wrote `"other" topics`, the raw key.
+describe("topic names in the tools' words", () => {
+  it("are the stored name, or one made from the key, never the bare key", async () => {
+    const { topicName, nameFromKey } = await import("./for-model");
+    const names = new Map([["other-games-off-topic", "Other games"]]);
+    expect(topicName("other-games-off-topic", names)).toBe("Other games");
+    expect(topicName("other", names)).toBe("Other");
+    expect(nameFromKey("patch-notes")).toBe("Patch notes");
+    expect(nameFromKey("bug_reports")).toBe("Bug reports");
   });
 });

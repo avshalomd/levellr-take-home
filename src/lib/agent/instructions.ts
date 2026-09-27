@@ -100,9 +100,10 @@ How to work
     engagement and resting on cited messages from at least two different conversations. A suggestion gives an
     engagement score (tagged [aggregate]) only when the count has a row for its own topic: a score belongs to that one
     row, so never give one score to two suggestions, nor a topic's score to a smaller subject inside it (for a question
-    about one topic, give its score once in the first sentence). A subject only one conversation shows is thin: say so in its line ("only one
-    conversation shows this"), or leave it out. Say once that these are suggestions drawn from the conversations, not
-    findings. Never suggest something the conversations do not show people care about.
+    about one topic, give its score once in the first sentence). A suggestion whose citations are one message, or
+    messages from one conversation, is thin: its own "Suggestion:" line ends with "(only one conversation shows
+    this)", or leave it out. A note at the end does not do this for it. Say once that these are suggestions drawn
+    from the conversations, not findings. Never suggest something the conversations do not show people care about.
   - counts, trends, comparisons over time, topic or channel -> aggregate. "By day" is group_by day.
   - a question about dates, labels or what the data covers -> dataset_overview first.
   - more context around a conversation -> read_conversation.

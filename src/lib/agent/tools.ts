@@ -30,6 +30,7 @@ import {
   periodOf,
   refusalWords,
   scanForModel,
+  topicName,
   voicesForModel,
   type ScanExtras,
   type TopicNames,
@@ -216,7 +217,10 @@ async function checked(f: Filters | undefined, keys: () => Promise<string[]>, na
     // The model reads topics by name (for-model.ts), so a name is taken for its key.
     if (!known.includes(out.topic) && names) {
       const want = out.topic.trim().toLowerCase();
-      const key = [...(await names())].find(([, n]) => n.trim().toLowerCase() === want)?.[0];
+      const named = await names();
+      const key =
+        [...named].find(([, n]) => n.trim().toLowerCase() === want)?.[0] ??
+        known.find((k) => !named.has(k) && topicName(k).toLowerCase() === want);
       if (key) out.topic = key;
     }
     if (!known.includes(out.topic))
@@ -353,11 +357,11 @@ export function makeTools(writer?: UIMessageStreamWriter, p?: Profile) {
         const names = new Map((await topicLabels()).map((l) => [l.key, l.name]));
         const nameOf = (key: string, sf: SliceFilters) =>
           group_by === "topic"
-            ? (names.get(key) ?? key)
+            ? topicName(key, names)
             : group_by !== "none"
               ? key
               : sf.topic
-                ? (names.get(sf.topic) ?? sf.topic)
+                ? topicName(sf.topic, names)
                 : sf.flag
                   ? (FLAG_WORDS[sf.flag] ?? sf.flag)
                   : "all conversations";

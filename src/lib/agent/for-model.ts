@@ -25,7 +25,14 @@ export const mood = (x: number | null) => (x === null ? "?" : `${Math.round(x * 
  *  tools take a name or a key (tools.ts checked), so no key needs to reach the answer (QA 2026-09-27: an answer wrote
  *  "other-games-off-topic"). */
 export type TopicNames = ReadonlyMap<string, string>;
-const topicName = (key: string, names?: TopicNames) => names?.get(key) ?? key;
+/** A name made from a key the label set does not name: "other" is "Other", "patch-notes" is "Patch notes". v1.1 QA
+ *  (N6): the catch-all "other" has no stored name, and the post answer wrote `"other" topics`, the raw key. */
+export const nameFromKey = (key: string) => {
+  const words = key.replace(/[-_]+/g, " ").trim();
+  return words ? words[0].toUpperCase() + words.slice(1) : key;
+};
+/** A topic by the name the reader knows, never its bare key. */
+export const topicName = (key: string, names?: TopicNames) => names?.get(key) ?? nameFromKey(key);
 /** A whole number as the chart writes it: "2,753" (QA 2026-09-27: the answer wrote "2753" beside a chart's 2,753). */
 export const num = (n: number) => (Number.isInteger(n) ? n.toLocaleString("en-GB") : String(n));
 const pct = (x: number | null) => (x === null ? "?" : `${Math.round(x * 100)}%`);

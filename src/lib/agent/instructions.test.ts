@@ -48,7 +48,7 @@ describe("instructions, this community", () => {
   it("ranks what to post by engagement and grounds each suggestion in two conversations", () => {
     expect(text).toMatch(/"what should we post \(this week\)" -> first aggregate engagement by topic/);
     expect(text).toMatch(/at least\s+two different conversations/);
-    expect(text).toMatch(/only one\s+conversation shows this/);
+    expect(text).toMatch(/only one\s+conversation shows\s+this\)", or leave it out\. A note at the end does not do this for it/);
   });
   // P3, P8, P10, P12, P17.
   it("reads a follow-up's slice, keeps message dates as written, and says when a period is outside", () => {
