@@ -1,7 +1,7 @@
 # The data
 
 `data/messages.json`, sent with the brief. Kept out of git (`.gitignore`); the pipeline in `ingest/` reads it from
-there. Every number below was measured on this file tonight, not carried over from the rehearsal.
+there. Every number below was measured on this file.
 
 ## Profile
 

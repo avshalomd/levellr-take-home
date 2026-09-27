@@ -1,21 +1,19 @@
 # Decisions
 
 Each choice, the alternative, and why. Where the human chose, ruled or overruled what the coding agent proposed, it
-says so. Every number is measured on this dataset ([docs/DATA.md](docs/DATA.md)); none is carried over from the
-rehearsal. How the pieces fit together is in [docs/DESIGN.md](docs/DESIGN.md).
+says so. Every number is measured on this dataset ([docs/DATA.md](docs/DATA.md)). How the pieces fit together is in
+[docs/DESIGN.md](docs/DESIGN.md).
 
-## D1. Reuse the rehearsal app's code
+## D1. A Python ingest, a TypeScript app, one Postgres
 
-- **Choice:** copy code from Community Pulse, an app I built beforehand to rehearse this task on other community data
-  (a subreddit), frozen at commit `90f193d`. Copied: the Python ingest pipeline (normalize, group, sample, suggest,
-  enrich, embed, load, budget), the data layer and its tools, the agent, the claim check, the chat page, the Explore
-  grid and the eval runners. Changed only what this brief and this data need: a Discord adapter, reactions instead of
-  votes, this community's topics, flags for "excited" and "frustrated", Gemini instead of OpenRouter models.
-- **Alternative:** write it fresh in 90 minutes.
-- **Why:** the brief scores choices and a working, grounded chatbot; 90 minutes buys a thin slice from scratch. The
-  rehearsal's pieces were already debugged against real questions. Every carried-over decision below was re-checked
-  against this data. Code is copied only for what is built and running: the chat first, then the Explore grid; topic
-  editing waits on a branch until it has been run (D31).
+- **Choice:** the dataset is built by a Python pipeline run from the laptop (normalize, group, sample, suggest,
+  enrich, embed, load, with a spend ledger), and served by a Next.js app in TypeScript. Both use one Neon Postgres
+  with pgvector: messages, conversations, labels, vectors and a full-text index in the same tables.
+- **Alternative:** one language for both; a separate vector store beside the database.
+- **Why:** ingest is batch data work that must resume and cache between runs, which Python and JSONL files do
+  simply; the app is a streaming chat on Vercel, which the AI SDK serves in TypeScript. One database means a search,
+  a label filter and a count are one SQL query over the same rows, with nothing to keep in sync. Only what is built
+  and has run goes on `main`: the chat, then the Explore grid; topic editing waits on a branch (D31).
 
 ## D2. "Now" is the last message
 
@@ -48,7 +46,7 @@ rehearsal. How the pieces fit together is in [docs/DESIGN.md](docs/DESIGN.md).
   the conversation is read, never counted in it.
 - **Alternative:** move the parent in, or ignore it.
 - **Why:** a reply without its parent is often unreadable ("yes exactly"), but counting the parent twice would inflate
-  every count. Kept from the reference (its D8); the reason holds here, since 37% of messages are replies.
+  every count. It matters here: 37% of messages are replies.
 
 ## D5. "Resonating" = engagement: authors + replies + reactions
 
@@ -71,7 +69,7 @@ rehearsal. How the pieces fit together is in [docs/DESIGN.md](docs/DESIGN.md).
   [docs/DATA.md](docs/DATA.md#label-set).
 - **Alternative:** one topic per conversation as a hard verdict, or free-text tags from an LLM.
 - **Why:** a conversation often touches two subjects; a verdict hides how sure the label is; free tags cannot be
-  counted. Kept from the reference (D12, D17, D46).
+  counted.
 - **Why Jev, in the human's words, a main reason:** the team should own the topics. Because a label is one yes/no
   probability per topic, changing one topic re-asks only that one question, and Jev's calls are cheap enough that the
   team can start a relabel itself, whenever it wants, without an engineer. On this data one full labelling run (every
@@ -123,7 +121,7 @@ rehearsal. How the pieces fit together is in [docs/DESIGN.md](docs/DESIGN.md).
   `aggregate` (counts from SQL), `read_conversation`, `voices`, a dataset overview and an out-of-scope answer.
 - **Alternative:** one vector search for everything.
 - **Why:** "what are people frustrated about" has no keyword to search for; top-k similarity samples the slice
-  instead of reading it. A named thing is the opposite: search is exact and cheap. Kept from the reference (D9).
+  instead of reading it. A named thing is the opposite: search is exact and cheap.
   Whether each half of hybrid and the rerank earn their place is measured in `eval/retrieval.ts` (README, Eval).
   The "too broad" branch refuses a slice over 2,500 conversations with a breakdown by topic and week; this dataset
   has 2,362, so on it the branch never fires, and it is there for a bigger export.
@@ -150,7 +148,7 @@ rehearsal. How the pieces fit together is in [docs/DESIGN.md](docs/DESIGN.md).
   cites (`corroborate.ts`). The result is shown under the answer (D27).
 - **Alternative:** trust the model's citations.
 - **Why:** grounding is what the reviewers weigh most, and a citation that does not support its sentence is worse
-  than none. Kept from the reference (D11, D14, D15).
+  than none.
 
 ## D13. "What should we post?" is answered as suggestions
 
@@ -196,8 +194,7 @@ rehearsal. How the pieces fit together is in [docs/DESIGN.md](docs/DESIGN.md).
 
 ## D18. Saved chats are restored (the human's call, after a UX review)
 
-- **Choice:** a chat is saved and survives a reload through its URL (`/c/[id]`), with past chats in a sidebar, as in
-  the reference. The `chats` table is in `db/app.sql`, apart from the build tables, so reloading the data keeps saved
+- **Choice:** a chat is saved and survives a reload through its URL (`/c/[id]`), with past chats in a sidebar. The `chats` table is in `db/app.sql`, apart from the build tables, so reloading the data keeps saved
   chats. The owner is an anonymous cookie id: no accounts, each browser sees its own history.
 - **Alternative:** the first cut: lose a chat on reload.
 - **Why:** reviewing the page as its user, **the human asked for it back**: a community manager returns to an answer to
@@ -229,8 +226,8 @@ rehearsal. How the pieces fit together is in [docs/DESIGN.md](docs/DESIGN.md).
 - **Choice:** `gemini-embedding-2` at 768 dimensions on the brief's key, documents as RETRIEVAL_DOCUMENT, questions as
   RETRIEVAL_QUERY, every vector L2-normalised in code (`ingest/embed.py`, `src/lib/data/embed.ts`).
 - **Alternative:** `gemini-embedding-001`, the model the brief named.
-- **Why:** the key serves both; embedding-2 is the newer model and the one the reference pipeline and its query side
-  already use, so both carried over unchanged. 768 dimensions keeps the index small. The two were not compared on
+- **Why:** the key serves both, and embedding-2 is the newer model; the ingest and query sides use the same model
+  and settings. 768 dimensions keeps the index small. The two were not compared on
   this data.
 
 ## D22. Deploys are by hand
@@ -312,8 +309,8 @@ rehearsal. How the pieces fit together is in [docs/DESIGN.md](docs/DESIGN.md).
 
 ## D31. Explore: the grid is live, topic editing is held back on a branch
 
-- **Choice:** Explore's topic x time grid (read-only) is copied from the reference and is on `main` and in production.
-  Topic editing with a priced relabel and backfill (the reference's D17, D19) is built on the branch
+- **Choice:** Explore's topic x time grid (read-only) is on `main` and in production. Topic editing with a priced
+  relabel and backfill is built on the branch
   [`explore-topic-editing`](https://github.com/avshalomd/levellr-take-home/tree/explore-topic-editing) and was held
   back from `main` on purpose.
 - **What it does:** in Explore the team adds, renames, redefines, combines or removes topics. A rename or a combine

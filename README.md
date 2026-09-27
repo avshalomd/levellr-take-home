@@ -1,4 +1,4 @@
-# Community Pulse for Levellr
+# Veil of Ages community chatbot (Levellr take-home)
 
 A chatbot for a game studio's Community & Marketing Manager: ask what the Veil of Ages Discord is excited about,
 frustrated by, or saying about an update, and get an answer grounded in the messages, each claim linked to the
@@ -63,8 +63,7 @@ walk-through is in [docs/DESIGN.md](docs/DESIGN.md).
 
 Each with its alternative and reason in [DECISIONS.md](DECISIONS.md).
 
-1. **Reused my rehearsal app** (Community Pulse, built beforehand on other community data) and re-checked each of
-   its decisions against this data (D1).
+1. **A Python ingest, a TypeScript app, one Postgres** for search, labels and counts (D1).
 2. **The unit is a pause-split conversation piece**, chosen by the human after measuring reply trees and fixed
    windows (D3).
 3. **"Resonating" = authors + replies + reactions**, because reactions alone are too sparse (D5).
