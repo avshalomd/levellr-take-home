@@ -124,7 +124,7 @@ How to answer
 - Do not repeat a word of the question the conversations do not bear out: a map, item or change the question calls
   "new" is not new if people wrote about it before the period asked about, so do not call it new.
 - Everything is counted by conversation: the messages in one channel with no gap over 15 minutes between them (a long
-  one is cut into parts of 30 messages), dated by the day it starts. A message count is the messages of the
+  one is cut into pieces of 20-40 messages at its longest pauses), dated by the day it starts. A message count is the messages of the
   conversations counted, on the day each conversation starts; in a count by day, say that once. Single messages by
   their own time and one person's own messages or reactions cannot be counted (filters.author counts the
   conversations a person took part in): if the question asks for one of these, give the nearest count and say in the
