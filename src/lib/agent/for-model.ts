@@ -58,7 +58,8 @@ export function caveats(metric: string, groupBy: string): string {
   if (metric === "engagement" || metric === "avg_engagement")
     notes.push(
       "Engagement is distinct authors + replies + reactions per conversation. Reactions alone are too sparse here " +
-        "to say what resonates, so they are one part of it.",
+        "to say what resonates, so they are one part of it. An engagement score is never a number of conversations " +
+        "or people: write \"an engagement score of 253\", and take how many conversations from the count beside it.",
     );
   if (groupBy === "week" || groupBy === "day" || groupBy === "month")
     notes.push("The first and last periods of the conversations are partial days or weeks.");
@@ -116,6 +117,7 @@ export function aggregateForModel(
   o: AggregateResult & { period?: { since: string; until: string; days: number } | null; change?: Change },
 ): string {
   const isMood = o.metric === "avg_sentiment";
+  const isEngagement = o.metric === "engagement" || o.metric === "avg_engagement";
   const name = isMood
     ? "average mood (0-100, the scale the app shows; say it as e.g. 24/100)"
     : o.metric === "engagement"
@@ -161,7 +163,15 @@ export function aggregateForModel(
     : "";
   return (
     `${name} by ${o.groupBy}, over ${sliceWords(o.filters)}:\n` +
-    o.rows.map((r) => `${r.key}: ${value(r)} (n=${r.n})`).join("\n") +
+    // An engagement figure is a score, and its row says so, with the conversations behind it: bare, "Tides Remastered:
+    // 253" was written as "253 conversations" when 34 were counted (QA 2026-09-27).
+    o.rows
+      .map((r) =>
+        isEngagement
+          ? `${r.key}: engagement score ${value(r)} (a score, not a count; from ${r.n} ${r.n === 1 ? "conversation" : "conversations"})`
+          : `${r.key}: ${value(r)} (n=${r.n})`,
+      )
+      .join("\n") +
     overlapWords(o.total) +
     span +
     (o.change ? `\n${changeWords(o.change)}` : "") +

@@ -201,8 +201,12 @@ describe("activitySummary", () => {
     const ask = (question: string) => ({ ...scan(118, slice), input: { question } });
     expect(activitySummary([ask("Is the anti-cheat working?"), ask("Who do they blame?")]).text).toBe("Read the same 118 complaints twice, for two questions");
     // the same question over the same slice is one line in the list, so one read in the summary (review 2026-09-26)
-    expect(activitySummary([ask("Q?"), ask("Q?")]).text).toBe("Read 118 complaints");
-    expect(activitySummary([scan(118, slice)]).text).toBe("Read 118 complaints");
+    expect(activitySummary([ask("Q?"), ask("Q?")]).text).toBe("Read 118 complaints (3 bore on the question)");
+    expect(activitySummary([scan(118, slice)]).text).toBe("Read 118 complaints (3 bore on the question)");
+    // QA 2026-09-27: "Read 239" in the headline beside "of the 219" in the verification note, with no word between them.
+    expect(activitySummary([{ ...scan(239, { flag: "frustrated" }), output: { status: "ok", scanned: 239, relevant: 219, filters: { flag: "frustrated" } } }]).text).toMatch(
+      /^Read 239 \S+ conversations \(219 bore on the question\)$/,
+    );
   });
   it("never says 'at least': reads that may share conversations are said as sets that may overlap", () => {
     const text = activitySummary([
@@ -220,7 +224,7 @@ describe("activitySummary", () => {
     const counting = (metric: string, group_by: string, filters = {}) => ({ ...agg, input: { metric, group_by, filters } });
     expect(activitySummary([agg]).text).toBe("Counted conversations");
     expect(activitySummary([scan(1232, { flag: "complaint" }), counting("conversations", "topic", { flag: "complaint" })]).text).toBe(
-      "Read 1,232 complaints and counted complaints by topic",
+      "Read 1,232 complaints (3 bore on the question) and counted complaints by topic",
     );
     expect(activitySummary(Array.from({ length: 18 }, (_, i) => counting("conversations", "week", { topic: `t${i}` }))).text).toBe("Counted conversations by week 18 times");
     expect(activitySummary([counting("avg_sentiment", "week"), counting("conversations", "none")]).text).toBe("Worked out the average mood by week and counted conversations");
@@ -231,7 +235,7 @@ describe("activitySummary", () => {
   it("keeps a step that did not finish out of the headline, and flags it in the list", () => {
     const failed = { type: "tool-scan", state: "output-error", input: { question: "Q?", filters: { topic: "maps-modes" } }, toolCallId: "f" };
     const ok = { ...scan(207, { topic: "updates-feedback" }), toolCallId: "s" };
-    expect(activitySummary([ok, failed]).text).toBe("Read 207 conversations");
+    expect(activitySummary([ok, failed]).text).toBe("Read 207 conversations (3 bore on the question)");
     const lines = stepLines([ok, failed]);
     expect(lines.map((l) => [l.id, l.failed])).toEqual([["s", false], ["f", true]]);
     expect(lines[1].words.detail).toBe("This read didn't finish, so the answer leaves it out");
@@ -545,10 +549,10 @@ describe("withoutRefused", () => {
   const failed = { type: "tool-scan", state: "output-error", toolCallId: "c", input: { question: "Reaction?" }, errorText: "Something went wrong while answering. Try again." };
   it("leaves out a refused call and keeps one that failed", () => {
     expect(withoutRefused([refused, read, failed]).map((s) => s.toolCallId)).toEqual(["b", "c"]);
-    expect(activitySummary(withoutRefused([refused, read])).text).toBe("Read 224 conversations");
+    expect(activitySummary(withoutRefused([refused, read])).text).toBe("Read 224 conversations (80 bore on the question)");
   });
   it("never counts a refused call as a step, in the summary or the list, even unfiltered", () => {
-    expect(activitySummary([refused, read]).text).toBe("Read 224 conversations");
+    expect(activitySummary([refused, read]).text).toBe("Read 224 conversations (80 bore on the question)");
     expect(stepLines([refused, read]).map((l) => l.id)).toEqual(["b"]);
     expect(activitySummary([refused, { ...refused, toolCallId: "z", input: { question: "Other?", filters: { flag: "bug" } } }]).text).not.toMatch(/did not finish/);
   });
@@ -598,7 +602,7 @@ describe("a slice read again for another question", () => {
     expect(activitySummary(repeats).text).toBe("Counted conversations");
     const twins = [read("a", "Are the bans working?", 83), { ...read("b", "Are the bans working?", 83), input: { question: "Are the bans working?", filters: { flag: "complaint", since: "2026-09-09" }, top: 15 } }];
     expect(stepLines(twins)).toHaveLength(1);
-    expect(activitySummary(twins).text).toBe("Read 118 complaints");
+    expect(activitySummary(twins).text).toBe("Read 118 complaints (83 bore on the question)");
     // two questions over one slice are two lines, and the summary says the same conversations twice
     const two = [read("a", "Are the bans working?", 83), read("b", "Who do they blame?", 88)];
     expect(stepLines(two)).toHaveLength(2);

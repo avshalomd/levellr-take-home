@@ -48,7 +48,7 @@ describe("Activity", () => {
   it("names the steps button for a screen reader, with the distinct count of conversations read", () => {
     // the same read twice is one step (stepLines), and the summary counts the steps shown: one read, not "the same 118
     // complaints twice" over one line (review 2026-09-26)
-    expect(render()).toContain('aria-label="Show the 2 steps: Read 118 complaints and worked out the share of complaints by week"');
+    expect(render()).toContain('aria-label="Show the 2 steps: Read 118 complaints (109 bore on the question) and worked out the share of complaints by week"');
   });
   it("draws no chart until the steps are over, then the week rows by the days they hold", () => {
     expect(render(false)).not.toContain("<figure");

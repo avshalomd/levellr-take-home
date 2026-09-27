@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { citedIn, groupClaims, lastWord, morePillWords, offeredQuestion, sentenceCuts, splitClosing } from "./claims";
+import { citedIn, endsWithShownCitation, groupClaims, lastWord, morePillWords, offeredQuestion, sentenceCuts, splitClosing } from "./claims";
 
 type El = { text: string };
 const textOf = (e: El) => e.text;
@@ -108,5 +108,15 @@ describe("morePillWords", () => {
   });
   it("never says a cited count of nothing", () => {
     expect(morePillWords({ conversations: 3, moreTotal: 3 })).toBe("3 conversations say this: 3 more");
+  });
+});
+
+// QA 2026-09-27: a claim showed a "+N more" badge with no numbered chip beside it.
+describe("endsWithShownCitation", () => {
+  it("is true only when the claim closes on a citation that is shown", () => {
+    expect(endsWithShownCitation("People love the boss [msg1, msg2].", ["msg1"])).toBe(true);
+    expect(endsWithShownCitation("People love the boss [msg1]. ", ["msg1"])).toBe(true);
+    expect(endsWithShownCitation("[msg1] People love the boss.", ["msg1"])).toBe(false);
+    expect(endsWithShownCitation("People love the boss [msg3].", ["msg1"])).toBe(false);
   });
 });

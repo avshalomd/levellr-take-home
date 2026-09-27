@@ -8,7 +8,7 @@ import { CITE_RE, tagsIn } from "@/lib/refs";
 import { cn } from "@/lib/utils";
 import { sourceWords } from "./activity-words";
 import { CitationChip, HIT_AREA } from "./CitationChip";
-import { groupClaims, lastWord, morePillWords, offeredQuestion, splitClosing } from "./claims";
+import { endsWithShownCitation, groupClaims, lastWord, morePillWords, offeredQuestion, splitClosing } from "./claims";
 import type { CorroboratedClaim } from "@/lib/agent/corroborate";
 import { beforeDroppedCitation, corroborationFor, PUNCTUATION_NEXT, splitToolTags as toolTagPieces, supportLevel, type Evidence } from "./evidence";
 
@@ -184,31 +184,53 @@ export function Answer({
   };
 
   // "[scan]" after a number marks where it was counted: a small chart glyph that opens the steps at that one.
-  const splitToolTags = (s: string): ReactNode[] =>
-    toolTagPieces(s).map(({ text, tag, hug }, i) =>
-      text !== undefined ? (
-        text
-      ) : (
-        <button
-          key={`tag-${i}`}
-          type="button"
-          title={sourceWords(tag!)}
-          aria-label={sourceWords(tag!)}
-          onClick={(e) => {
-            e.stopPropagation();
-            onShowStep(tag!);
-          }}
-          className={cn(
-            "inline-grid size-[18px] -translate-y-[1px] place-items-center rounded-full align-middle text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground",
-            HIT_AREA,
-            // The glyph sits 3px inside its circle; before punctuation that room goes too, so ", and" hugs it.
-            hug ? "ml-0.5 -mr-[3px]" : "mx-0.5",
-          )}
-        >
-          <BarChart3 className="size-3" />
-        </button>
-      ),
-    );
+  // Each glyph is bound to the word before it and the punctuation after it, as a citation chip is: a glyph at a
+  // sentence's end otherwise let the full stop wrap onto the next line alone (QA 2026-09-27).
+  const splitToolTags = (s: string): ReactNode[] => {
+    const pieces = toolTagPieces(s);
+    const out: ReactNode[] = [];
+    let carry = ""; // punctuation already bound to the glyph before it
+    pieces.forEach(({ text, tag, hug }, i) => {
+      if (text !== undefined) {
+        const rest = text.slice(carry.length);
+        carry = "";
+        if (pieces[i + 1]?.tag !== undefined) {
+          const [head, word] = lastWord(rest);
+          out.push(head);
+          pieces[i] = { text: word }; // the word rides with the glyph after it
+        } else out.push(rest);
+        return;
+      }
+      const before = pieces[i - 1]?.text !== undefined ? (pieces[i - 1].text as string) : "";
+      const after = pieces[i + 1]?.text ?? "";
+      const punct = hug ? (/^[.,;:!?)]+/.exec(after)?.[0] ?? "") : "";
+      carry = punct;
+      out.push(
+        <span key={`tag-${i}`} className="whitespace-nowrap">
+          {before}
+          <button
+            type="button"
+            title={sourceWords(tag!)}
+            aria-label={sourceWords(tag!)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onShowStep(tag!);
+            }}
+            className={cn(
+              "inline-grid size-[18px] -translate-y-[1px] place-items-center rounded-full align-middle text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground",
+              HIT_AREA,
+              // The glyph sits 3px inside its circle; before punctuation that room goes too, so ", and" hugs it.
+              hug ? "ml-0.5 -mr-[3px]" : "mx-0.5",
+            )}
+          >
+            <BarChart3 className="size-3" />
+          </button>
+          {punct}
+        </span>,
+      );
+    });
+    return out;
+  };
 
   // A block's text as claims. Only citations still shown count toward a claim. A claim's "+N more" goes before its
   // full stop, bound to it so the two never wrap apart (claims.ts splitClosing).
@@ -218,7 +240,9 @@ export function Answer({
       if (!tags.length) return <Fragment key={i}>{withChips(c.pieces)}</Fragment>;
       // The chips shown and the sentence's own words: two sentences citing the same message are two claims (review
       // 2026-09-26).
-      const backing = corroborationFor(evidence, tags, c.pieces.map((p) => (typeof p === "string" ? p : textOf(p))).join(""));
+      const said = c.pieces.map((p) => (typeof p === "string" ? p : textOf(p))).join("");
+      // The "+N more" rides only right after a numbered chip, never on its own (claims.ts endsWithShownCitation).
+      const backing = endsWithShownCitation(said, evidence.cited) ? corroborationFor(evidence, tags, said) : undefined;
       const [body, mark, space] = backing && backing.moreTotal > 0 ? splitClosing(c.pieces) : [c.pieces, "", ""];
       return (
         <span

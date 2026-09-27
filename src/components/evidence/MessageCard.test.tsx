@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { ThreadNode } from "@/lib/data/read";
-import { MessageCard } from "./MessageCard";
+import { Engagement, MessageCard } from "./MessageCard";
 
 // A message card as the panel draws it. QA 2026-09-26: cards said "2 wk ago" and "8 days ago" beside chips saying
 // "17 Sep", so the reader had to do the sum to match them.
@@ -30,6 +30,15 @@ describe("MessageCard", () => {
     const html = renderToStaticMarkup(<MessageCard node={node} num={1} level="backed" replies={0} top={false} />);
     expect(html).toContain('title="17 Sep 2026">17 Sep</p>');
     expect(html).not.toMatch(/\bago\b/);
+  });
+});
+
+// QA 2026-09-27: a "0" reactions badge sat on most Discord messages.
+describe("Engagement", () => {
+  const discord = { platform: "discord", community: "Server" } as never;
+  it("shows reactions only when there are some", () => {
+    expect(renderToStaticMarkup(<Engagement node={{ score: 0 }} source={discord} />)).toBe("");
+    expect(renderToStaticMarkup(<Engagement node={{ score: 2 }} source={discord} />)).toContain("reactions");
   });
 });
 

@@ -78,7 +78,7 @@ export function numberTagsOnly(text: string): string {
     .join("\n");
 }
 
-const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 /** Two marks of the prose the reader should not see (production QA 2026-09-26), put right in code as a backstop to the
  *  instructions: a fall written with a hyphen ("-48%") gets a minus sign ("−48%"), and an ISO date ("2026-09-09") is

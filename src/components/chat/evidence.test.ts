@@ -276,8 +276,8 @@ describe("proseMarks", () => {
     expect(proseMarks("run `x -5%` now")).toBe("run `x -5%` now");
   });
   it("writes an ISO date as words, keeping the year", () => {
-    expect(proseMarks("Since 2026-09-09, lag rose [msg1].")).toBe("Since 9 September 2026, lag rose [msg1].");
-    expect(proseMarks("From 2026-08-01 to 2026-08-31.")).toBe("From 1 August 2026 to 31 August 2026.");
+    expect(proseMarks("Since 2026-09-09, lag rose [msg1].")).toBe("Since 9 Sep 2026, lag rose [msg1].");
+    expect(proseMarks("From 2026-08-01 to 2026-08-31.")).toBe("From 1 Aug 2026 to 31 Aug 2026.");
   });
   it("leaves a date in a link, a path, a code span or a non-date alone", () => {
     for (const s of ["[notes](https://x.com/2026-09-09)", "see /logs/2026-09-09-a", "`2026-09-09`", "2026-13-40", "ref=2026-09-09"])

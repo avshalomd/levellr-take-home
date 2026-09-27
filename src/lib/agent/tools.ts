@@ -68,7 +68,8 @@ const filters = z
       .enum(["excited", "frustrated", "bug", "feature", "help"])
       .optional()
       .describe(
-        "only conversations labelled with this flag (probability >= 0.5). Only when the question itself asks what " +
+        "only conversations labelled with this flag (probability >= 0.5): excited, frustrated or help as a main thread " +
+          "of the conversation, not one remark; bug is defects, crashes and performance. Only when the question itself asks what " +
           "excites or frustrates people, what to post about, or about bugs, requests or help; never for how people " +
           "feel about one thing, react or take part. A call with a flag the question does not name is refused",
       ),
@@ -79,14 +80,14 @@ const filters = z
   })
   .describe("the slice of conversations: every field narrows it");
 
-// The reader's steps say what a read or a search was about in these words ("Looked for posts about the Rondo
-// changes"), not the model's own search string or a rewritten question cut short (QA 2026-09-26). Optional, so a call
+// The reader's steps say what a read or a search was about in these words ("Looked for posts about the Domains
+// difficulty"), not the model's own search string or a rewritten question cut short (QA 2026-09-26). Optional, so a call
 // without it still runs; the steps then fall back to plainer words (components/chat/activity-words.ts).
 const about = z
   .string()
   .optional()
   .describe(
-    "always give it: what this is about, in 2-6 plain words for the reader, e.g. 'the Rondo changes', 'lag after the update'",
+    "always give it: what this is about, in 2-6 plain words for the reader, e.g. 'the Domains difficulty', 'lag after the update'",
   );
 
 // A call narrowed by a flag the reader's question (read with the one it follows up) never named is refused before it
