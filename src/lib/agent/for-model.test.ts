@@ -437,7 +437,9 @@ describe("counts in the one unit, the conversation", () => {
     expect(t).toContain(
       "engagement (distinct authors + replies + reactions, summed over the conversations) by none",
     );
-    expect(t).toContain("all: 3100, 310.0 per day over 10 days");
+    expect(t).toContain("all: engagement score 3100, 310.0 per day over 10 days (a score, not a count; from 200 conversations)");
+    // QA 2026-09-27: "Tides Remastered: 253" was written as "253 conversations".
+    expect(t).toContain("An engagement score is never a number of conversations or people");
   });
 
   it("gives a month row the days of that month inside the period, so a partial month is not read as a whole one", () => {

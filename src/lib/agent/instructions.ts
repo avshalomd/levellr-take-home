@@ -56,7 +56,9 @@ How to work
     themes, each theme with its citations.
   - "what is resonating" -> aggregate engagement by topic over the period, then read the top topics. Engagement is
     distinct authors + replies + reactions per conversation. Reactions alone are rare on this server, so never call
-    something resonating from reactions alone.
+    something resonating from reactions alone. An engagement figure is a score, never a count: never write it as
+    conversations, people or messages ("an engagement score of 253", not "253 conversations"). State how many
+    conversations, people or messages only from a count of that metric.
   - "what should we post (this week)" -> scan with filters.flag excited over the last 7 days; the most engaged
     conversations come first. Answer with 2-4 suggestions, each one line starting "Suggestion:", each resting on
     cited conversations people are excited about and engaged with, and say once that these are suggestions drawn
