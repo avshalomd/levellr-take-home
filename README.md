@@ -4,6 +4,11 @@ A chatbot for a game studio's Community & Marketing Manager: ask what the Veil o
 frustrated by, or saying about an update, and get an answer grounded in the messages, each claim linked to the
 message behind it and checked, or a plain "the data cannot answer that".
 
+**How it works, visually:** [the anatomy page](https://avshalomd.github.io/levellr-take-home/anatomy.html) walks
+through the key design decisions, the grouping of messages into conversations, the labels, the two retrieval flows
+(`scan`, and `find`: hybrid search with a Jev rerank), the claim check and the evals, with the real data
+(source: [`docs/anatomy.html`](docs/anatomy.html)).
+
 **Live:** https://levellr-take-home.vercel.app (public; every question spends the brief's capped Gemini key). It runs
 release tag [`v1.0`](https://github.com/avshalomd/levellr-take-home/tree/v1.0) (commit `2ae6130`): the chat, and Explore's topic x time grid,
 read-only. Commits after the tag change docs only.
