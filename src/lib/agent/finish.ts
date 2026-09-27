@@ -3,8 +3,12 @@ import type { ModelMessage, UIMessageStreamWriter } from "ai";
 import { answerText, isToolPart, numberTagsOnly, proseMarks, stripToolMarkup } from "@/components/chat/evidence";
 import { claimsOf } from "@/lib/claims";
 import { normalizeCitations } from "@/lib/refs";
+import { profile } from "@/lib/data/profile";
 import { answerFromTools, retrievedRefs, toolsRan } from "./agent";
+import { aboutOwnGames, questionInContext, questionsOf } from "./flags";
 import { groundingOf, type Grounding } from "./grounding";
+import { offTopicReply } from "./off-topic";
+import { SCOPE_BAR, turnBearsOn } from "./scope";
 import { knownRates, sourcelessFigures } from "./rates";
 import { checkAndRevise, citeAnswer, correctCounts, type RevisionPart } from "./revise";
 import { countMismatches, toolTrends } from "./trends";
@@ -14,16 +18,17 @@ import type { Verification } from "./verify";
 // Everything that happens to an answer after the agent stops, in one place, so the chat route and the eval run exactly
 // the same thing (review 2026-09-26: the off-topic reply and the cite pass lived only in the route, so the eval's
 // out-of-scope questions reached its judge as an empty answer and the cite pass was never evaluated). In order:
-//   1. the answer is tidied (tool markup, citation formats); a turn that used the tools and has no words is answered
-//      once from what they returned (agent.ts answerFromTools);
-//   2. an off-topic question gets the reply written in code (off-topic.ts), and nothing is checked;
+//   1. the answer is tidied (tool markup, citation formats); a turn that has no words is answered once from what the
+//      tools returned, if anything (agent.ts answerFromTools);
+//   2. an off-topic question gets the reply written in code (off-topic.ts), and nothing is checked: one the model sent
+//      to out_of_scope, or one it answered with no tool call and no citation that the scope check turns away (N1);
 //   3. an answer that read messages and cites none is sent back once to cite them (revise.ts citeAnswer);
 //   4. an answer that cites messages is checked, and its weak claims corrected once (revise.ts checkAndRevise);
 //   5. an answer from the tools that still cites nothing has its rates and directions checked against the counts in
 //      code, is rewritten once on a mismatch (revise.ts correctCounts), and says so under it.
 // Answer-model calls after the agent, worst case per turn: 2 (the cite pass, then one rewrite), plus 1 only when the
 // agent left no words (answerFromTools). On an uncited answer: 2 (open item 2026-09-26); 1 on a counts-only answer.
-// Jev is never called on an uncited answer.
+// Jev is called on an uncited answer only for the scope check of a turn that called no tool (one call).
 // The route passes its stream's write, and the reader sees each part as it happens; the eval passes nothing and reads
 // the result. How many conversations back each claim (corroborate.ts) stays in the route: it changes no text.
 
@@ -61,6 +66,18 @@ export type AfterAgent = {
 
 const BEFORE_NOTHING = { supported: 0, cited: 0 };
 
+/** Whether the turn called any tool, whatever came of the call. */
+const calledTool = (steps: ReadonlyArray<StepLike>) =>
+  steps.some((s) => s.content.some((p) => /^tool-(?:call|result|error)$/.test((p as { type: string }).type)));
+
+/** The community's own games (profile.ts target), when the question is one D20 keeps to them: what excites or
+ *  frustrates people, what resonates, what to post. The check then fails a claim that rests only on messages about
+ *  other games (verify.ts; production QA 2026-09-27, P2 and P6). Undefined otherwise, or when the data names none. */
+export async function ownGames(history: ReadonlyArray<ModelMessage>): Promise<string | undefined> {
+  if (!aboutOwnGames(questionInContext(questionsOf(history)))) return undefined;
+  return (await profile().catch(() => null))?.target || undefined;
+}
+
 /** A revision the check writes, as the reader is shown it after a kept cite pass: one not kept, or failed, puts the
  *  cited text back, and one still running carries it (review 2026-09-26: written under the same id, "running" replaced
  *  the kept revision, and for the 10-60 s of the rewrite the uncited stream came back and the chips went). */
@@ -71,8 +88,9 @@ export function afterCite(r: RevisionPart, cited: RevisionPart | undefined): Rev
 }
 
 /** `earlier`: the chat's earlier tool results, in the shape of steps (agent.ts chatToolSteps). A citation of a message an
- *  earlier turn's tools showed backs a claim as one of this turn's does, and a figure tagged with a tool that ran in an
- *  earlier turn has a count behind it (QA 2026-09-27). The eval runs one question a chat and passes none. */
+ *  earlier turn's tools showed backs a claim as one of this turn's does (QA 2026-09-27, D24). A figure tagged [scan],
+ *  [aggregate] or [voices] is backed only by that tool running in THIS turn (v1.1 QA, B1: a follow-up restated an
+ *  earlier turn's count for a different slice, tagged, and passed). The eval runs one question a chat and passes none. */
 export async function afterAgent(
   turn: { steps: ReadonlyArray<StepLike>; history: ModelMessage[]; earlier?: ReadonlyArray<StepLike> },
   write: (chunk: Chunk) => void = () => {},
@@ -84,7 +102,8 @@ export async function afterAgent(
   const retrieved = retrievedRefs(turn.steps);
   const chat = [...(turn.earlier ?? []), ...turn.steps];
   const shown = turn.earlier?.length ? retrievedRefs(chat) : retrieved;
-  const ran = toolsRan(chat);
+  // The tools that ran this turn: a tag says "counted for this answer", never "counted somewhere in the chat" (B1).
+  const ran = toolsRan(turn.steps);
   const cites = () => claimsOf(answer).some((c) => c.ids.length);
   let grounding = groundingOf(cites(), turn.steps);
 
@@ -92,7 +111,10 @@ export async function afterAgent(
   // would have answered (agent.ts answerFromTools; eval run 7, T04: the model wrote its next tool call as text, which
   // is stripped, and the reader got nothing). Streamed as the answer's text, like the off-topic reply below; then
   // cited and checked like any other answer. If it fails too, the page says the answer is unfinished (chat-state.ts).
-  if (!answer.trim() && (grounding.kind === "uncited" || grounding.kind === "cited")) {
+  // A turn with no tool call and no words is answered the same way (production QA 2026-09-27, P1: an empty first step
+  // ended the loop before the forced last step, and the page said "This answer was not finished"). With nothing read,
+  // the answer model says what it could not establish; it never guesses (agent.ts NO_TOOLS_LEFT).
+  if (!answer.trim() && grounding.kind !== "off-topic") {
     const text = tidy(await answerFromTools(turn.history));
     if (text.trim()) {
       write({ type: "text-start", id: "from-tools" });
@@ -123,6 +145,24 @@ export async function afterAgent(
     } else revise({ status: "done", kept: true, text: grounding.text, before: BEFORE_NOTHING });
     out.text = grounding.text;
     return out;
+  }
+
+  // A turn that called no tool and cites nothing goes through the scope check a first turn's out_of_scope call goes
+  // through (scope.ts turnBearsOn), and a question the conversations do not bear on gets the same reply, written in
+  // code, with its suggested questions. v1.1 QA (N1): after three questions, "Can you write me a poem about pirates?"
+  // got a poem, with no tool call and no check, and a mid-chat weather question was declined in the model's own words
+  // with no suggestions; in a fresh chat both got the reply below. One Jev call, on a turn with no tool call only; a
+  // check that could not be made leaves the answer as it is.
+  if (!calledTool(turn.steps) && !cites() && answer.trim()) {
+    const p = await profile().catch(() => null);
+    const bears = p ? await turnBearsOn(turn.history, p) : null;
+    if (p && bears !== null && bears < SCOPE_BAR) {
+      const text = offTopicReply(p);
+      revise({ status: "done", kept: true, text, before: BEFORE_NOTHING });
+      out.text = text;
+      out.grounding = { kind: "off-topic", text };
+      return out;
+    }
   }
 
   // The cite pass's text, once it is kept: shown from the moment the pass succeeds, whatever the check does next.
@@ -176,6 +216,7 @@ export async function afterAgent(
           { revision: (r) => revise(afterCite(r, cited)) },
           knownRates(turn.history),
           ran,
+          await ownGames(turn.history),
         );
         answer = checked.text;
         out.checked = checked.verification;
@@ -199,7 +240,7 @@ export async function afterAgent(
       verdict(sourceless.length ? { ...line, sourceless } : line);
     } else if (answer.trim()) {
       // An answer that used no tool and cites nothing gets no line (a question back, a greeting), unless it tags a
-      // figure as counted when nothing in the chat counted it (QA 2026-09-27, eval: "60/100 [aggregate]", no tool call).
+      // figure as counted when nothing this turn counted it (QA 2026-09-27, eval: "60/100 [aggregate]", no tool call).
       const sourceless = sourcelessFigures(answer, ran);
       if (sourceless.length) verdict({ status: "uncited", read: false, sourceless });
     }

@@ -20,7 +20,10 @@ import {
 } from "@/lib/data/insights-model";
 import { EMPTY_SELECTION, blocks, rowRuns, selectedCells, selectionId, selectionTotals, type CellId, type Selection } from "@/lib/data/insights-selection";
 import { askHref, describe, suggestions, type Described, type SelectedCell } from "@/lib/data/insights-question";
-import type { SelectionDetail } from "@/lib/data/insights";
+import type { Session, SelectionDetail } from "@/lib/data/insights";
+import { ConversationPanel } from "@/components/evidence/EvidencePanel";
+import { EvidenceSheet } from "@/components/evidence/EvidenceSheet";
+import type { Source } from "@/components/evidence/source-words";
 import { edgeNote, legendEnds, unbrokenDates } from "./explore-words";
 import { Grid } from "./Grid";
 import { sheetInsets } from "./placement";
@@ -42,6 +45,9 @@ const METRIC_OPTIONS: Option<Metric>[] = [
 
 const WIDE = 1040; // content width (padding excluded); below this the detail moves from a side column into a bottom sheet
 const NARROW = 640; // below this the topic column slims down
+
+// The busiest rows are Discord sessions (insights.ts Session), so the reply tree names their place as a #channel.
+const DISCORD: Source = { platform: "discord" };
 
 const reduceMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -260,10 +266,26 @@ export function Explore({ initial, initialNames }: { initial: GridData; initialN
     if (keyboard) backToGrid();
   };
 
-  // Esc clears from anywhere on the page, unless it belongs to a field being edited.
+  // A busiest session opened in the reply tree, over the page (QA P1: it used to ask the chat about its convN handle).
+  // The selection stays as it was underneath, so closing the sheet goes back to the list the row came from. The session
+  // is kept while the sheet slides out, so it leaves with its content.
+  const [reading, setReading] = useState<{ session: Session; open: boolean } | null>(null);
+  const openSession = useCallback((session: Session) => setReading({ session, open: true }), []);
+  const closeSession = useCallback(() => setReading((r) => r && { ...r, open: false }), []);
+  const readingOpen = useRef(false);
+  useEffect(() => {
+    readingOpen.current = reading?.open ?? false;
+  }, [reading]);
+
+  // Esc clears from anywhere on the page, unless it belongs to a field being edited. With a session open it closes
+  // that first, from inside the sheet too.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || e.defaultPrevented) return;
+      if (readingOpen.current) {
+        closeSession();
+        return;
+      }
       const t = e.target as HTMLElement | null;
       if (t && (t.closest("input, textarea, [contenteditable=true], [role=dialog]") || t.closest("[role=grid]"))) return;
       const back = focusLeaves();
@@ -272,7 +294,7 @@ export function Explore({ initial, initialNames }: { initial: GridData; initialN
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [clear, focusLeaves, backToGrid]);
+  }, [clear, focusLeaves, backToGrid, closeSession]);
 
   // ---------- the question ----------
 
@@ -301,6 +323,7 @@ export function Explore({ initial, initialNames }: { initial: GridData; initialN
         draft={draft}
         onClear={closeFromPanel}
         onRetry={() => setRetry((x) => x + 1)}
+        onOpen={openSession}
       />
     ) : null;
 
@@ -384,6 +407,21 @@ export function Explore({ initial, initialNames }: { initial: GridData; initialN
           </BottomSheet>
         )}
       </section>
+
+      <EvidenceSheet overlay label="A session" open={reading?.open ?? false} onClose={closeSession}>
+        {(handle) =>
+          reading && (
+            <ConversationPanel
+              key={reading.session.sessionId}
+              conversationIds={reading.session.conversationIds}
+              onClose={closeSession}
+              handle={handle}
+              source={DISCORD}
+              topicNames={names}
+            />
+          )
+        }
+      </EvidenceSheet>
     </div>
   );
 }
@@ -410,7 +448,9 @@ function Legend({ metric, data }: { metric: Metric; data: GridData }) {
         </div>
         <p className="min-w-0">
           {activity
-            ? `Each square is the number of conversations touching a topic in one ${unit}. A conversation is a stretch of chat in one channel with no pause over 15 minutes (40 messages at most); one that touches two topics sits in both rows, and the totals count it once.`
+            ? // A session is named here because the busiest list shows sessions, whose 116 messages read wrong against "40
+              // messages at most" (QA P15, 2026-09-27).
+              `Each square is the number of conversations touching a topic in one ${unit}. A conversation is a stretch of chat in one channel with no pause over 15 minutes (a session), cut into parts of 40 messages at most when it runs longer. One that touches two topics sits in both rows, and the totals count it once.`
             : moodBaseline(data.norm)}
         </p>
       </div>

@@ -271,7 +271,7 @@ describe("checkAndRevise, a change stated the wrong way round", () => {
     const r = await checkAndRevise(qa, new Set(["msg1"]), history, { revision: (x) => events.push(x) });
     const prompt = (generateTextMock.mock.calls[0][0] as { prompt: string }).prompt;
     expect(prompt).toContain(
-      `A CHECK FOUND THESE CHANGES STATED THE WRONG WAY ROUND:\n- CLAIM: ${qa}\n  It says Updates & Feedback rose; the counts give Updates & Feedback −6% per day.`,
+      `A CHECK FOUND THESE CHANGES STATED THE WRONG WAY ROUND:\n- CLAIM: ${qa}\n  It says Updates & Feedback rose; the counts give Updates & Feedback down 6% per day.`,
     );
     expect(events[0]).toEqual({ status: "running", weak: 1 });
     expect(r.revision).toMatchObject({ status: "done", kept: true });
@@ -517,5 +517,37 @@ describe("placeHandles", () => {
       placed: 0,
       rejected: [],
     });
+  });
+});
+
+// v1.1 QA (B1): "tell me more about the second one" restated "average mood 47/100 [scan]" from an earlier turn's read of
+// every topic. The one rewrite is told which tagged figures no tool counted for this answer, and is kept only with fewer.
+describe("checkAndRevise, a figure tagged as counted that nothing counted this turn", () => {
+  const answer = "Among the 56 bug reports, the average mood is 47/100 [scan]. The screen goes gray [msg1].";
+  const sourceless = [{ tool: "scan", figure: "47/100" }];
+
+  it("sends it back once to drop or re-scope the figure, and keeps a rewrite without it", async () => {
+    verifyMock
+      .mockResolvedValueOnce({ ...v([{ claim: "The screen goes gray [msg1].", ids: ["msg1"], support: 0.9 }]), sourceless })
+      .mockResolvedValueOnce(v([{ claim: "The screen goes gray [msg1].", ids: ["msg1"], support: 0.9 }]));
+    generateTextMock.mockResolvedValueOnce({ text: "Players report bugs. The screen goes gray [msg1]." });
+    const events: unknown[] = [];
+    const r = await checkAndRevise(answer, new Set(["msg1"]), [], { revision: (x) => events.push(x) });
+    const prompt = (generateTextMock.mock.calls[0][0] as { prompt: string }).prompt;
+    expect(prompt).toContain(
+      "A CHECK FOUND THESE FIGURES MARKED AS COUNTED THAT NO TOOL COUNTED FOR THIS ANSWER:\n- 47/100 [scan]",
+    );
+    expect(events[0]).toEqual({ status: "running", weak: 1 });
+    expect(r.text).toBe("Players report bugs. The screen goes gray [msg1].");
+    expect(r.verification.sourceless).toBeUndefined();
+  });
+
+  it("keeps the original, still listing the figure, when the rewrite keeps it", async () => {
+    const same = { ...v([{ claim: "x [msg1].", ids: ["msg1"], support: 0.9 }]), sourceless };
+    verifyMock.mockResolvedValueOnce(same).mockResolvedValueOnce(same);
+    generateTextMock.mockResolvedValueOnce({ text: `${answer} Reworded.` });
+    const r = await checkAndRevise(answer, new Set(["msg1"]), []);
+    expect(r.text).toBe(answer);
+    expect(r.verification.sourceless).toEqual(sourceless);
   });
 });

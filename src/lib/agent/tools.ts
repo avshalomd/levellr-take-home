@@ -10,15 +10,27 @@ import {
 } from "@/lib/data/read";
 import { msgTag } from "@/lib/refs";
 import type { Profile } from "@/lib/data/profile";
-import { followUpContext, isRefusal, lastQuestion, questionsOf, unaskedFlag, type Refusal } from "./flags";
+import {
+  aboutOwnGames,
+  asksWhatToPost,
+  followUpContext,
+  isRefusal,
+  lastQuestion,
+  questionInContext,
+  questionsOf,
+  unaskedFlag,
+  type Refusal,
+} from "./flags";
 import {
   aggregateForModel,
   conversationsForModel,
   failedWords,
   FLAG_WORDS,
+  outsideWords,
   periodOf,
   refusalWords,
   scanForModel,
+  topicName,
   voicesForModel,
   type ScanExtras,
   type TopicNames,
@@ -26,7 +38,7 @@ import {
 import { changeAgainst, type CountLike } from "./trends";
 import type { SliceFilters } from "./slices";
 import { OFF_TOPIC_MODEL_WORDS, offTopicReply, type OffTopic } from "./off-topic";
-import { bearsOn, IN_SCOPE_WORDS, isInScope, SCOPE_BAR, type InScope } from "./scope";
+import { IN_SCOPE_WORDS, isInScope, SCOPE_BAR, turnBearsOn, type InScope } from "./scope";
 import { scan, MAX_SCAN, type ScanResult } from "@/lib/data/scan";
 import { searchConversations, type SearchResult } from "@/lib/data/search";
 import { topVoices, type VoicesResult } from "@/lib/data/voices";
@@ -205,7 +217,10 @@ async function checked(f: Filters | undefined, keys: () => Promise<string[]>, na
     // The model reads topics by name (for-model.ts), so a name is taken for its key.
     if (!known.includes(out.topic) && names) {
       const want = out.topic.trim().toLowerCase();
-      const key = [...(await names())].find(([, n]) => n.trim().toLowerCase() === want)?.[0];
+      const named = await names();
+      const key =
+        [...named].find(([, n]) => n.trim().toLowerCase() === want)?.[0] ??
+        known.find((k) => !named.has(k) && topicName(k).toLowerCase() === want);
       if (key) out.topic = key;
     }
     if (!known.includes(out.topic))
@@ -264,21 +279,27 @@ export function makeTools(writer?: UIMessageStreamWriter, p?: Profile) {
         const refused = refusalOf(f, messages);
         if (refused) return refused;
         const slice = await checked(f, topicKeys, topicNames);
+        // The reader's question, with the one it follows up: what excites, frustrates or resonates, and what to post,
+        // is read for the community's own games only (D20; P2, P6), and what to post is ranked by engagement (P4).
+        const asked = questionInContext(questionsOf(messages));
         const read: ScanResult = await once("scan", () =>
           scan(readQuestion(question, messages), slice, {
             top,
+            own: aboutOwnGames(asked) ? p?.target : undefined,
+            rank: asksWhatToPost(asked) ? "engagement" : "relevance",
             onProgress: (p) =>
               writer?.write({ type: "data-scanProgress", id: toolCallId, data: { ...p, toolCallId } }),
           }),
         );
-        if (read.status !== "ok") return read;
-        const note = releaseNote(lastQuestion(messages), slice);
+        const outside = outsideWords(slice, window);
+        if (read.status !== "ok") return outside ? { ...read, notes: [outside] } : read;
+        const notes = [outside, releaseNote(lastQuestion(messages), slice)].filter((n): n is string => !!n);
         // The days the read covers travel with it, like a count's, so its counts can be given per day (for-model.ts).
         return {
           ...read,
           sliceMood: await sliceMood(slice),
           period: periodOf(slice, window),
-          ...(note ? { notes: [note] } : {}),
+          ...(notes.length ? { notes } : {}),
         };
       },
       toModelOutput: modelOutput<ScanResult & ScanExtras>((o, n) => scanForModel(o, MAX_SCAN, n), topicNames),
@@ -329,17 +350,18 @@ export function makeTools(writer?: UIMessageStreamWriter, p?: Profile) {
         const slice = await checked(f, topicKeys, topicNames);
         const counted = await once("aggregate", () => aggregate(metric, group_by, slice));
         // The days the count covers travel with it, so a comparison of periods can be made per day (for-model.ts).
-        const withDays = { ...counted, period: periodOf(slice, window) };
+        const outside = outsideWords(slice, window);
+        const withDays = { ...counted, period: periodOf(slice, window), ...(outside ? { outside } : {}) };
         // Against an earlier count of the same slice over another period, the change per day, from the unrounded rates
         // (production QA 2026-09-26: +124% stated for +121%). Named as the reader knows each row.
         const names = new Map((await topicLabels()).map((l) => [l.key, l.name]));
         const nameOf = (key: string, sf: SliceFilters) =>
           group_by === "topic"
-            ? (names.get(key) ?? key)
+            ? topicName(key, names)
             : group_by !== "none"
               ? key
               : sf.topic
-                ? (names.get(sf.topic) ?? sf.topic)
+                ? topicName(sf.topic, names)
                 : sf.flag
                   ? (FLAG_WORDS[sf.flag] ?? sf.flag)
                   : "all conversations";
@@ -405,7 +427,7 @@ export function makeTools(writer?: UIMessageStreamWriter, p?: Profile) {
       execute: async (_, { messages }): Promise<OffTopic | InScope> => {
         // A second opinion before the question is turned away (scope.ts): one the conversations bear on is answered
         // from them. A check that could not be made takes the model's call as it stands.
-        const bears = p ? await bearsOn(lastQuestion(messages), p) : null;
+        const bears = p ? await turnBearsOn(messages, p) : null;
         if (bears !== null && bears >= SCOPE_BAR) return { status: "in-scope", bears };
         const who = p ?? { community: "the community", from: "", to: "" };
         return { status: "off-topic", text: offTopicReply(who) };

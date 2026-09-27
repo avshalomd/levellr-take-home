@@ -262,7 +262,13 @@ export function weekDays(monday: string, span: Span = {}): [string, string] {
 export function rowLabel(key: string, groupBy: string, topicNames: Map<string, string>, span?: Span): string {
   if (groupBy === "none") return "All";
   // Never the raw key: the residual "other" topic has no name in the taxonomy and drew as a lower-case "other" (QA Q8).
-  if (groupBy === "topic") return topicNames.get(key) ?? (key === "unlabelled" ? "Not labelled" : keyWords(key));
+  // The overview names such a topic by its key ({"key":"other","name":"other"}), so a name that is only the key counts
+  // as no name at all; the check alone let "other" through on the frustrations chart (QA P5, 2026-09-27).
+  if (groupBy === "topic") {
+    const named = topicNames.get(key);
+    if (named && named !== key) return named;
+    return key === "unlabelled" ? "Not labelled" : keyWords(key);
+  }
   if (groupBy === "week" && /^\d{4}-\d{2}-\d{2}$/.test(key)) return rangeWords(...weekDays(key, span));
   if (groupBy === "day" && /^\d{4}-\d{2}-\d{2}$/.test(key)) return shortDate(key);
   if (groupBy === "month" && /^\d{4}-\d{2}$/.test(key))
@@ -276,18 +282,20 @@ const keyWords = (key: string) => {
   return w ? w[0].toUpperCase() + w.slice(1) : key;
 };
 
-/** The topics D20 leaves out of what excites and what resonates: the residual "other" and talk about other games. */
+/** The topics D20 leaves out of what excites, resonates and frustrates: the residual "other" and talk about other games. */
 const RESIDUAL_TOPIC = (key: string) => key === "other" || key.startsWith("other-");
-/** A question about what excites, resonates or is worth posting: its ranking leaves the residual topics out (D20). */
-const RANKS_EXCITEMENT = /excit|resonat|hype|looking forward|\bpost\b|posting|engag/i;
+/** A question about what excites, resonates, is worth posting or frustrates players: its ranking leaves the residual
+ *  topics out (D20). Frustration joined after the frustrations chart ranked "other" and "Other games" (QA P5). */
+const RANKS_OWN_GAME = /excit|resonat|hype|looking forward|\bpost\b|posting|engag|frustrat|complain|annoy|angry|upset/i;
 /** Whether the reader asked about other games or chatter themselves: then they stay. */
 const ASKS_RESIDUAL = /other games|off[- ]topic|chatter|other franchises/i;
 
-/** A by-topic count's rows as the chart draws them. Under an excitement, resonance or "what should we post" question
- *  the residual topics go, as they go from the answer (DECISIONS D20): the "What should we post" chart ranked
- *  "Other games" and a raw "other" row beside an answer that left both out (QA Q8, 2026-09-27). */
+/** A by-topic count's rows as the chart draws them. Under an excitement, resonance, "what should we post" or
+ *  frustration question the residual topics go, as they go from the answer (DECISIONS D20): the "What should we post"
+ *  chart ranked "Other games" and a raw "other" row beside an answer that left both out (QA Q8, 2026-09-27), and the
+ *  frustrations chart did the same (QA P5). */
 export function chartRows(rows: Row[], groupBy: string, told: string): Row[] {
-  if (groupBy !== "topic" || !RANKS_EXCITEMENT.test(told) || ASKS_RESIDUAL.test(told)) return rows;
+  if (groupBy !== "topic" || !RANKS_OWN_GAME.test(told) || ASKS_RESIDUAL.test(told)) return rows;
   return rows.filter((r) => !RESIDUAL_TOPIC(r.key));
 }
 
@@ -331,7 +339,7 @@ type Read = { filters: Filters; scanned: number; question: string; relevant?: nu
 
 /** The reads as the summary line says them, one true sentence the steps under it bear out (QA 2026-09-26: "Read at
  *  least 118 conversations" over two steps that each said 118 read). One slice read once: "read 118 complaint threads".
- *  One slice read for several questions: "read the same 118 complaint threads twice, for two questions". Slices that
+ *  One slice read for several questions: "read 118 complaint threads for two questions". Slices that
  *  nest or cannot overlap: their total. Slices that may share conversations: each size, as passes ("read 25 and 224
  *  conversations in two passes"), since no single number would be true. */
 export function readWords(reads: Read[]): string | null {
@@ -343,8 +351,10 @@ export function readWords(reads: Read[]): string | null {
     // verification note saying "of the 219 found to bear on it" read as two counts of one thing (QA 2026-09-27).
     const bore = reads[0].relevant;
     if (reads.length === 1) return `read ${what}${bore === undefined || Number.isNaN(bore) || bore === n ? "" : ` (${count(bore)} bore on the question)`}`;
+    // "Read the same 210 conversations twice, for two questions and searched once" was hard to parse (QA P17,
+    // 2026-09-27): a slice read for several questions is said once, with the questions.
     const questions = new Set(reads.map((r) => r.question)).size;
-    return `read the same ${what} ${times(reads.length)}${questions > 1 ? `, for ${inWords(questions)} questions` : ""}`;
+    return questions > 1 ? `read ${what} for ${inWords(questions)} questions` : `read the same ${what} ${times(reads.length)}`;
   }
   const read = conversationsRead(reads);
   if (read.exact) return `read ${plural(read.n, "conversation")}`;
@@ -403,7 +413,10 @@ export function activitySummary(steps: StepLike[], topicNames: Map<string, strin
     if (stopped) bits.push(bits.length ? "stopped before the next step finished" : "stopped before the first step finished");
     else if (unfinished) bits.push(`${inWords(unfinished)} ${unfinished === 1 ? "step" : "steps"} did not finish`);
   }
-  const text = bits.length ? listWords(bits) : "checked the data";
+  // A comma before the last "and" when an earlier part has its own "for": "Read 210 conversations for two questions,
+  // and searched once", not "... for two questions and searched once", which read as two questions and a search.
+  const serial = bits.slice(0, -1).some((b) => / for /.test(b));
+  const text = !bits.length ? "checked the data" : serial ? `${bits.slice(0, -1).join(", ")}, and ${bits.at(-1)}` : listWords(bits);
   return { text: text[0].toUpperCase() + text.slice(1), running: false };
 }
 

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useReducedMotion } from "motion/react";
-import { ChevronLeft, ListTree, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, ListTree, X } from "lucide-react";
 import type { CorroboratedClaim, MoreItem } from "@/lib/agent/corroborate";
 import { plainClaim } from "@/lib/claims";
 import type { MessageRow } from "@/lib/data/types";
@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { shortDate, supportLevel, type Evidence, type Ref } from "@/components/chat/evidence";
 import { Engagement, MessageCard, MessageLine, type MessageProps } from "./MessageCard";
 import { plainMessage } from "./message-text";
-import { moreWords, placeWords, topicNamesOf, type Source } from "./source-words";
+import { headingWords, moreWords, placeWords, topicNamesOf, type Source } from "./source-words";
 import { ThreadMap } from "./ThreadMap";
 import { answerCache } from "./answer-cache";
 import { nearestScroll, stripScrollBehavior } from "./panel-focus";
@@ -95,15 +95,22 @@ export function EvidencePanel({
       .catch(() => {});
   }, [evidence.cited, evidence.refs]);
 
+  // A tab names the first message the answer cites in its conversation, not the conversation's first line: "#off-topic:
+  // I can't believe we're only a couple weeks out from Tides Remastered" over a cited "I've been waiting for it since I
+  // finished GTA 5" read as if the claim cited a Tides message (QA P14, 2026-09-27). The conversation stays in its title.
   const threads = useMemo(() => {
     const refOf = (tag: string) => evidence.refs.get(tag) ?? extra.get(tag);
-    const out: { threadId: string; title: string; cited: string[] }[] = [];
+    const out: { threadId: string; label: string; title: string; cited: string[] }[] = [];
     for (const tag of evidence.cited) {
       const r = refOf(tag);
       const threadId = r?.thread_id ?? r?.conversation_id;
       if (!r || !threadId) continue;
       let t = out.find((x) => x.threadId === threadId);
-      if (!t) out.push((t = { threadId, title: r.threadTitle ?? "", cited: [] }));
+      if (!t) {
+        const said = plainMessage(r.text).replace(/\s+/g, " ").trim();
+        const where = r.threadTitle ?? "";
+        out.push((t = { threadId, label: said, title: said && where ? `“${said}”, in ${where}` : said || where, cited: [] }));
+      }
       t.cited.push(tag);
     }
     return out;
@@ -176,7 +183,7 @@ export function EvidencePanel({
                   lit && "border-pulse/50",
                 )}
               >
-                <span className="truncate">{t.title || `Conversation ${i + 1}`}</span>
+                <span className="truncate">{t.label || `Conversation ${i + 1}`}</span>
                 <span className="shrink-0 text-[12px] text-muted-foreground">{t.cited.length}</span>
               </button>
             );
@@ -199,6 +206,109 @@ export function EvidencePanel({
         <TreeSkeleton />
       )}
         </>
+      )}
+    </div>
+  );
+}
+
+const NO_ANSWER: Evidence = { refs: new Map(), retrievedConversations: new Set(), cited: [], support: new Map(), text: "" };
+
+/**
+ * A conversation opened on its own, with no answer behind it: Explore's busiest rows open here, in the same reply tree
+ * a citation opens (QA P1, 2026-09-27: a row used to ask the chat about its convN handle, which showed the handle and
+ * drew an empty answer). It starts at the conversation's first message, the one the row names. A session cut into
+ * several conversations steps through them in time order.
+ */
+export function ConversationPanel({
+  conversationIds,
+  onClose,
+  handle,
+  source,
+  topicNames,
+}: {
+  conversationIds: string[];
+  onClose: () => void;
+  handle?: ReactNode;
+  source?: Source;
+  topicNames?: Map<string, string>;
+}) {
+  const [at, setAt] = useState(0);
+  const n = conversationIds.length;
+  const id = conversationIds[Math.min(at, n - 1)];
+  // The message to open first, once the conversation has loaded; then whatever the reader picks in it.
+  const [first, setFirst] = useState<{ id: string; tag: string | "missing" | "error" }>();
+  const [picked, setPicked] = useState<{ id: string; tag: string }>();
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    let live = true;
+    fetchThread(id).then(
+      (t) => {
+        if (!live) return;
+        const own = t?.nodes.filter((m) => m.conversation_id === id) ?? [];
+        const start = own[0] ?? t?.nodes[0]; // nodes come in time order (read.ts getThread)
+        setFirst({ id, tag: start ? tagOf(start) : "missing" });
+      },
+      () => live && setFirst({ id, tag: "error" }),
+    );
+    return () => {
+      live = false;
+    };
+  }, [id, attempt]);
+  const loaded = first?.id === id ? first.tag : undefined;
+  const focusId = picked?.id === id ? picked.tag : loaded;
+  const step = "pressable grid size-8 place-items-center rounded-full text-foreground/70 hover:bg-foreground/[0.06] hover:text-foreground disabled:opacity-30";
+
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      {handle}
+      <header className={cn("flex items-center gap-1 px-5 pb-2 pr-[var(--corner-clear,1.25rem)]", handle ? "pt-1" : "pt-4")}>
+        <p className="flex-1 text-[13px] font-medium text-muted-foreground" aria-live="polite">
+          {n > 1 ? `Conversation ${at + 1} of ${n} in this session` : "The conversation"}
+        </p>
+        {n > 1 && (
+          <>
+            <button type="button" className={step} disabled={at === 0} onClick={() => setAt(at - 1)} aria-label="The conversation before">
+              <ChevronLeft className="size-4" />
+            </button>
+            <button type="button" className={step} disabled={at >= n - 1} onClick={() => setAt(at + 1)} aria-label="The next conversation">
+              <ChevronRight className="size-4" />
+            </button>
+          </>
+        )}
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close (Esc)"
+          className="pressable ml-1 grid size-8 place-items-center rounded-full bg-foreground/[0.05] text-foreground/70 hover:bg-foreground/[0.09] hover:text-foreground"
+        >
+          <X className="size-4" />
+        </button>
+      </header>
+      {loaded === undefined ? (
+        <TreeSkeleton />
+      ) : loaded === "error" ? (
+        <p className="px-5 py-6 text-[14px] text-muted-foreground">
+          This conversation did not load.{" "}
+          <button type="button" className="font-medium text-pulse hover:underline" onClick={() => {
+              setFirst(undefined);
+              setAttempt((x) => x + 1);
+            }}>
+            Try again
+          </button>
+        </p>
+      ) : loaded === "missing" ? (
+        <p className="px-5 py-6 text-[14px] text-muted-foreground">This conversation is not in the data any more.</p>
+      ) : (
+        <ThreadView
+          key={id}
+          threadId={id}
+          evidence={NO_ANSWER}
+          focusId={focusId ?? loaded}
+          highlight={[]}
+          onFocus={(tag) => setPicked({ id, tag })}
+          source={source}
+          topicNames={topicNames}
+        />
       )}
     </div>
   );
@@ -367,6 +477,7 @@ function ThreadView({
 
   const facts = threadFacts(laid, new Set(evidence.cited), msgTag);
   const place = placeWords(source, thread.channel);
+  const heading = headingWords(thread.title, thread.channel);
   // The open message's conversation keeps every topic it discusses (D46); they are shown primary first. A thread can
   // hold several conversations, so the line follows the open message rather than the thread.
   const topics = topicNamesOf(thread.nodes.find((n) => tagOf(n) === focusId)?.topics, topicNames ?? new Map());
@@ -387,7 +498,17 @@ function ThreadView({
             {place.where && <span className="truncate font-medium text-foreground/75">{place.where}</span>}
             {place.tag && <span className="shrink-0 rounded-full bg-foreground/[0.06] px-2 py-px text-[12px]">{place.tag}</span>}
           </p>
-          <h3 className="mt-1 line-clamp-2 text-[17px] leading-snug font-semibold tracking-[-0.01em] text-balance">{thread.title}</h3>
+          {heading.text && (
+            <h3 className="mt-1 line-clamp-2 text-[17px] leading-snug font-semibold tracking-[-0.01em] text-balance">
+              {heading.lead ? (
+                <>
+                  <span className="font-normal text-muted-foreground">{heading.lead} </span>“{heading.text}”
+                </>
+              ) : (
+                heading.text
+              )}
+            </h3>
+          )}
           <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">
             {count(facts.messages, "message", "messages")} from {count(facts.people, "person", "people")}
             {facts.messages > 1 && <> {spanWords(facts.startedAt, facts.endedAt)}</>}

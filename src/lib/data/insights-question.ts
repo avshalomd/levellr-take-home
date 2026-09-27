@@ -17,6 +17,7 @@ import {
   type Period,
   type Resolution,
 } from "./insights-model";
+import { inSentence } from "@/lib/starters";
 
 export type SelectedCell = { topic: string; period: Period };
 export type Topic = { key: string; name: string };
@@ -28,17 +29,10 @@ export function listJoin(xs: string[]): string {
   return `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`;
 }
 
-/** A topic name as it reads mid-sentence: "Performance & Access" -> "performance & access". Acronyms and mixed-case
- * words ("AI", "PvP", "iOS") keep their case; so does a name whose later words are lower-case except for such words. */
-export function inSentence(name: string): string {
-  const keep = (w: string) => /^[A-Z0-9]{2,}$/.test(w) || /[a-z][A-Z]/.test(w);
-  const lower = (w: string) => (keep(w) ? w : w[0].toLowerCase() + w.slice(1));
-  const words = name.split(/(\s+)/);
-  const plain = words.filter((w) => /^[A-Za-z]/.test(w) && !keep(w));
-  const titleCase = plain.length >= 2 && plain.every((w) => /^[A-Z]/.test(w));
-  if (titleCase) return words.map((w) => (/^[A-Za-z]/.test(w) ? lower(w) : w)).join("");
-  return words.map((w, i) => (i === 0 && /^[A-Za-z]/.test(w) ? lower(w) : w)).join("");
-}
+// A topic name as it reads mid-sentence, by the same rule as the chat page's topic chips (starters.ts): the name keeps
+// its casing and only a leading common word drops its capital. Explore used to lower-case every word that was not an
+// acronym and asked about "domains" and "tides remastered" (QA P7, 2026-09-27); the chat title and sidebar showed it.
+export { inSentence };
 
 /** Periods split into runs of neighbours (by their position on the axis). */
 export function runs(periods: Period[], all: Period[]): Period[][] {

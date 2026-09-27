@@ -32,6 +32,12 @@ const FLAG_NAMES: Record<string, RegExp[]> = {
     /\bresonat\w*/i,
     /\bshould we post\b/i,
     /\bpost about\b/i,
+    // Eval 2026-09-28 (P03): "What post ideas would land best ...?" had its excited read refused, and the agent read
+    // six times over. Every way asksWhatToPost reads a post question names `excited` too.
+    /\bwhat to post\b/i,
+    /\b(?:could|can|do) (?:we|i) post\b/i,
+    /\bpost(?:ing)? ideas?\b/i,
+    /\bideas? for (?:a |our )?posts?\b/i,
     /\bgleder\w*/i,
   ],
   bug: [
@@ -136,6 +142,63 @@ export function questionsOf(messages: ReadonlyArray<ModelMessage>): string[] {
 export function lastQuestion(messages: ReadonlyArray<ModelMessage>): string {
   return questionsOf(messages).at(-1) ?? "";
 }
+
+// D20: what excites or frustrates people, what resonates and what to post are about the community's own games and
+// their developer, not other games, films or real life, unless the question asks for those. Production QA 2026-09-27
+// (P2, P6): a frustrations answer built its pricing section on #off-topic talk about GTA 6, and an excitement answer
+// ended on Xenoverse 3 and GTA 6. The scan and the claim check read these questions by these words (tools.ts,
+// finish.ts); which games are the community's own comes from the data (dataset_meta.mood_target), never from here.
+const TO_POST =
+  /\b(?:should|could|can|do) (?:we|i) post\b|\bwhat to post\b|\bpost(?:ing)? (?:about|ideas?)\b|\bideas? for (?:a |our )?posts?\b/i;
+const OTHER_GAMES = /\bother (?:games?|franchises?|titles?|series)\b|\boff[- ]topic\b/i;
+/** Whether a question asks what to post (D13): answered from what resonates and excites, ranked by engagement. */
+export const asksWhatToPost = (question: string) => TO_POST.test(question);
+/** Whether a question is one D20 keeps to the community's own games: what excites or frustrates people, what
+ *  resonates, what to post, unless it asks about other games itself. */
+export function aboutOwnGames(question: string): boolean {
+  const kinds = flagsNamed(question);
+  return (kinds.has("excited") || kinds.has("frustrated") || asksWhatToPost(question)) && !OTHER_GAMES.test(question);
+}
+
+// Production QA 2026-09-27 (P3): "Which of those are bugs?" after a frustrations answer was answered from that answer's
+// words, "None of the frustrations listed are bugs", with no tool call, no citation and no check, while the bug flag
+// held 14% of conversations. A follow-up that asks for a kind of conversation, a topic or a period asks for a slice the
+// last answer did not read, so its first step must read (agent.ts prepareStep).
+const PERIOD =
+  /\b(?:today|yesterday|tonight|this (?:week|weekend|month)|(?:last|past|previous) (?:week|weekend|month|few days|\d+ (?:days?|weeks?))|(?:first|second) week|week before|since|between|in (?:january|february|march|april|may|june|july|august|september|october|november|december)|\d{1,2} (?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*)\b/i;
+const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+/** Whether a question names a kind of conversation, a topic or a period. `topics` are the team's labels: a topic is
+ *  named by its name or its key, in any case, except a name written as one lower-case word ("other"), which is a common
+ *  word too. */
+export function asksForSlice(question: string, topics: ReadonlyArray<{ key: string; name: string }> = []): boolean {
+  if (flagsNamed(question).size || PERIOD.test(question)) return true;
+  return topics.some((t) =>
+    [t.key, t.name]
+      .map((n) => n.trim())
+      .filter((n) => n && !/^\p{Ll}+$/u.test(n))
+      .some((n) => new RegExp(`(?<![\\p{L}\\d])${escape(n)}(?![\\p{L}\\d])`, "iu").test(question)),
+  );
+}
+
+// v1.1 QA (B1): "tell me more about the second one", after the Domains answer, made no tool call and restated an earlier
+// turn's count and mood for a slice they did not describe (56 bug reports and 47/100, from every topic since 24 Sep;
+// the Domains count was 114). A follow-up that asks for more on something the last answer said (more, the second one,
+// details, why) asks for what that answer did not read, so its first step must read (agent.ts prepareStep). "Why" only
+// as a short question back ("Why?", "And why is that?"): a full question that opens with it is a question of its own.
+const MORE = [
+  /\btell me more\b/i,
+  /\b(?:say|know|hear|read|learn|anything|something) more\b/i,
+  /\bmore (?:about|on|detail|details|context|info|information)\b/i,
+  /\b(?:first|second|third|fourth|fifth|last|next|other|top|1st|2nd|3rd|4th|5th) (?:one|point|item|bullet|theme|idea|suggestion|issue|topic|thing)\b/i,
+  /\b(?:number|no\.?)\s?\d\b|#\d\b/i,
+  /\bexpand\b/i,
+  /\belaborate\b/i,
+  /\bdetails?\b/i,
+  /\bdig (?:into|deeper)\b|\bgo deeper\b/i,
+  /^\s*(?:(?:and|but|so|ok|okay)\W+)?why\b(?:\W+\S+){0,4}\W*$/i,
+];
+/** Whether a question asks for more on something the last answer said: "tell me more about the second one", "why?". */
+export const asksForMore = (question: string) => MORE.some((re) => re.test(question));
 
 /** The flag a call narrowed to that the question (read with the one it follows up) never named, if any. The tools
  *  refuse such a call (lib/agent/tools.ts). */

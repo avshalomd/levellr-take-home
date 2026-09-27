@@ -1,6 +1,8 @@
 import "server-only";
 import { decide, noul } from "@/lib/llm/decide";
+import type { ModelMessage } from "ai";
 import type { Profile } from "@/lib/data/profile";
+import { questionsOf } from "./flags";
 
 // Whether a question is one the community's conversations bear on, asked of Jev before an out_of_scope call is taken
 // (eval run 7, 2026-09-26: "How do you aim the mortar?" was declined outright as general knowledge, while the
@@ -19,23 +21,41 @@ const BEARS =
   "entirely, a time outside those dates, live status right now, or facts only an outside source holds (a company's " +
   "revenue, the weather, news) does not.";
 
-/** The probability that the conversations bear on the question, or null when the check could not be made. */
-export async function bearsOn(question: string, p: Profile): Promise<number | null> {
+// v1.1 QA (N1): in a chat, a question is read with the one before it, so "tell me more about the second one" or "why?"
+// bears on the conversations as the question it follows did, and a poem or the weather asked mid-chat still does not.
+const FOLLOWING =
+  " `question` follows `earlier_question` in the same chat. A follow-up on it (more about something the answer said, a " +
+  "detail, a reason, a shorter or clearer answer) bears on the conversations as `earlier_question` does; a request " +
+  "for something else entirely (a poem, a story, the weather, general knowledge, small talk) does not, whatever came " +
+  "before it.";
+
+/** The probability that the conversations bear on the question, or null when the check could not be made. `earlier`:
+ *  the reader's question before it in the chat, if any. */
+export async function bearsOn(question: string, p: Profile, earlier?: string): Promise<number | null> {
   try {
     const r = await decide({
       state: {
         question,
+        ...(earlier ? { earlier_question: earlier } : {}),
         community: `${p.community}${p.platform ? ` (${p.platform})` : ""}${p.about ? `: ${p.about}` : ""}`,
         conversations_from: p.from,
         conversations_to: p.to,
       },
-      questions: { bears: noul(BEARS) },
+      questions: { bears: noul(earlier ? BEARS + FOLLOWING : BEARS) },
     });
     return (r.answers.bears as { noul: number }).noul;
   } catch (e) {
     console.warn("scope check failed", String(e).slice(0, 200));
     return null;
   }
+}
+
+/** Whether the conversations bear on a turn's question, read with the reader's question before it in the chat: the one
+ *  scope check every turn goes through, first or not, whether the model called out_of_scope (tools.ts) or answered
+ *  with no tool at all (finish.ts, v1.1 QA N1). */
+export function turnBearsOn(messages: ReadonlyArray<ModelMessage>, p: Profile): Promise<number | null> {
+  const questions = questionsOf(messages);
+  return bearsOn(questions.at(-1) ?? "", p, questions.at(-2));
 }
 
 /** An out_of_scope call the check turned down: the loop goes on, and the model is told to answer from the data. */

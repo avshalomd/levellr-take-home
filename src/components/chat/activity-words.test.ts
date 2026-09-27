@@ -196,10 +196,15 @@ describe("activitySummary", () => {
     expect(questionWords("q", "version 42.3 reaction")).toBe("version 42.3");
   });
 
-  it("says a slice read for two questions is the same conversations read twice", () => {
+  // QA P17: "Read the same 210 conversations twice, for two questions and searched once" was hard to parse.
+  it("says a slice read for two questions once, with the questions", () => {
     const slice = { flag: "complaint", since: "2026-09-09" };
     const ask = (question: string) => ({ ...scan(118, slice), input: { question } });
-    expect(activitySummary([ask("Is the anti-cheat working?"), ask("Who do they blame?")]).text).toBe("Read the same 118 complaints twice, for two questions");
+    expect(activitySummary([ask("Is the anti-cheat working?"), ask("Who do they blame?")]).text).toBe("Read 118 complaints for two questions");
+    const search = { type: "tool-find", state: "output-available", input: { query: "bans" }, output: { hits: [] } };
+    expect(activitySummary([ask("Is the anti-cheat working?"), ask("Who do they blame?"), search]).text).toBe(
+      "Read 118 complaints for two questions, and searched once",
+    );
     // the same question over the same slice is one line in the list, so one read in the summary (review 2026-09-26)
     expect(activitySummary([ask("Q?"), ask("Q?")]).text).toBe("Read 118 complaints (3 bore on the question)");
     expect(activitySummary([scan(118, slice)]).text).toBe("Read 118 complaints (3 bore on the question)");
@@ -288,7 +293,7 @@ describe("conversationsRead", () => {
   it("reads a slice with the same dates written two ways as one slice", () => {
     expect(conversationsRead([r(118, { since: "2026-09-09" }), r(118, { since: "2026-09-09T00:00:00Z" })])).toMatchObject({ n: 118, exact: true });
     expect(readWords([{ ...r(118, { since: "2026-09-09" }), question: "a" }, { ...r(118, { since: "2026-09-09T00:00:00Z" }), question: "b" }])).toBe(
-      "read the same 118 conversations twice, for two questions",
+      "read 118 conversations for two questions",
     );
   });
   it("is nothing when nothing was read", () => {
@@ -604,10 +609,10 @@ describe("a slice read again for another question", () => {
     const twins = [read("a", "Are the bans working?", 83), { ...read("b", "Are the bans working?", 83), input: { question: "Are the bans working?", filters: { flag: "complaint", since: "2026-09-09" }, top: 15 } }];
     expect(stepLines(twins)).toHaveLength(1);
     expect(activitySummary(twins).text).toBe("Read 118 complaints (83 bore on the question)");
-    // two questions over one slice are two lines, and the summary says the same conversations twice
+    // two questions over one slice are two lines, and the summary says the slice once, for both questions
     const two = [read("a", "Are the bans working?", 83), read("b", "Who do they blame?", 88)];
     expect(stepLines(two)).toHaveLength(2);
-    expect(activitySummary(two).text).toBe("Read the same 118 complaints twice, for two questions");
+    expect(activitySummary(two).text).toBe("Read 118 complaints for two questions");
   });
   it("reads a different slice as its own", () => {
     const lines = stepLines([read("a", "Q1?", 83), read("b", "Q2?", 40, { topic: "maps-modes" })]);
@@ -791,5 +796,19 @@ describe("an engagement-by-topic chart under an excitement question", () => {
   it("never shows a raw key", () => {
     expect(rowLabel("other", "topic", topics)).toBe("Other");
     expect(rowLabel("some-new-topic", "topic", topics)).toBe("Some new topic");
+  });
+
+  // QA P5: the overview names the residual topic by its key ({"key":"other","name":"other"}), so the frustrations chart
+  // drew a lower-case "other" on top, and ranked "Other games" too.
+  it("reads a name that is only the key as no name", () => {
+    expect(rowLabel("other", "topic", new Map([...topics, ["other", "other"]]))).toBe("Other");
+  });
+
+  it("leaves them out of a frustrations chart as well", () => {
+    const frustrated = { ...byTopic, input: { ...byTopic.input, metric: "conversations", filters: { flag: "frustrated" } } };
+    const named = new Map([...topics, ["other", "other"]]);
+    const c = pickChart([frustrated], named, "What are the top frustrations players have right now?");
+    expect(c!.rows.map((r) => r.key)).toEqual(["domains", "tides-remastered"]);
+    expect(pickChart([frustrated], named, "What are players complaining about in other games?")!.rows).toHaveLength(4);
   });
 });

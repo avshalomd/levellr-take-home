@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { compact, engagement, loudness, mapHint, moreWords, placeWords, readableText, topicNamesOf } from "./source-words";
+import { compact, engagement, headingWords, loudness, mapHint, moreWords, placeWords, readableText, topicNamesOf } from "./source-words";
+
+// QA P14: the heading was the conversation's first line, read as the cited message when another one was cited.
+describe("headingWords", () => {
+  it("heads a title made from the first line as the conversation's opening", () => {
+    expect(headingWords("#off-topic: I can't believe it", "off-topic")).toEqual({ lead: "Opens with", text: "I can't believe it" });
+    expect(headingWords("#off-topic: ", "off-topic")).toEqual({ lead: null, text: "" });
+  });
+  it("keeps a real title as it is", () => {
+    expect(headingWords("Patch 1.2 is out", "news")).toEqual({ lead: null, text: "Patch 1.2 is out" });
+    expect(headingWords("Patch 1.2 is out", undefined)).toEqual({ lead: null, text: "Patch 1.2 is out" });
+  });
+});
 
 const reddit = { platform: "Reddit", community: "r/somecommunity" };
 const discord = { platform: "Discord", community: "Some Server" };

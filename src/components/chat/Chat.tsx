@@ -3,7 +3,7 @@
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { ArrowUp, RotateCcw, Square } from "lucide-react";
+import { ArrowUp, Plus, RotateCcw, Square } from "lucide-react";
 import type { CorroboratedClaim } from "@/lib/agent/corroborate";
 import type { ChatMessage } from "@/lib/agent/ui-types";
 import type { Overview } from "@/lib/data/read";
@@ -12,7 +12,7 @@ import { EvidenceSheet } from "@/components/evidence/EvidenceSheet";
 import type { Source } from "@/components/evidence/source-words";
 import { questionInContext } from "@/lib/agent/flags";
 import { CHATS_CHANGED } from "@/components/shell/Sidebar";
-import { noteAddressMoved, takeFocusAsk } from "@/components/shell/new-chat";
+import { noteAddressMoved, takeFocusAsk, useNewChat } from "@/components/shell/new-chat";
 import { Activity } from "./Activity";
 import { answerLead, haltSteps, stepsSettled } from "./activity-words";
 import { corroborationWords, answeredIn } from "./verification-words";
@@ -21,8 +21,8 @@ import { afterDrop, centredTop, clearStopped, markStopped, pageTitle, turnEnd } 
 import { evidenceOf } from "./evidence";
 import { VerificationBar } from "./VerificationBar";
 import { Welcome } from "./Welcome";
-import { chatErrorWords, DROPPED_LOADING, isDropped } from "./error-words";
-import { QUESTION_MAX } from "@/lib/question-limit";
+import { chatErrorWords, DROPPED_LOADING, errorAction, isDropped } from "./error-words";
+import { QUESTION_MAX, tooLong } from "@/lib/question-limit";
 
 type ToolPart = Extract<ChatMessage["parts"][number], { type: `tool-${string}` }>;
 const isToolPart = (p: ChatMessage["parts"][number]): p is ToolPart => p.type.startsWith("tool-");
@@ -48,9 +48,6 @@ const loadOverview = (): Promise<Overview | null> =>
     .catch(() => overviewLast);
 
 const DISCORD: Source = { platform: "discord" };
-
-// When the free model's daily allowance is spent, retrying in a moment cannot help (api/chat, lib/llm/errors.ts).
-const OUT_OF_ALLOWANCE = /allowance is used up/i;
 
 // `more` is set when the panel was opened from a claim's "+N more": the list of those conversations, shown while
 // `list` is true and one tap back from any message opened out of it.
@@ -111,6 +108,7 @@ export function Chat({
     };
   }, []);
   const alive = useCallback(() => mounted.current, []);
+  const [input, setInput] = useState("");
   const { messages, setMessages, sendMessage, status, stop, error, clearError, regenerate } = useChat<ChatMessage>({
     id,
     messages: initialMessages,
@@ -120,6 +118,15 @@ export function Chat({
       const pressed = stopPressed.current;
       stopPressed.current = false;
       if (isAbort && !pressed) return changed(); // the page went; the server finishes and saves the answer
+      const asked = all.at(-1);
+      if (isError && asked?.role === "user" && tooLong(asked)) {
+        // A question past the length cap was refused before anything was saved (api/chat, a 413): it goes back in the
+        // box to be shortened, and its bubble goes, since it was never asked. QA P11: the box was emptied, "Try again"
+        // sent the same text to the same refusal, and the page asked the server for a chat it never had.
+        setMessages(all.slice(0, -1));
+        setInput((draft) => (draft.trim() ? draft : textOf(asked)));
+        return;
+      }
       if (isAbort) {
         // A Stop: the chat as the screen shows it is what gets kept, marked stopped so a reopened chat says so and
         // offers to ask again; the answer still running on the server is not saved over it (data/chats.ts keepChat).
@@ -140,7 +147,9 @@ export function Chat({
   // Reopened while its answer was still being written (a reload mid-answer): the server finishes and saves it, and
   // this page waits for it.
   const [waiting, setWaiting] = useState(answering);
-  const [input, setInput] = useState("");
+  // The words of the error "Try again" was last pressed on: failing the same way again, it offers a new chat instead.
+  const [retried, setRetried] = useState<string | null>(null);
+  const newChat = useNewChat();
   const [overview, setOverview] = useState<Overview | null>(overviewLast);
   const [focus, setFocus] = useState<Focus | null>(null);
   const [hovered, setHovered] = useState<{ messageId: string; tags: string[] } | null>(null);
@@ -170,6 +179,7 @@ export function Chat({
       if (!t || busy) return;
       stick.current = true;
       setWaiting(false); // a new question: the one still being written lands in the chat, not on this screen
+      setRetried(null);
       sendMessage({ text: t });
       // A question an answer offers is asked with a tap; whatever the reader was typing stays theirs (review 2026-09-26).
       if (!keepDraft) setInput("");
@@ -306,8 +316,14 @@ export function Chat({
   const ended = turnEnd(messages, { busy, waiting, failed: Boolean(error) });
   const askAgain = () => {
     setMessages(clearStopped(messages));
+    setRetried(null);
     void regenerate();
   };
+  const tryAgain = () => {
+    setRetried(error?.message ?? null);
+    void regenerate();
+  };
+  const offer = error ? errorAction(error.message, retried) : null;
 
   return (
     // data-chat: the app shell clips its <main> under a chat, so only this page's own scroller ever moves (AppShell).
@@ -383,9 +399,14 @@ export function Chat({
             {error && !recovering && (
               <div className="mb-8 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-foreground/[0.08] bg-foreground/[0.02] px-4 py-3 text-[14px] text-foreground/80" role="status">
                 <span className="min-w-0 flex-1">{chatErrorWords(error.message)}</span>
-                {!OUT_OF_ALLOWANCE.test(error.message) && (
-                  <button type="button" onClick={() => regenerate()} className="pressable inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 py-1 text-[13px] font-medium text-background">
+                {offer === "retry" && (
+                  <button type="button" onClick={tryAgain} className="pressable inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 py-1 text-[13px] font-medium text-background">
                     <RotateCcw className="size-3.5" /> Try again
+                  </button>
+                )}
+                {offer === "new-chat" && (
+                  <button type="button" onClick={() => newChat({ focus: true })} className="pressable inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 py-1 text-[13px] font-medium text-background">
+                    <Plus className="size-3.5" /> New chat
                   </button>
                 )}
               </div>

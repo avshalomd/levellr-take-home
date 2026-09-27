@@ -209,7 +209,7 @@ describe("verify, a follow-up", () => {
     expect(v).toMatchObject({ cited: 3, supported: 2 });
   });
 
-  it("fails a claim that tags a figure with a counting tool that never ran in the chat, and lists the figure", async () => {
+  it("fails a claim that tags a figure with a counting tool that did not run this turn, and lists the figure", async () => {
     const v = await verify(
       "60/100 players call it a bug [aggregate] [msg11]. Most mention the boss [msg12].",
       new Set(["msg11", "msg12"]),
@@ -217,7 +217,8 @@ describe("verify, a follow-up", () => {
       undefined,
       new Set(["scan"]),
     );
-    expect(v.claims[0]).toMatchObject({ support: 0, notes: ["It tags 60/100 [aggregate], but no aggregate ran in this chat."] });
+    expect(v.claims[0]).toMatchObject({ support: 0 });
+    expect(v.claims[0].notes).toEqual([expect.stringMatching(/^It tags 60\/100 \[aggregate\], but no aggregate ran for this answer.*Remove it/)]);
     expect(v.supported).toBe(1);
     expect(v.sourceless).toEqual([{ tool: "aggregate", figure: "60/100" }]);
     const ran = await verify("About 60 threads [aggregate] [msg11].", new Set(["msg11"]), undefined, undefined, new Set(["aggregate"]));
@@ -257,5 +258,58 @@ describe("verify, a sentence that lists several things", () => {
   it("asks nothing more of a sentence that lists nothing", async () => {
     await verify("The screen goes gray after a few deaths [msg11].", new Set(["msg11"]));
     expect(Object.keys(decideMock.mock.calls[0][0].questions)).toEqual(["msg11"]);
+  });
+});
+
+// Production QA 2026-09-27 (P2, P6): "games are becoming very expensive [msg19][msg20]" passed on #off-topic talk about
+// GTA 6's price in a frustrations answer. Asked about the community's own games, a citation about something else backs
+// nothing, in the same one call per claim.
+describe("verify, a question about the community's own games", () => {
+  const OWN = "the Veil of Ages games and their developer";
+  const answers = (off: Record<string, number>) =>
+    decideMock.mockImplementation(async ({ questions }: { questions: Record<string, unknown> }) => ({
+      answers: Object.fromEntries(
+        Object.keys(questions).map((k) => [k, { noul: k.startsWith("off_") ? (off[k.slice(4)] ?? 0.1) : 0.9 }]),
+      ),
+    }));
+  const check = (answer: string, read: string[]) =>
+    verify(answer, new Set(read), undefined, undefined, undefined, OWN);
+
+  it("fails a claim whose every citation is about something else, and says why for the rewrite", async () => {
+    answers({ msg19: 0.95, msg20: 0.9 });
+    const v = await check("Games are becoming very expensive [msg19, msg20].", ["msg19", "msg20"]);
+    expect(decideMock).toHaveBeenCalledTimes(1);
+    const call = decideMock.mock.calls[0][0];
+    expect(call.state.games).toBe(OWN);
+    expect(Object.keys(call.questions)).toEqual(["msg19", "msg20", "off_msg19", "off_msg20"]);
+    expect(v.claims[0].support).toBe(0);
+    expect(v.claims[0].notes?.join(" ")).toMatch(
+      /\[msg19\], \[msg20\] are about another game or something else, not the Veil of Ages games/,
+    );
+    expect(v.supported).toBe(0);
+  });
+
+  it("keeps a claim that also cites a message about the community's own games, on that message", async () => {
+    answers({ msg19: 0.95 });
+    const v = await check("Prices worry people [msg19, msg17].", ["msg19", "msg17"]);
+    expect(v.claims[0].support).toBe(0.9);
+    expect(v.supported).toBe(1);
+  });
+
+  it("asks nothing about other games when the question is not one D20 keeps to the community's games", async () => {
+    await verify("Prices worry people [msg19].", new Set(["msg19"]));
+    expect(Object.keys(decideMock.mock.calls[0][0].questions)).toEqual(["msg19"]);
+    expect(decideMock.mock.calls[0][0].state.games).toBeUndefined();
+  });
+});
+
+// Production QA 2026-09-27 (P9): paraphrases passed with their meaning changed ("too easy" for "not a fair challenge",
+// an invented gloss of "BF").
+describe("SUPPORT_QUESTION", () => {
+  it("says a claim that changes or adds to the message's meaning is not backed", () => {
+    const q = SUPPORT_QUESTION("msg1", "claim");
+    expect(q).toMatch(/with the same meaning/);
+    expect(q).toMatch(/changes what the message means or adds to it/);
+    expect(q).toMatch(/abbreviation or a name the message does not spell out/);
   });
 });

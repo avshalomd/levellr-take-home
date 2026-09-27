@@ -13,6 +13,9 @@ export type Profile = {
   from: string; // YYYY-MM-DD
   to: string; // YYYY-MM-DD
   now: string; // ISO timestamp, or "" when the loader recorded no window
+  /** What mood is measured towards (dataset_meta.mood_target, D7): the community's own games and their developer.
+   *  Excitement, frustration and post ideas are about this, not other games (D20). Absent when the loader stored none. */
+  target?: string;
 };
 
 let cached: Promise<Profile> | null = null;
@@ -44,12 +47,13 @@ export function profileOf(m: Meta): Profile {
     from: str(window.from).slice(0, 10),
     to: str(window.to).slice(0, 10) || now.slice(0, 10),
     now: nowDate && !Number.isNaN(nowDate.getTime()) ? nowDate.toISOString() : "",
+    ...(str(m.mood_target) ? { target: str(m.mood_target) } : {}),
   };
 }
 
 async function load(): Promise<Profile> {
   const rows = await query<{ key: string; value: unknown }>(
-    `SELECT key, value FROM dataset_meta WHERE key IN ('source', 'window', 'now')`,
+    `SELECT key, value FROM dataset_meta WHERE key IN ('source', 'window', 'now', 'mood_target')`,
   );
   return profileOf(Object.fromEntries(rows.map((r) => [r.key, r.value])));
 }

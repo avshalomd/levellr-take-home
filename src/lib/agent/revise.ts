@@ -6,7 +6,14 @@ import { normalizeCitations, refOfTag } from "@/lib/refs";
 import { flattenForAnswer } from "./agent";
 import { textModel } from "./model";
 import { claimsOf } from "@/lib/claims";
-import { figuresIn, rateMismatches, toolFigures, type KnownRate, type RateCheck } from "./rates";
+import {
+  figuresIn,
+  rateMismatches,
+  toolFigures,
+  type KnownRate,
+  type RateCheck,
+  type SourcelessFigure,
+} from "./rates";
 import {
   countMismatches,
   directionMismatches,
@@ -68,32 +75,42 @@ export async function checkAndRevise(
   // The per-day rates the tools gave (rates.ts knownRates). A stated rate that matches none of them is corrected like a
   // weak claim (QA 2026-09-26: "9 per day in September" when the counts gave 11.3 per day over 24 days).
   known?: ReadonlyArray<KnownRate>,
-  // The tools that gave a result in this chat (agent.ts toolsRan): a figure tagged with one that never ran fails.
+  // The tools that gave a result in this turn (agent.ts toolsRan): a figure tagged with one that did not run fails.
   ran?: ReadonlySet<string>,
+  // The community's own games, for a question D20 keeps to them (finish.ts ownGames): a claim resting only on messages
+  // about other games fails, and its rewrite is asked to drop it or cite messages about these games.
+  own?: string,
 ): Promise<Checked> {
   // Every number the tools worked out: a cited claim's figure must be one of these or in its messages (verify.ts).
   const figures = toolFigures(history);
   // The changes between periods the tools gave (trends.ts): "rose" about a topic whose rate fell is corrected like a
   // wrong rate (production QA 2026-09-26: "the September lift in … Updates & Feedback", which fell 6%).
   const trends = toolTrends(history);
-  const first = await verify(answer, retrieved, known, figures, ran);
+  const first = await verify(answer, retrieved, known, figures, ran, own);
   const weak = weakClaims(first);
   const rates = first.rates ?? [];
   const directions = directionMismatches(answer, trends);
-  if (!weak.length && !rates.length && !directions.length) return { text: answer, verification: first };
+  // Figures tagged as counted when that tool did not run this turn (rates.ts sourcelessFigures, v1.1 QA B1), in a cited
+  // claim or not: the one rewrite is asked to drop each or state only what this turn's tools gave.
+  const orphans = first.sourceless ?? [];
+  if (!weak.length && !rates.length && !directions.length && !orphans.length)
+    return { text: answer, verification: first };
 
   on.verification?.(first);
-  on.revision?.({ status: "running", weak: weak.length + rates.length + directions.length });
+  on.revision?.({ status: "running", weak: weak.length + rates.length + directions.length + orphans.length });
   try {
     // The same prose marks as the page (components/chat/evidence.ts proseMarks), so the claims checked are the ones shown.
-    const text = proseMarks(normalizeCitations(await rewrite(answer, weak, history, rates, directions)));
+    const text = proseMarks(
+      normalizeCitations(await rewrite(answer, weak, history, rates, directions, false, orphans)),
+    );
     if (!text.trim()) throw new Error("the rewrite came back empty");
-    const second = await verify(text, retrieved, known, figures, ran);
+    const second = await verify(text, retrieved, known, figures, ran, own);
     // Kept only if it is at least as well supported, still cites, and states no more unmatched rates or wrong
     // directions than before. A rewrite asked for only because of those must state FEWER of them (D43; review
     // 2026-09-26: with "<=", a rewrite that fixed nothing replaced the answer, reworded, for the cost of a second check).
-    const wrongBefore = rates.length + directions.length;
-    const wrongAfter = (second.rates?.length ?? 0) + directionMismatches(text, trends).length;
+    const wrongBefore = rates.length + directions.length + orphans.length;
+    const wrongAfter =
+      (second.rates?.length ?? 0) + directionMismatches(text, trends).length + (second.sourceless?.length ?? 0);
     const fewerRates = weak.length ? wrongAfter <= wrongBefore : wrongAfter < wrongBefore;
     // A rewrite that changed no words is not kept (QA 2026-09-27): kept, it said "Some wording was tightened" under an
     // answer whose wording had not changed.
@@ -121,6 +138,7 @@ async function rewrite(
   rates: RateCheck[] = [],
   directions: DirectionCheck[] = [],
   uncited = false,
+  orphans: ReadonlyArray<SourcelessFigure> = [],
 ): Promise<string> {
   const cited = [...new Set(weak.flatMap((c) => c.citations.map((x) => x.id)))];
   const texts = new Map(
@@ -166,6 +184,14 @@ async function rewrite(
       "\nFor each, state the change the counts give, or remove it."
     : "";
 
+  // A figure tagged [scan], [aggregate] or [voices] that no tool of that name gave this turn: it was carried over from
+  // an earlier answer, which counted another slice or period (v1.1 QA, B1).
+  const orphanSection = orphans.length
+    ? "A CHECK FOUND THESE FIGURES MARKED AS COUNTED THAT NO TOOL COUNTED FOR THIS ANSWER:\n" +
+      orphans.map((o) => `- ${o.figure} [${o.tool}]`).join("\n") +
+      "\nThey come from an earlier answer, which counted a different slice or period. For each, remove the figure " +
+      "and its tag, or give instead the figure a tool gave in this turn's RESULTS for the slice the sentence is about."
+    : "";
   const brief = flattenForAnswer(history)[0].content as string;
   const { text } = await generateText({
     model: textModel(),
@@ -183,6 +209,7 @@ async function rewrite(
         weak.length ? `A CHECK FOUND THESE CLAIMS NOT SUPPORTED BY WHAT THEY CITE:\n${flagged}` : "",
         rateSection,
         directionSection,
+        orphanSection,
       ]
         .filter(Boolean)
         .join("\n\n") +

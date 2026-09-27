@@ -80,12 +80,13 @@ function ratesNote(rates: ReadonlyArray<unknown> | undefined): string {
 
 const TOOL_NAMES: Record<string, string> = { aggregate: "count", scan: "scan", voices: "count of voices" };
 
-/** A figure tagged as counted by a tool that never ran in the chat (lib/agent/rates.ts sourcelessFigures, QA
- *  2026-09-27): which figure, and that nothing counted it. */
+/** A figure tagged as counted by a tool that did not run for this answer (lib/agent/rates.ts sourcelessFigures, QA
+ *  2026-09-27; v1.1 QA B1: one carried over from an earlier turn counted another slice): which figure, and that
+ *  nothing counted it for this answer. */
 function sourcelessNote(s: ReadonlyArray<{ tool: string; figure: string }> | undefined): string {
   if (!s?.length) return "";
   return s
-    .map((f) => `${f.figure ? `“${f.figure}”` : "A figure"} is marked as counted, but no ${TOOL_NAMES[f.tool] ?? f.tool} ran in this chat.`)
+    .map((f) => `${f.figure ? `“${f.figure}”` : "A figure"} is marked as counted, but no ${TOOL_NAMES[f.tool] ?? f.tool} ran for this answer.`)
     .join(" ");
 }
 
@@ -135,5 +136,11 @@ export function corroborationWords(c?: CorroborationPart): { running: boolean; t
           ? `all ${n} different conversations ${by} to bear on the question`
           : `all ${n} conversations that bore on the question`;
   const lost = c.failed ? ` (${convs(c.failed)} could not be read)` : "";
-  return { running: false, text: `Each claim was also checked against ${against}${lost}. The number beside a claim is how many more of them say it.` };
+  // The sentence about the number only where a number is shown (Answer.tsx shows "+N more" for a claim with any). QA
+  // P13: under an answer whose every claim rested on its own citations it explained a number nowhere on screen.
+  const numbers = c.claims.some((x) => x.moreTotal > 0);
+  const after = numbers
+    ? "The number beside a claim is how many more of them say it."
+    : "No other conversation among them repeats any claim.";
+  return { running: false, text: `Each claim was also checked against ${against}${lost}. ${after}` };
 }
