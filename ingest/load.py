@@ -100,7 +100,7 @@ def main() -> None:
     conv_of = json.load(open(WORK / "conversation_of.json"))
     source = json.load(open(WORK / "source.json"))
     accepted = approved_topics()
-    qhash = enrich.qhash(enrich.questions(accepted["labels"])) if accepted else None
+    qhash = enrich.qhash(enrich.questions(accepted["labels"]), enrich.mood_target(accepted)) if accepted else None
     labels = usable_labels(read_jsonl("labels.jsonl"), convs, qhash)
     vectors = usable_vectors(read_jsonl("embeddings.jsonl"), convs)
 

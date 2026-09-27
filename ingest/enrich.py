@@ -96,8 +96,9 @@ def questions(topics: list[dict]) -> dict:
     return q
 
 
-def qhash(qs: dict) -> str:
-    return hashlib.sha256(json.dumps(qs, sort_keys=True).encode()).hexdigest()[:12]
+def qhash(qs: dict, target: str = "") -> str:
+    """The question set and the mood target sentiment is measured towards: a change to either re-asks everything."""
+    return hashlib.sha256(json.dumps([qs, target], sort_keys=True).encode()).hexdigest()[:12]
 
 
 def digest(transcript: str) -> str:
@@ -148,8 +149,8 @@ async def run(limit: int | None, concurrency: int, topics_path: Path, out_path: 
     accepted = load_topics(topics_path)
     topics = accepted["labels"]
     qs = questions(topics)
-    qh = qhash(qs)
     comm, target = community(), mood_target(accepted)
+    qh = qhash(qs, target)
     convs = [json.loads(line) for line in open(WORK / "conversations.jsonl")]
     done = set()
     if out_path.exists():
