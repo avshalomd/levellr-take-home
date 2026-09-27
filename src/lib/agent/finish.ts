@@ -7,6 +7,8 @@ import { profile } from "@/lib/data/profile";
 import { answerFromTools, retrievedRefs, toolsRan } from "./agent";
 import { aboutOwnGames, questionInContext, questionsOf } from "./flags";
 import { groundingOf, type Grounding } from "./grounding";
+import { offTopicReply } from "./off-topic";
+import { SCOPE_BAR, turnBearsOn } from "./scope";
 import { knownRates, sourcelessFigures } from "./rates";
 import { checkAndRevise, citeAnswer, correctCounts, type RevisionPart } from "./revise";
 import { countMismatches, toolTrends } from "./trends";
@@ -18,14 +20,15 @@ import type { Verification } from "./verify";
 // out-of-scope questions reached its judge as an empty answer and the cite pass was never evaluated). In order:
 //   1. the answer is tidied (tool markup, citation formats); a turn that has no words is answered once from what the
 //      tools returned, if anything (agent.ts answerFromTools);
-//   2. an off-topic question gets the reply written in code (off-topic.ts), and nothing is checked;
+//   2. an off-topic question gets the reply written in code (off-topic.ts), and nothing is checked: one the model sent
+//      to out_of_scope, or one it answered with no tool call and no citation that the scope check turns away (N1);
 //   3. an answer that read messages and cites none is sent back once to cite them (revise.ts citeAnswer);
 //   4. an answer that cites messages is checked, and its weak claims corrected once (revise.ts checkAndRevise);
 //   5. an answer from the tools that still cites nothing has its rates and directions checked against the counts in
 //      code, is rewritten once on a mismatch (revise.ts correctCounts), and says so under it.
 // Answer-model calls after the agent, worst case per turn: 2 (the cite pass, then one rewrite), plus 1 only when the
 // agent left no words (answerFromTools). On an uncited answer: 2 (open item 2026-09-26); 1 on a counts-only answer.
-// Jev is never called on an uncited answer.
+// Jev is called on an uncited answer only for the scope check of a turn that called no tool (one call).
 // The route passes its stream's write, and the reader sees each part as it happens; the eval passes nothing and reads
 // the result. How many conversations back each claim (corroborate.ts) stays in the route: it changes no text.
 
@@ -62,6 +65,10 @@ export type AfterAgent = {
 };
 
 const BEFORE_NOTHING = { supported: 0, cited: 0 };
+
+/** Whether the turn called any tool, whatever came of the call. */
+const calledTool = (steps: ReadonlyArray<StepLike>) =>
+  steps.some((s) => s.content.some((p) => /^tool-(?:call|result|error)$/.test((p as { type: string }).type)));
 
 /** The community's own games (profile.ts target), when the question is one D20 keeps to them: what excites or
  *  frustrates people, what resonates, what to post. The check then fails a claim that rests only on messages about
@@ -138,6 +145,24 @@ export async function afterAgent(
     } else revise({ status: "done", kept: true, text: grounding.text, before: BEFORE_NOTHING });
     out.text = grounding.text;
     return out;
+  }
+
+  // A turn that called no tool and cites nothing goes through the scope check a first turn's out_of_scope call goes
+  // through (scope.ts turnBearsOn), and a question the conversations do not bear on gets the same reply, written in
+  // code, with its suggested questions. v1.1 QA (N1): after three questions, "Can you write me a poem about pirates?"
+  // got a poem, with no tool call and no check, and a mid-chat weather question was declined in the model's own words
+  // with no suggestions; in a fresh chat both got the reply below. One Jev call, on a turn with no tool call only; a
+  // check that could not be made leaves the answer as it is.
+  if (!calledTool(turn.steps) && !cites() && answer.trim()) {
+    const p = await profile().catch(() => null);
+    const bears = p ? await turnBearsOn(turn.history, p) : null;
+    if (p && bears !== null && bears < SCOPE_BAR) {
+      const text = offTopicReply(p);
+      revise({ status: "done", kept: true, text, before: BEFORE_NOTHING });
+      out.text = text;
+      out.grounding = { kind: "off-topic", text };
+      return out;
+    }
   }
 
   // The cite pass's text, once it is kept: shown from the moment the pass succeeds, whatever the check does next.

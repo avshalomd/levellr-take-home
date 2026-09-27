@@ -37,7 +37,7 @@ import {
 import { changeAgainst, type CountLike } from "./trends";
 import type { SliceFilters } from "./slices";
 import { OFF_TOPIC_MODEL_WORDS, offTopicReply, type OffTopic } from "./off-topic";
-import { bearsOn, IN_SCOPE_WORDS, isInScope, SCOPE_BAR, type InScope } from "./scope";
+import { IN_SCOPE_WORDS, isInScope, SCOPE_BAR, turnBearsOn, type InScope } from "./scope";
 import { scan, MAX_SCAN, type ScanResult } from "@/lib/data/scan";
 import { searchConversations, type SearchResult } from "@/lib/data/search";
 import { topVoices, type VoicesResult } from "@/lib/data/voices";
@@ -423,7 +423,7 @@ export function makeTools(writer?: UIMessageStreamWriter, p?: Profile) {
       execute: async (_, { messages }): Promise<OffTopic | InScope> => {
         // A second opinion before the question is turned away (scope.ts): one the conversations bear on is answered
         // from them. A check that could not be made takes the model's call as it stands.
-        const bears = p ? await bearsOn(lastQuestion(messages), p) : null;
+        const bears = p ? await turnBearsOn(messages, p) : null;
         if (bears !== null && bears >= SCOPE_BAR) return { status: "in-scope", bears };
         const who = p ?? { community: "the community", from: "", to: "" };
         return { status: "off-topic", text: offTopicReply(who) };

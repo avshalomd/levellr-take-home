@@ -27,6 +27,23 @@ vi.mock("./agent", async (orig) => ({
   answerFromTools: (h: unknown) => answerFromTools(h),
 }));
 
+// The scope check (scope.ts) runs for real on a turn with no tool call, over a stubbed Jev and profile.
+const decideMock = vi.fn();
+vi.mock("@/lib/llm/decide", () => ({
+  decide: (a: unknown) => decideMock(a),
+  noul: (instructions: string) => ({ type: "noul", instructions }),
+}));
+vi.mock("@/lib/data/profile", () => ({
+  profile: async () => ({
+    community: "the Veil of Ages Discord",
+    platform: "discord",
+    about: "",
+    from: "2026-09-13",
+    to: "2026-09-27",
+  }),
+}));
+const bears = (noul: number) => ({ answers: { bears: { noul } } });
+
 const { afterAgent, afterCite, stepsText } = await import("./finish");
 
 const result = (toolName: string, output: unknown) => ({ type: "tool-result", toolName, output });
@@ -70,6 +87,7 @@ beforeEach(() => {
   citeAnswer.mockReset();
   retrievedRefs.mockReset().mockImplementation(() => new Set(["msg11", "msg12"]));
   checkAndRevise.mockReset().mockImplementation(async (answer) => ({ text: answer, verification }));
+  decideMock.mockReset().mockResolvedValue(bears(0.9));
   vi.spyOn(console, "warn").mockImplementation(() => {});
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
@@ -407,5 +425,64 @@ describe("afterAgent across a chat's turns", () => {
     const thisTurn = { content: [result("scan", { status: "ok", hits: [] })] };
     await afterAgent({ steps: [thisTurn, { content: [{ type: "text", text }] }] as never, history: [], earlier });
     expect([...(checkAndRevise.mock.calls[0] as unknown as Set<string>[])[5]]).toEqual(["scan"]);
+  });
+});
+
+// v1.1 QA (N1): after three questions, "Can you write me a poem about pirates?" got a poem with no tool call and no
+// check, and a mid-chat weather question was declined in the model's own words with no suggestions. A turn that called
+// no tool and cites nothing goes through the scope check a first turn's out_of_scope call goes through.
+describe("afterAgent, the scope check on a turn with no tool call (N1)", () => {
+  const chat = (question: string) => [
+    { role: "user" as const, content: "What are people saying about the Domains?" },
+    { role: "assistant" as const, content: "People find the Domains hard [msg11]." },
+    { role: "user" as const, content: question },
+  ];
+  async function turn(question: string, text: string, steps: unknown[] = []) {
+    const chunks: { type: string; data?: Record<string, unknown>; delta?: string }[] = [];
+    const out = await afterAgent(
+      { steps: [...steps, { content: [{ type: "text", text }] }] as never, history: chat(question) },
+      (c) => void chunks.push(c as never),
+    );
+    return { out, chunks };
+  }
+
+  it("answers a question the conversations do not bear on with the out-of-scope reply and its suggestions", async () => {
+    decideMock.mockResolvedValue(bears(0.03));
+    const { out, chunks } = await turn("Can you write me a poem about pirates?", "Yo ho ho, a pirate's life...");
+    expect(out.text).toMatch(/^I can't answer that\. I only know what the Veil of Ages Discord talked about from 13 Sep/);
+    expect(out.text).toContain("- What should we post about this week?");
+    expect(out.grounding).toEqual({ kind: "off-topic", text: out.text });
+    // Shown in place of the streamed words, as the off-topic reply after a line the model wrote is.
+    expect(chunks.filter((c) => c.type === "data-revision").at(-1)?.data).toMatchObject({ kept: true, text: out.text });
+    expect(chunks.some((c) => c.type === "data-verification")).toBe(false);
+    // Read with the question before it, as out_of_scope reads it (scope.ts turnBearsOn).
+    expect(decideMock.mock.calls[0][0].state).toMatchObject({
+      question: "Can you write me a poem about pirates?",
+      earlier_question: "What are people saying about the Domains?",
+    });
+  });
+
+  it("turns away a declined question the model worded itself, with the same reply", async () => {
+    decideMock.mockResolvedValue(bears(0.02));
+    const { out } = await turn("What's the weather going to be in Oslo tomorrow?", "I can't check the weather.");
+    expect(out.text).toMatch(/^I can't answer that\.[\s\S]*You could ask:\n\n- /);
+  });
+
+  it("keeps an answer to a follow-up the conversations bear on", async () => {
+    decideMock.mockResolvedValue(bears(0.89));
+    const { out } = await turn("Thanks, can you say that more briefly?", "In short: the Domains are hard.");
+    expect(out.text).toBe("In short: the Domains are hard.");
+  });
+
+  it("leaves the answer as it is when the check cannot be made", async () => {
+    decideMock.mockRejectedValue(new Error("busy"));
+    const { out } = await turn("Can you write me a poem about pirates?", "Yo ho ho.");
+    expect(out.text).toBe("Yo ho ho.");
+  });
+
+  it("is not asked for a turn that called a tool, or an answer that cites", async () => {
+    await turn("What broke?", "The screen goes gray [msg11].", [read]);
+    await turn("Tell me more", "The screen goes gray [msg11].");
+    expect(decideMock).not.toHaveBeenCalled();
   });
 });
