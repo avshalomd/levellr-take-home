@@ -126,30 +126,32 @@ Full tables: `eval/results/report.md`.
 (whole conversation 24/30), **sentiment direction 30/30**. **Pricing is over-assigned**: 5 of 10 random pricing
 conversations are right; it fires on any buying word in passing, "value for my money", "DLC" as a name, in-game
 currency, and context messages. Its stricter description listed "purchases ... store items", and Jev read the list
-as trigger words: the share rose from 11.9% to 15.9%. Read pricing counts as an upper bound.
+as trigger words: the share rose from 11.9% to 15.9%. **Fixed after the audit:** the description now says the price or
+value must itself be the subject, and names what does not count; pricing fell to 7.3%. On a 40-conversation check,
+about 10 of the 13 it kept are right (not re-audited at scale).
 
 **Label shares** (final run, 2,362 conversations, p >= 0.5):
 
 | flags | | topics | | | |
 |---|---|---|---|---|---|
-| help | 36.3% | lore and story | 17.8% | Tides Remastered | 10.2% |
-| noise | 35.4% | other games | 17.1% | Domains | 9.3% |
-| frustrated | 19.4% | pricing and editions | 15.9% | Bushido final update | 6.2% |
-| bug | 13.9% | series direction | 13.4% | RPG-era games | 4.4% |
-| feature | 13.4% | classic games | 10.8% | multiplayer and co-op | 4.2% |
-| excited | 10.3% | *no topic* | 34.4% | Ebontide and new quests | 1.2% |
-| | | | | Hollow and future titles | 0.7% |
+| help | 36.3% | lore and story | 17.7% | Domains | 9.4% |
+| noise | 35.2% | other games | 17.1% | pricing and editions | 7.3% |
+| frustrated | 19.4% | series direction | 13.1% | Bushido final update | 6.1% |
+| bug | 14.0% | classic games | 10.7% | RPG-era games | 4.3% |
+| feature | 13.3% | Tides Remastered | 10.0% | multiplayer and co-op | 4.1% |
+| excited | 10.2% | *no topic* | 36.4% | Ebontide and new quests | 1.2% |
+| | | | | Hollow and future titles | 0.8% |
 
 A conversation can carry several topics and flags, so the columns do not sum to 100%.
 
 ## Cost
 
 The build's paid calls, from the `budget.py` ledger (`data/work/spend.json`, cap $3.00, re-runs included):
-**$0.62 in total**.
+**$0.88 in total**.
 
 | kind | model | calls | input tokens | cost |
 |---|---|---|---|---|
-| labels (every run and re-run) | Jev via OpenRouter | 4,924 | 11.6 M | $0.49 |
+| labels (every run and re-run) | Jev via OpenRouter | 7,366 | 17.6 M | $0.74 |
 | embeddings | gemini-embedding-2 | 32 batches | 0.66 M | $0.13 |
 | topic suggestion | Gemini Flash-Lite | 1 | 35 K | $0.004 |
 
@@ -160,7 +162,7 @@ measured tonight.
 ## Known limits
 
 - Conversation pieces are cut at pauses, not at subject changes; a piece can still hold two subjects.
-- Jev labels were audited on a small sample only (above); `pricing-and-editions` is over-assigned, its counts run high.
+- Jev labels were audited on a small sample only (above); topics miss a clear subject in about 1 of 5 conversations, so topic counts run low and the agent follows a topic read with a search.
 - Reactions are too sparse to measure reach; engagement is a proxy.
 - The eval's questions and rubrics were written by the builder, who had read the data: they show direction and
   regressions, not a benchmark score. One judge model.
