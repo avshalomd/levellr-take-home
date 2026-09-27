@@ -8,22 +8,9 @@ import { starterQuestions } from "@/lib/starters";
 // asks a bulleted question when the answer cites nothing). The questions are Home's own (lib/starters.ts), so they are
 // written from the loaded data and every one can be answered.
 
-const MONTHS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-/** "18 June 2026"; the year only on the second date of a range in the same year: "18 June to 24 September 2026". */
+/** "18 Jun 2026", as the app writes a date; the year only on the second date of a range in the same year: "18 Jun to 24 Sep 2026". */
 export function spanInWords(from: string, to: string): string {
   const d = (iso: string) => new Date(`${iso.slice(0, 10)}T00:00:00Z`);
   const [a, b] = [d(from), d(to)];

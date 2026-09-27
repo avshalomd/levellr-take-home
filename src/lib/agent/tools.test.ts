@@ -358,7 +358,7 @@ describe("what the tools add around a call (QA 2026-09-26, round 5)", () => {
     };
     expect(out.status).toBe("off-topic");
     expect(out.text).toMatch(
-      /^I can't answer that\. I only know what r\/PUBATTLEGROUNDS talked about from 18 June to 24 September 2026\. You could ask:/,
+      /^I can't answer that\. I only know what r\/PUBATTLEGROUNDS talked about from 18 Jun to 24 Sep 2026\. You could ask:/,
     );
     const model = await tools.out_of_scope.toModelOutput!({
       toolCallId: "t1",
