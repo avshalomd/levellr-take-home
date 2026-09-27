@@ -1,8 +1,9 @@
-export default function Home() {
-  return (
-    <div className="space-y-2">
-      <h1 className="text-2xl font-semibold tracking-tight">Ready</h1>
-      <p className="text-muted-foreground">Baseline scaffold. The task starts here.</p>
-    </div>
-  );
+import { Chat } from "@/components/chat/Chat";
+
+// The chat. It gets a fresh id on every visit (chats are not saved: history is out of scope), which useChat sends with
+// each request. ?q= asks a question straight away (a deep link, and how the eval can open an answer in the browser).
+export default async function Home({ searchParams }: PageProps<"/">) {
+  const q = (await searchParams).q;
+  const id = crypto.randomUUID();
+  return <Chat key={id} id={id} initialQuestion={typeof q === "string" ? q : undefined} />;
 }

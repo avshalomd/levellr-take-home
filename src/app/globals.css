@@ -4,12 +4,26 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Light and dark, following the computer unless the reader picks one (the sun/moon toggle, top right, D20).
+   color-scheme is declared for both, so the browser's own controls and scrollbars never mix the two. */
+:root {
+  color-scheme: light;
+}
+.dark {
+  color-scheme: dark;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-geist-sans);
+  --font-sans: var(--font-schibsted), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --font-heading: var(--font-schibsted), ui-sans-serif, system-ui, sans-serif;
+  --color-paper: var(--paper);
+  --color-neg: var(--neg);
+  --color-pos: var(--pos);
+  --color-glass: var(--glass);
+  --ease-spring: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 20.4%, 1.041 24.1%, 1.035 28.3%, 0.999 43.2%, 1);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -19,6 +33,12 @@
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
   --color-chart-5: var(--chart-5);
+  --color-pulse: var(--pulse);
+  --color-pulse-soft: var(--pulse-soft);
+  --color-pulse-solid: var(--pulse-solid);
+  --color-good: var(--good);
+  --color-warn: var(--warn);
+  --color-bad: var(--bad);
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
@@ -49,8 +69,22 @@
 }
 
 :root {
+  /* Design tokens (docs/DECISIONS.md D16). The accent is the blue of PUBG's shrinking zone: it marks what the
+     answer rests on - cited messages, the selection, focus. Sentiment is a
+     red-to-teal diverging pair, never the accent. Everything else is cool neutral, so the evidence is the colour. */
+  --paper: oklch(0.975 0.004 250);   /* #F4F6F8, the app ground */
+  --pulse: oklch(0.55 0.21 265);     /* zone blue #2E5BFF */
+  --pulse-soft: oklch(0.95 0.03 265);
+  /* The fill behind white text on a solid accent button (Ask, Save). Light: the accent itself, 5:1 with white. */
+  --pulse-solid: oklch(0.55 0.21 265);
+  --neg: oklch(0.6 0.17 35);
+  --pos: oklch(0.62 0.11 185);
+  --glass: oklch(1 0 0 / 72%);
+  --good: oklch(0.62 0.11 185);
+  --warn: oklch(0.72 0.13 75);
+  --bad: oklch(0.6 0.17 35);
   --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --foreground: oklch(0.2 0.012 260);  /* ink #14171C */
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
@@ -60,19 +94,19 @@
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  --muted-foreground: oklch(0.5 0.02 260);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
+  --border: oklch(0.92 0.008 255);
+  --input: oklch(0.92 0.008 255);
   --ring: oklch(0.708 0 0);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  --radius: 0.75rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -84,6 +118,18 @@
 }
 
 .dark {
+  --paper: oklch(0.17 0.01 260);
+  --pulse: oklch(0.7 0.16 265);
+  --pulse-soft: oklch(0.3 0.07 265);
+  /* Dark keeps the light theme's deeper blue for a solid button: white on the dark accent above measured 2.8:1
+     (QA 2026-09-26). One token, so the buttons cannot drift apart (review 2026-09-26). */
+  --pulse-solid: oklch(0.55 0.21 265);
+  --neg: oklch(0.72 0.2 35); /* stronger than light: a small share of it must still read against a dark cell */
+  --pos: oklch(0.78 0.15 185);
+  --glass: oklch(0.2 0.01 260 / 72%);
+  --good: oklch(0.7 0.14 150);
+  --warn: oklch(0.8 0.14 85);
+  --bad: oklch(0.7 0.18 25);
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -121,10 +167,88 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /* One keyboard focus ring everywhere, the accent at 2px (QA 2026-09-26: the browser's faint default sat beside the
+     grid's own ring). In the base layer, so a component that draws its own ring still wins. */
+  :focus-visible {
+    outline: 2px solid var(--color-pulse);
+    outline-offset: 2px;
+  }
   body {
     @apply bg-background text-foreground;
   }
   html {
     @apply font-sans;
   }
+}
+
+@layer base {
+  body { font-feature-settings: "ss01", "cv11"; }
+  h1, h2, h3 { letter-spacing: -0.015em; text-wrap: balance; }
+}
+
+/* Translucent chrome: a material layer over the content, not an opaque bar. Solid when the reader asks for it. */
+.material {
+  background: var(--glass);
+  backdrop-filter: blur(20px) saturate(170%);
+  -webkit-backdrop-filter: blur(20px) saturate(170%);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .material { background: var(--background); backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
+/* Press feedback on the press, not the release. */
+.pressable { transition: transform 120ms ease-out, background-color 150ms, border-color 150ms, color 150ms; }
+.pressable:active { transform: scale(0.97); }
+
+/* ---- Chat surface (2026-09-25 redesign). Additive: the tokens above are unchanged. ---- */
+
+/* The answer reads like a well-set article: comfortable measure, generous leading, quiet ink. */
+.answer { font-size: 16px; line-height: 1.7; color: color-mix(in oklch, var(--foreground) 90%, transparent); }
+.answer strong { color: var(--foreground); font-weight: 600; }
+
+/* A claim - one sentence or bullet - lights when hovered, together with its citations, so the reader sees which
+   words the evidence is for. It wraps like text (clone keeps the tint on every line of a wrapped sentence). */
+.claim { border-radius: 5px; box-decoration-break: clone; -webkit-box-decoration-break: clone; transition: background-color 160ms ease-out; cursor: pointer; }
+@media (hover: hover) {
+  .claim:hover { background-color: color-mix(in oklch, var(--pulse-soft) 85%, transparent); }
+  .claim:hover .cite-chip { box-shadow: 0 0 0 1.5px color-mix(in oklch, var(--pulse) 55%, transparent); }
+}
+
+/* The reply guides of the thread tree: one hairline per level of indent. */
+.tree-guides { background-image: repeating-linear-gradient(to right, var(--border) 0 1px, transparent 1px 14px); }
+
+/* The composer grows with what is typed, up to a limit, without script. */
+.grow-field { field-sizing: content; }
+
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* A living dot for "working on it": a slow breath, not a spinner. Still when motion is reduced. */
+@keyframes breathe { 0%, 100% { opacity: 0.35; transform: scale(0.85); } 50% { opacity: 1; transform: scale(1); } }
+.breathe { animation: breathe 1.6s ease-in-out infinite; }
+
+/* The desktop theme toggle floats in the page's top-right corner (AppShell). A page's own top header leaves it room,
+   so a button at the header's right end (Explore's "Edit topics") never sits under it. While the evidence panel is
+   open its close button takes the corner back, or the two read as two close buttons side by side (QA 2026-09-26):
+   beside the 480px column (from 1280px) the toggle steps left of it, 32rem from the edge, and stays in use; under
+   1280px the panel is a modal sheet over the corner, and the toggle goes behind its scrim with the rest of the page,
+   as the phone header's toggle does. That needs no rule: the sheet (z-50) and its scrim (z-40, later in the DOM) already
+   sit over the toggle's z-40 (review 2026-09-26: a z-30 rule for 1024-1279px was redundant and is gone; pinned by the
+   1024px test in e2e/shell.spec.ts, which fails when the toggle is lifted above the sheet). */
+@media (min-width: 1024px) {
+  main#main > * > header:first-child { padding-right: var(--corner-clear); }
+  /* The panel's own header: the toggle is never over it (beside the column it steps left, under 1280px the sheet
+     covers it), so it keeps the ordinary 1.25rem. Scoped to the panel, not the whole shell: beside the column the
+     toggle sits over the chat, which still needs the full clearance (QA 2026-09-26). */
+  /* (review 2026-09-26) Found by a data attribute, not its aria-label: rewording the screen-reader name broke no rule. */
+  aside[data-evidence-panel] { --corner-clear: 1.25rem; }
+  /* The chat column's right edge keeps --corner-clear (the toggle's 36px, its inset and 16px) from the scroller's edge
+     where the two can meet: at 1440px beside the evidence column a user bubble ran under the toggle, and at 1024px
+     they touched (QA 2026-09-26). Where the column is centred with room to spare, its margin already gives it. */
+  .chat-column { padding-right: max(2rem, calc(var(--corner-clear) - max(0px, (100% - 720px) / 2))); }
+}
+@media (min-width: 1280px) {
+  [data-shell]:has(aside[data-evidence-panel]) [data-corner-toggle] { right: 32rem; }
 }
