@@ -10,9 +10,10 @@ message behind it and checked, or a plain "the data cannot answer that".
 
 - **A message** is one Discord message (channel, pseudonymous author, UTC time, reactions, reply parent). It is what
   answers cite.
-- **A conversation** is a piece of one channel's activity: split at 15-minute pauses, long sessions cut into 20-40
-  message pieces at their longest pause. It is what the agent searches, reads, labels and counts. Every message is in
-  exactly one conversation.
+- **A conversation** is a piece of one channel's activity: split at 15-minute pauses; a session over 40 messages is
+  cut at its longest pause 20-40 messages in, repeatedly, and the last piece keeps the remainder. It is what the agent
+  searches, reads, labels and counts. Every message is in exactly one conversation. **2,362 conversations**: median 4
+  messages, p90 33, max 40.
 - **Now** is the last message, 2026-09-27 19:30 UTC. "The last 3 days" means 09-24 19:30 to 09-27 19:30 UTC.
 - **It cannot count:** anything outside these 11 channels (Reddit, Steam reviews, sales, revenue), anything before
   2026-09-13, readers who never wrote, reach (reactions are on 4.5% of messages, at most 8), or intent beyond the
@@ -68,8 +69,9 @@ All with alternatives and reasons in [DECISIONS.md](DECISIONS.md). The short ver
    its decisions against this data (D1).
 2. **The unit is a pause-split conversation piece**, chosen after measuring reply trees and fixed windows (D3).
 3. **"Resonating" = authors + replies + reactions**, because reactions alone are too sparse (D5).
-4. **Labels are probabilities** from Jev, over 13 topics discovered in the data and edited by hand (D6), with
-   `excited` and `frustrated` flags for the brief (D8).
+4. **Labels are probabilities** from Jev, over 12 topics discovered in the data and edited by hand (D6), with
+   `excited` and `frustrated` flags for the brief (D8). A flag means a main thread of the conversation, not one
+   remark (D16), and no topic duplicates a flag (D17).
 5. **Two retrieval tools**: `scan` reads a whole slice for "what are people saying"; `find` searches for a named
    thing (D10). Numbers come from SQL, never from the model (D11).
 6. **Every cited claim is checked**, and weak ones rewritten once (D12).
