@@ -16,6 +16,13 @@ export type MessageRow = {
   ts: string;
   text: string;
   n_reactions: number; // total reaction count on the message (Discord); reactions are sparse on this server
+  // The evidence panel's fields, in this data's terms (filters.ts MSG_COLUMNS): score = n_reactions, kind is always
+  // "message", removed and is_bot are false and in_window true, since the export has no such messages.
+  score: number;
+  kind: "message";
+  removed: boolean;
+  is_bot: boolean;
+  in_window: boolean;
 };
 
 /** A message as the UI needs it for a citation chip or a thread-map node: the text is cut to a preview. */
@@ -63,9 +70,3 @@ export type Filters = {
  * anything a player writes. */
 export const msgTag = (ref: number) => `msg${ref}`;
 export const convTag = (ref: number) => `conv${ref}`;
-
-/** The link back to the source. A Discord export carries none, so there is never one; the app shows the message
- * itself in the evidence panel instead. Kept as a function so the UI has one place to ask. */
-export function permalink(_m: Pick<MessageRow, "id">): string | null {
-  return null;
-}

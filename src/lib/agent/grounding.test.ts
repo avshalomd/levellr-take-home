@@ -22,7 +22,9 @@ describe("needsRead", () => {
   });
   it("never forces a read before anything was counted", () => {
     expect(needsRead([], "What are people complaining about?")).toBe(false);
-    expect(needsRead([step(result("dataset_overview", {}))], "What are people complaining about?")).toBe(false);
+    expect(needsRead([step(result("dataset_overview", {}))], "What are people complaining about?")).toBe(
+      false,
+    );
   });
   // Review 2026-09-26: forced again after each of these, the model looped on reads to the step budget.
   it("forces a read at most once a turn: never after a read was tried, whatever came of it", () => {
@@ -31,8 +33,12 @@ describe("needsRead", () => {
     const broad = step(result("scan", { status: "too-broad", total: 9000 }));
     const empty = step(result("scan", { status: "empty" }));
     const nothingFound = step(result("find", { hits: [], candidates: 40 }));
-    const failed = step({ type: "tool-call", toolName: "scan", input: {} }, { type: "tool-error", toolName: "scan", error: "did not finish, twice" });
-    for (const tried of [refused, broad, empty, nothingFound, failed]) expect(needsRead([counted, tried], q)).toBe(false);
+    const failed = step(
+      { type: "tool-call", toolName: "scan", input: {} },
+      { type: "tool-error", toolName: "scan", error: "did not finish, twice" },
+    );
+    for (const tried of [refused, broad, empty, nothingFound, failed])
+      expect(needsRead([counted, tried], q)).toBe(false);
     expect(needsRead([counted, step({ type: "tool-call", toolName: "find", input: {} })], q)).toBe(false);
     expect(needsRead([counted], q)).toBe(true);
   });
@@ -56,7 +62,10 @@ describe("groundingOf", () => {
   it("counts a search as a read only when it found something", () => {
     expect(toolsUsed([counted, step(result("find", { hits: [], candidates: 40 }))]).read).toBe(false);
     expect(toolsUsed([step(result("find", { hits: [{ ref: 1 }], candidates: 40 }))]).read).toBe(true);
-    expect(groundingOf(false, [counted, step(result("find", { hits: [], candidates: 40 }))])).toEqual({ kind: "uncited", read: false });
+    expect(groundingOf(false, [counted, step(result("find", { hits: [], candidates: 40 }))])).toEqual({
+      kind: "uncited",
+      read: false,
+    });
   });
   it("takes the off-topic reply from the out_of_scope call", () => {
     const off = step(result("out_of_scope", { status: "off-topic", text: "I can't answer that." }));

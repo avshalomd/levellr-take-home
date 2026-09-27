@@ -6,7 +6,10 @@ import type { ConversationRow, MessageRow } from "./types";
 export type Conversation = ConversationRow & { context_ids: string[]; messages: MessageRow[] };
 
 export async function getConversation(id: string): Promise<Conversation | null> {
-  const [c] = await query<ConversationRow & { context_ids: string[] }>(`SELECT ${CONV_COLUMNS} FROM conversations c WHERE c.id = $1`, [id]);
+  const [c] = await query<ConversationRow & { context_ids: string[] }>(
+    `SELECT ${CONV_COLUMNS} FROM conversations c WHERE c.id = $1`,
+    [id],
+  );
   if (!c) return null;
   const messages = await query<MessageRow>(
     `SELECT ${MSG_COLUMNS()} FROM messages m WHERE m.conversation_id = $1 OR m.id = ANY($2) ORDER BY m.ts`,
@@ -72,14 +75,24 @@ export type Overview = {
 
 /** The topic labels as the loader stored them (dataset_meta.topics: a list of {key, name, description}, or of keys). */
 export function topicLabelsOf(value: unknown): TopicLabel[] {
-  const list = Array.isArray(value) ? value : Array.isArray((value as { labels?: unknown })?.labels) ? (value as { labels: unknown[] }).labels : [];
+  const list = Array.isArray(value)
+    ? value
+    : Array.isArray((value as { labels?: unknown })?.labels)
+      ? (value as { labels: unknown[] }).labels
+      : [];
   return list.flatMap((t): TopicLabel[] => {
     if (typeof t === "string") return [{ key: t, name: t, description: "" }];
     if (!t || typeof t !== "object") return [];
     const o = t as Record<string, unknown>;
     const key = typeof o.key === "string" ? o.key : typeof o.name === "string" ? o.name : "";
     if (!key) return [];
-    return [{ key, name: typeof o.name === "string" ? o.name : key, description: typeof o.description === "string" ? o.description : "" }];
+    return [
+      {
+        key,
+        name: typeof o.name === "string" ? o.name : key,
+        description: typeof o.description === "string" ? o.description : "",
+      },
+    ];
   });
 }
 
@@ -95,12 +108,18 @@ export async function getOverview(): Promise<Overview> {
       `SELECT tk.key, count(*)::int AS n, round(avg(c.sentiment)::numeric, 3)::float AS avg_sentiment
        FROM conversations c CROSS JOIN LATERAL ${topicKeys("c")} AS tk(key) GROUP BY 1 ORDER BY 2 DESC`,
     ),
-    query<{ key: string; n: number }>(`SELECT channel AS key, count(*)::int AS n FROM conversations GROUP BY 1 ORDER BY 2 DESC`),
+    query<{ key: string; n: number }>(
+      `SELECT channel AS key, count(*)::int AS n FROM conversations GROUP BY 1 ORDER BY 2 DESC`,
+    ),
     query<{ n: number; labelled: number }>(
       `SELECT count(*)::int AS n, count(*) FILTER (WHERE sentiment IS NOT NULL)::int AS labelled FROM conversations`,
     ),
   ]);
-  const m = Object.fromEntries(meta.map((r) => [r.key, r.value]));
+  const m = Object.fromEntries(meta.map((r) => [r.key, r.value])) as Record<string, unknown>;
+  // The UI words its engagement by platform ("discord"), in lower case whatever the manifest wrote.
+  const source = m.source as { platform?: unknown } | undefined;
+  if (source && typeof source.platform === "string")
+    m.source = { ...source, platform: source.platform.toLowerCase() };
   const def = new Map(topicLabelsOf(m.topics).map((l) => [l.key, l]));
   // Everything but the topic list itself, which is given below with its counts.
   delete m.topics;
@@ -112,6 +131,10 @@ export async function getOverview(): Promise<Overview> {
     topicsNote:
       `n is the number of conversations touching each topic. A conversation can have several topics, so these add up ` +
       `to more than the ${all?.n ?? 0} conversations, and shares by topic can add up to more than 100%.`,
-    topics: topics.map((t) => ({ ...t, name: def.get(t.key)?.name ?? t.key, description: def.get(t.key)?.description ?? "" })),
+    topics: topics.map((t) => ({
+      ...t,
+      name: def.get(t.key)?.name ?? t.key,
+      description: def.get(t.key)?.description ?? "",
+    })),
   };
 }

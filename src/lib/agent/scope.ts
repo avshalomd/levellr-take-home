@@ -40,7 +40,8 @@ export async function bearsOn(question: string, p: Profile): Promise<number | nu
 
 /** An out_of_scope call the check turned down: the loop goes on, and the model is told to answer from the data. */
 export type InScope = { status: "in-scope"; bears: number };
-export const isInScope = (o: unknown): o is InScope => typeof o === "object" && o !== null && (o as { status?: unknown }).status === "in-scope";
+export const isInScope = (o: unknown): o is InScope =>
+  typeof o === "object" && o !== null && (o as { status?: unknown }).status === "in-scope";
 
 export const IN_SCOPE_WORDS =
   "Not out of scope: the community's conversations bear on this question, since its members share experiences, " +

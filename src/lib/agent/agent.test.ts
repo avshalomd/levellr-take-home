@@ -9,7 +9,9 @@ describe("flattenForAnswer", () => {
     { role: "user", content: "Why did Krafton shut down the EU servers?" },
     {
       role: "assistant",
-      content: [{ type: "tool-call", toolCallId: "c1", toolName: "find", input: { query: "EU server shutdown" } }],
+      content: [
+        { type: "tool-call", toolCallId: "c1", toolName: "find", input: { query: "EU server shutdown" } },
+      ],
     },
     {
       role: "tool",

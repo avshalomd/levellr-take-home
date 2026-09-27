@@ -30,24 +30,35 @@ const RATED = new Set(["conversations", "messages", "engagement", "reactions"]);
 
 /** The change per day from the latest earlier count of the same slice, grouped the same way, over a separate period.
  *  `nameOf` names a row as the reader knows it ("Updates & Feedback", "complaints"). Undefined when there is none. */
-export function changeAgainst(earlier: ReadonlyArray<CountLike>, next: CountLike, nameOf: (key: string, f: SliceFilters) => string): Change | undefined {
-  if (!RATED.has(next.metric) || !next.period?.days || !next.filters.since || !next.filters.until) return undefined;
-  const prev = [...earlier].reverse().find(
-    (c) =>
-      c.metric === next.metric &&
-      c.groupBy === next.groupBy &&
-      !!c.period?.days &&
-      !!c.filters.since &&
-      !!c.filters.until &&
-      CATEGORIES.every((k) => (c.filters[k] ?? "") === (next.filters[k] ?? "")) &&
-      (time(c.filters.until, Infinity) <= time(next.filters.since, -Infinity) || time(next.filters.until, Infinity) <= time(c.filters.since, -Infinity)),
-  );
+export function changeAgainst(
+  earlier: ReadonlyArray<CountLike>,
+  next: CountLike,
+  nameOf: (key: string, f: SliceFilters) => string,
+): Change | undefined {
+  if (!RATED.has(next.metric) || !next.period?.days || !next.filters.since || !next.filters.until)
+    return undefined;
+  const prev = [...earlier]
+    .reverse()
+    .find(
+      (c) =>
+        c.metric === next.metric &&
+        c.groupBy === next.groupBy &&
+        !!c.period?.days &&
+        !!c.filters.since &&
+        !!c.filters.until &&
+        CATEGORIES.every((k) => (c.filters[k] ?? "") === (next.filters[k] ?? "")) &&
+        (time(c.filters.until, Infinity) <= time(next.filters.since, -Infinity) ||
+          time(next.filters.until, Infinity) <= time(c.filters.since, -Infinity)),
+    );
   if (!prev) return undefined;
   const [a, b] = time(prev.filters.since, 0) < time(next.filters.since, 0) ? [prev, next] : [next, prev];
   const before = new Map(a.rows.map((r) => [r.key, r.value / a.period!.days]));
   const rows = b.rows
     .filter((r) => (before.get(r.key) ?? 0) > 0)
-    .map((r) => ({ name: nameOf(r.key, b.filters), pct: ((r.value / b.period!.days) / before.get(r.key)! - 1) * 100 }));
+    .map((r) => ({
+      name: nameOf(r.key, b.filters),
+      pct: (r.value / b.period!.days / before.get(r.key)! - 1) * 100,
+    }));
   return rows.length ? { metric: next.metric, from: a.period!, to: b.period!, rows } : undefined;
 }
 
@@ -58,7 +69,8 @@ export const pctWords = (p: number) => {
 };
 
 const DAY = 86_400_000;
-const lastDay = (until: string) => new Date(Date.parse(`${until.slice(0, 10)}T00:00:00Z`) - DAY).toISOString().slice(0, 10);
+const lastDay = (until: string) =>
+  new Date(Date.parse(`${until.slice(0, 10)}T00:00:00Z`) - DAY).toISOString().slice(0, 10);
 
 /** The change as the model reads it, in one fixed form that toolTrends reads back. */
 export function changeWords(c: Change): string {
@@ -96,8 +108,10 @@ export function toolTrends(history: ReadonlyArray<ModelMessage>): ChangeRow[] {
 
 // Direction words, kept narrow as the rate check's nouns are: "up" and "down" only where they state a change ("went
 // up", "is down", "up 12%"), never "set up" or "up to"; "higher than" compares two topics, not two periods.
-const UP = /\b(?:rose|risen|rises?|rising|grew|grown|grows?|growing|lift(?:ed|s)?|increas(?:e|ed|es|ing)|climb(?:ed|s)?|jump(?:ed|s)?|higher(?! than)|(?:went|go(?:es)?|is|was|are|were) up(?! to\b)|up (?:from|by|\d))\b/i;
-const DOWN = /\b(?:fell|fallen|falls?|falling|dropp?(?:ed|s)?|declin(?:e|ed|es|ing)|decreas(?:e|ed|es|ing)|lower(?! than)|(?:went|go(?:es)?|is|was|are|were) down|down (?:from|by|\d))\b/i;
+const UP =
+  /\b(?:rose|risen|rises?|rising|grew|grown|grows?|growing|lift(?:ed|s)?|increas(?:e|ed|es|ing)|climb(?:ed|s)?|jump(?:ed|s)?|higher(?! than)|(?:went|go(?:es)?|is|was|are|were) up(?! to\b)|up (?:from|by|\d))\b/i;
+const DOWN =
+  /\b(?:fell|fallen|falls?|falling|dropp?(?:ed|s)?|declin(?:e|ed|es|ing)|decreas(?:e|ed|es|ing)|lower(?! than)|(?:went|go(?:es)?|is|was|are|were) down|down (?:from|by|\d))\b/i;
 // A sentence with both ways in it is read part by part.
 const PARTS = /\s*(?:;|\bwhile\b|\bwhereas\b|\bbut\b|,\s*and\b)\s*/i;
 
@@ -124,8 +138,10 @@ export function directionMismatches(answer: string, trends: ReadonlyArray<Change
       if (up === down) continue;
       for (const t of trends) {
         if (!mentions(part, t.name)) continue;
-        const wrong = (up && Math.round(t.pct) < 0) || (down && Math.round(t.pct) > 0) || Math.round(t.pct) === 0;
-        if (wrong && !out.some((o) => o.claim === claim && o.name === t.name)) out.push({ claim, name: t.name, said: up ? "rose" : "fell", pct: t.pct });
+        const wrong =
+          (up && Math.round(t.pct) < 0) || (down && Math.round(t.pct) > 0) || Math.round(t.pct) === 0;
+        if (wrong && !out.some((o) => o.claim === claim && o.name === t.name))
+          out.push({ claim, name: t.name, said: up ? "rose" : "fell", pct: t.pct });
       }
     }
   return out;
@@ -133,5 +149,8 @@ export function directionMismatches(answer: string, trends: ReadonlyArray<Change
 
 /** How many rates and directions an answer states that the tools' counts contradict (rateMismatches plus
  *  directionMismatches): what an answer that cites nothing is checked on (open item 2026-09-26, revise.ts correctCounts). */
-export const countMismatches = (answer: string, known: ReadonlyArray<KnownRate>, trends: ReadonlyArray<ChangeRow>) =>
-  rateMismatches(answer, known).length + directionMismatches(answer, trends).length;
+export const countMismatches = (
+  answer: string,
+  known: ReadonlyArray<KnownRate>,
+  trends: ReadonlyArray<ChangeRow>,
+) => rateMismatches(answer, known).length + directionMismatches(answer, trends).length;

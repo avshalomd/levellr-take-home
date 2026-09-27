@@ -54,7 +54,11 @@ export function toolFigures(history: ReadonlyArray<ModelMessage>): number[] {
 
 /** The numbers written in a text, dates and release numbers left out: "25%" and "25 percent" are both 25. */
 export function figuresIn(text: string): { value: number; words: string; decimals: number }[] {
-  return [...withoutDates(text).matchAll(/(?<![\p{L}\d.,])(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d+))?(?:\s*(%|percent\b|per cent\b))?/giu)].map((m) => ({
+  return [
+    ...withoutDates(text).matchAll(
+      /(?<![\p{L}\d.,])(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d+))?(?:\s*(%|percent\b|per cent\b))?/giu,
+    ),
+  ].map((m) => ({
     value: Number(`${m[1].replace(/,/g, "")}${m[2] ? `.${m[2]}` : ""}`),
     words: m[0].trim(),
     decimals: m[2]?.length ?? 0,
@@ -90,8 +94,15 @@ export function rateMismatches(answer: string, known: ReadonlyArray<KnownRate>):
     for (const m of claim.matchAll(STATED)) {
       const stated = Number(`${m[1].replace(/,/g, "")}${m[2] ? `.${m[2]}` : ""}`);
       const statedHalf = halfUnit(m[2]?.length ?? 0);
-      const matches = known.some((k) => Math.abs(k.value - stated) <= Math.max(statedHalf, halfUnit(decimalsOf(k.words))) + 1e-9);
-      if (!matches) out.push({ claim, stated: m[0].replace(new RegExp(`${PER_DAY}$`, "iu"), "").trim(), known: known.map((k) => k.words) });
+      const matches = known.some(
+        (k) => Math.abs(k.value - stated) <= Math.max(statedHalf, halfUnit(decimalsOf(k.words))) + 1e-9,
+      );
+      if (!matches)
+        out.push({
+          claim,
+          stated: m[0].replace(new RegExp(`${PER_DAY}$`, "iu"), "").trim(),
+          known: known.map((k) => k.words),
+        });
     }
   return out;
 }

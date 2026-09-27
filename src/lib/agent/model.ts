@@ -19,16 +19,18 @@ export function chatModel(): LanguageModel {
         try {
           return await doStream();
         } catch {
-          return (fallback as Parameters<typeof wrapLanguageModel>[0]["model"] & { doStream: typeof doStream }).doStream(
-            params as never,
-          );
+          return (
+            fallback as Parameters<typeof wrapLanguageModel>[0]["model"] & { doStream: typeof doStream }
+          ).doStream(params as never);
         }
       },
       wrapGenerate: async ({ doGenerate, params }) => {
         try {
           return await doGenerate();
         } catch {
-          return (fallback as { doGenerate: (p: unknown) => ReturnType<typeof doGenerate> }).doGenerate(params);
+          return (fallback as { doGenerate: (p: unknown) => ReturnType<typeof doGenerate> }).doGenerate(
+            params,
+          );
         }
       },
     },
@@ -50,6 +52,7 @@ export function answerModel(): LanguageModel {
  * (TEXT_MODEL overrides it); on any other provider, the answer model.
  */
 export function textModel(): LanguageModel {
-  if (process.env.AI_SIMULATE_DOWN !== "1" && aiProvider() === "google") return google(process.env.TEXT_MODEL || "gemini-3.5-flash-lite");
+  if (process.env.AI_SIMULATE_DOWN !== "1" && aiProvider() === "google")
+    return google(process.env.TEXT_MODEL || "gemini-3.5-flash-lite");
   return answerModel();
 }

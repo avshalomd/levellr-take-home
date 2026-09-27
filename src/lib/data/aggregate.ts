@@ -9,7 +9,8 @@ import type { Filters } from "./types";
 export const METRICS = {
   conversations: "count(*)::int",
   messages: "sum(c.n_messages)::int",
-  authors: "(SELECT count(DISTINCT m.author) FROM messages m WHERE m.conversation_id = ANY(array_agg(c.id)))::int",
+  authors:
+    "(SELECT count(DISTINCT m.author) FROM messages m WHERE m.conversation_id = ANY(array_agg(c.id)))::int",
   avg_sentiment: "round(avg(c.sentiment)::numeric, 3)::float",
   share_negative: "round(avg((c.sentiment < 0.375)::int)::numeric, 3)::float",
   share_excited: `round(avg((c.p_excited >= ${FLAG_THRESHOLD})::int)::numeric, 3)::float`,
@@ -50,16 +51,24 @@ export type AggregateResult = {
   params: unknown[];
 };
 
-export async function aggregate(metric: Metric, groupBy: Grouping, filters: Filters = {}): Promise<AggregateResult> {
+export async function aggregate(
+  metric: Metric,
+  groupBy: Grouping,
+  filters: Filters = {},
+): Promise<AggregateResult> {
   const params: unknown[] = [];
   const where = whereOf(filters, params);
   const key = GROUPINGS[groupBy];
-  const order = groupBy === "day" || groupBy === "week" || groupBy === "month" ? "key" : "value DESC NULLS LAST";
+  const order =
+    groupBy === "day" || groupBy === "week" || groupBy === "month" ? "key" : "value DESC NULLS LAST";
   const sql =
     `SELECT ${key} AS key, ${METRICS[metric]} AS value, count(*)::int AS n\n` +
     `FROM ${groupBy === "topic" ? FROM_TOPICS : "conversations c"}\nWHERE ${where}\nGROUP BY 1\nORDER BY ${order}\nLIMIT ${AGGREGATE_ROWS}`;
   const rows = await query<{ key: string; value: number; n: number }>(sql, params);
   if (groupBy !== "topic") return { metric, groupBy, filters, rows, sql, params };
-  const [all] = await query<{ n: number }>(`SELECT count(*)::int AS n FROM conversations c WHERE ${where}`, params);
+  const [all] = await query<{ n: number }>(
+    `SELECT count(*)::int AS n FROM conversations c WHERE ${where}`,
+    params,
+  );
   return { metric, groupBy, filters, rows, total: all?.n ?? 0, sql, params };
 }

@@ -17,7 +17,8 @@ export async function embedQuery(text: string): Promise<number[]> {
     abortSignal: AbortSignal.timeout(15_000),
     maxRetries: 1,
   });
-  if (embedding.length !== EMBED_DIMS) throw new Error(`embedding came back with ${embedding.length} dimensions`);
+  if (embedding.length !== EMBED_DIMS)
+    throw new Error(`embedding came back with ${embedding.length} dimensions`);
   return normalize(embedding);
 }
 

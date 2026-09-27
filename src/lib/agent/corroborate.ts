@@ -29,11 +29,24 @@ const MORE_MAX = 40; // the list behind "+N": enough to scroll, not the whole se
 const IN_FLIGHT = 20;
 
 export type MoreItem = MessageRef & { threadTitle: string; support: number };
-export type CorroboratedClaim = { claim: string; tags: string[]; conversations: number; more: MoreItem[]; moreTotal: number };
+export type CorroboratedClaim = {
+  claim: string;
+  tags: string[];
+  conversations: number;
+  more: MoreItem[];
+  moreTotal: number;
+};
 export type CorroborationPart =
   | { status: "running" }
   // `reads`: how many reads fed the pool, so the footer can say that two reads' sets were merged (older chats lack it)
-  | { status: "done"; pool: number; found: number; reads?: number; claims: CorroboratedClaim[]; failed: number }
+  | {
+      status: "done";
+      pool: number;
+      found: number;
+      reads?: number;
+      claims: CorroboratedClaim[];
+      failed: number;
+    }
   | { status: "failed"; error: string };
 
 type StepLike = { content: ReadonlyArray<unknown> };
@@ -44,7 +57,10 @@ type ToolResult = { type: string; toolName?: string; input?: unknown; output?: u
  *  many different slices the scans that found any read. A search and a thread opened in full are not reads, and one
  *  slice read twice is one read, as the steps say it: counted as reads, they put "the three reads" under one Read
  *  line and a search (review 2026-09-26). The slices compare as the steps compare them (slices.ts sameSlice). */
-export function poolOf(steps: ReadonlyArray<StepLike>, max = POOL_MAX): { ids: string[]; found: number; reads: number } {
+export function poolOf(
+  steps: ReadonlyArray<StepLike>,
+  max = POOL_MAX,
+): { ids: string[]; found: number; reads: number } {
   const seen = new Set<string>();
   const slices: Filters[] = [];
   let beyond = 0; // relevant conversations a scan counted but did not list
@@ -56,7 +72,10 @@ export function poolOf(steps: ReadonlyArray<StepLike>, max = POOL_MAX): { ids: s
       const o = p.output as Record<string, unknown> | null | undefined;
       if (!o) continue;
       if (p.toolName === "scan" && o.status === "ok") {
-        const ids = (o.relevantIds as string[] | undefined) ?? (o.hits as { id: string }[] | undefined)?.map((h) => h.id) ?? [];
+        const ids =
+          (o.relevantIds as string[] | undefined) ??
+          (o.hits as { id: string }[] | undefined)?.map((h) => h.id) ??
+          [];
         const slice = (o.filters ?? (p.input as { filters?: Filters } | undefined)?.filters ?? {}) as Filters;
         if (ids.length && !slices.some((x) => sameSlice(x, slice))) slices.push(slice);
         ids.forEach(add);
@@ -71,15 +90,20 @@ export function poolOf(steps: ReadonlyArray<StepLike>, max = POOL_MAX): { ids: s
   return { ids: ids.slice(0, max), found: ids.length + Math.max(beyond, 0), reads: slices.length };
 }
 
-/** A conversation's messages worth putting to a claim: those with text, the most reacted-to first. */
+/** A conversation's messages worth putting to a claim: the in-window, unremoved ones, the most reacted-to first. */
 export function messagesToAsk(messages: MessageRef[], max = PER_CONVERSATION): MessageRef[] {
   return messages
-    .filter((m) => m.text.trim())
-    .sort((a, b) => b.n_reactions - a.n_reactions || a.ts.localeCompare(b.ts))
+    .filter((m) => m.in_window && !m.removed && !m.is_bot && m.text.trim())
+    .sort((a, b) => b.score - a.score || a.ts.localeCompare(b.ts))
     .slice(0, max);
 }
 
-export type Read = { conversationId: string; title: string; messages: MessageRef[]; answers: Record<string, number> | null };
+export type Read = {
+  conversationId: string;
+  title: string;
+  messages: MessageRef[];
+  answers: Record<string, number> | null;
+};
 export const questionKey = (claim: number, ref: number) => `c${claim}_msg${ref}`;
 
 /** The reads, per claim: which conversations back it (through their best message), and which of those the answer
@@ -97,18 +121,33 @@ export function tally(
       let best: MoreItem | null = null;
       for (const m of r.messages) {
         const p = r.answers[questionKey(k, m.ref)];
-        if (p !== undefined && p >= BACKS && (!best || p > best.support || (p === best.support && m.n_reactions > best.n_reactions)))
+        if (
+          p !== undefined &&
+          p >= BACKS &&
+          (!best || p > best.support || (p === best.support && m.score > best.score))
+        )
           best = { ...m, threadTitle: r.title, support: p };
       }
       if (best) backing.push(best);
     }
     const conversations = new Set([...backing.map((b) => b.conversation_id), ...cited]).size;
-    const more = backing.filter((b) => !cited.has(b.conversation_id ?? "")).sort((a, b) => b.support - a.support || b.n_reactions - a.n_reactions);
-    return { claim: c.claim, tags: c.tags, conversations, more: more.slice(0, MORE_MAX), moreTotal: more.length };
+    const more = backing
+      .filter((b) => !cited.has(b.conversation_id ?? ""))
+      .sort((a, b) => b.support - a.support || b.score - a.score);
+    return {
+      claim: c.claim,
+      tags: c.tags,
+      conversations,
+      more: more.slice(0, MORE_MAX),
+      moreTotal: more.length,
+    };
   });
 }
 
-export async function corroborate(v: Verification, steps: ReadonlyArray<StepLike>): Promise<CorroborationPart> {
+export async function corroborate(
+  v: Verification,
+  steps: ReadonlyArray<StepLike>,
+): Promise<CorroborationPart> {
   // A claim's tags are the chips the reader sees (lib/claims.ts shownCitations), so "N say this: M more than the ones
   // cited" is N minus the conversations of those chips. Taken as every citation the check passed, a weak one pruned
   // from the text still counted as cited: 3 chips beside "4 are cited in the answer" (QA 2026-09-26).
@@ -117,16 +156,24 @@ export async function corroborate(v: Verification, steps: ReadonlyArray<StepLike
     .slice(0, CLAIMS_MAX)
     .map((c) => ({ claim: c.claim, tags: shownCitations(c, SUPPORTED) }));
   const { ids, found, reads: fed } = poolOf(steps);
-  if (!claims.length || !ids.length) return { status: "done", pool: ids.length, found, reads: fed, claims: [], failed: 0 };
+  if (!claims.length || !ids.length)
+    return { status: "done", pool: ids.length, found, reads: fed, claims: [], failed: 0 };
 
-  const citedRefs = [...new Set(claims.flatMap((c) => c.tags))].map(refOfTag).filter((r): r is number => r !== null);
+  const citedRefs = [...new Set(claims.flatMap((c) => c.tags))]
+    .map(refOfTag)
+    .filter((r): r is number => r !== null);
   const [messages, titles, cited] = await Promise.all([
     messagesFor(ids),
-    query<{ id: string; thread_title: string }>(`SELECT ${CONV_COLUMNS} FROM conversations c WHERE c.id = ANY($1)`, [ids]),
+    query<{ id: string; thread_title: string }>(
+      `SELECT ${CONV_COLUMNS} FROM conversations c WHERE c.id = ANY($1)`,
+      [ids],
+    ),
     getMessagesByRef(citedRefs),
   ]);
   const titleOf = new Map(titles.map((t) => [t.id, t.thread_title]));
-  const citedConversation = new Map(cited.filter((m) => m.conversation_id).map((m) => [msgTag(m.ref), m.conversation_id!]));
+  const citedConversation = new Map(
+    cited.filter((m) => m.conversation_id).map((m) => [msgTag(m.ref), m.conversation_id!]),
+  );
   const claimState = Object.fromEntries(claims.map((c, k) => [`c${k}`, c.claim]));
 
   let failed = 0;
@@ -138,7 +185,10 @@ export async function corroborate(v: Verification, steps: ReadonlyArray<StepLike
       const res = await decide({
         // The author travels with the text: a claim about what one named person says is backed only by that
         // person's messages. Without it, "AdvancedSoldier2649 doubts the bans" counted everyone who doubts them.
-        state: { claims: claimState, messages: Object.fromEntries(mine.map((m) => [msgTag(m.ref), { author: m.author, text: m.text }])) },
+        state: {
+          claims: claimState,
+          messages: Object.fromEntries(mine.map((m) => [msgTag(m.ref), { author: m.author, text: m.text }])),
+        },
         questions: Object.fromEntries(
           claims.flatMap((_, k) =>
             mine.map((m) => [
@@ -153,11 +203,20 @@ export async function corroborate(v: Verification, steps: ReadonlyArray<StepLike
         ),
         timeoutMs: 15_000,
       });
-      read.answers = Object.fromEntries(Object.entries(res.answers as Record<string, { noul: number }>).map(([key, a]) => [key, a.noul]));
+      read.answers = Object.fromEntries(
+        Object.entries(res.answers as Record<string, { noul: number }>).map(([key, a]) => [key, a.noul]),
+      );
     } catch {
       failed++;
     }
     return read;
   });
-  return { status: "done", pool: ids.length, found, reads: fed, claims: tally(claims, reads, citedConversation), failed };
+  return {
+    status: "done",
+    pool: ids.length,
+    found,
+    reads: fed,
+    claims: tally(claims, reads, citedConversation),
+    failed,
+  };
 }

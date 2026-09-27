@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { convertToModelMessages, createUIMessageStream, createUIMessageStreamResponse, toUIMessageStream } from "ai";
+import {
+  convertToModelMessages,
+  createUIMessageStream,
+  createUIMessageStreamResponse,
+  toUIMessageStream,
+} from "ai";
 import { makeAgent } from "@/lib/agent/agent";
 import { corroborate } from "@/lib/agent/corroborate";
 import { afterAgent } from "@/lib/agent/finish";
@@ -19,7 +24,15 @@ const Body = z.object({
   id: z.string().max(100).optional(),
   trigger: z.string().optional(),
   messages: z
-    .array(z.object({ id: z.string(), role: z.enum(["user", "assistant", "system"]), parts: z.array(z.object({ type: z.string() }).loose()) }).loose())
+    .array(
+      z
+        .object({
+          id: z.string(),
+          role: z.enum(["user", "assistant", "system"]),
+          parts: z.array(z.object({ type: z.string() }).loose()),
+        })
+        .loose(),
+    )
     .min(1)
     .max(200)
     .refine((m) => m.at(-1)?.role === "user", "the last message must be the user's question"),
@@ -27,7 +40,11 @@ const Body = z.object({
 
 export async function POST(req: Request) {
   const parsed = Body.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return Response.json({ error: "Send { messages: [...] } ending with the user's question." }, { status: 400 });
+  if (!parsed.success)
+    return Response.json(
+      { error: "Send { messages: [...] } ending with the user's question." },
+      { status: 400 },
+    );
   const messages = parsed.data.messages as unknown as ChatMessage[];
   const startedAt = Date.now();
 
@@ -37,7 +54,10 @@ export async function POST(req: Request) {
     execute: async ({ writer }) => {
       const { agent, tools, model } = await makeAgent(writer);
       // A step the reader stopped has a call and no result, which a provider rejects; it is left out.
-      const input = await convertToModelMessages(messages.slice(-12), { tools, ignoreIncompleteToolCalls: true });
+      const input = await convertToModelMessages(messages.slice(-12), {
+        tools,
+        ignoreIncompleteToolCalls: true,
+      });
       const result = await agent.stream({
         messages: input,
         // It stops before the platform's 300 s limit: a stalled call otherwise hangs until the function is killed and
@@ -56,7 +76,8 @@ export async function POST(req: Request) {
         // call is a result, not an error (lib/agent/tools.ts); what is still an error gets the same plain words as a
         // failed answer, never our own exception text.
         onError: (e) => friendly(e),
-        messageMetadata: ({ part }) => (part.type === "start" ? { model: modelIdOf(model), startedAt } : undefined),
+        messageMetadata: ({ part }) =>
+          part.type === "start" ? { model: modelIdOf(model), startedAt } : undefined,
       }).getReader();
       for (let r = await reader.read(); !r.done; r = await reader.read()) writer.write(r.value);
 
@@ -71,7 +92,10 @@ export async function POST(req: Request) {
       // Then how many of the conversations this turn found back each claim, beyond the few it cites.
       if (after.checked) {
         writer.write({ type: "data-corroboration", id: "corroboration", data: { status: "running" } });
-        const corroboration = await corroborate(after.checked, steps).catch((e) => ({ status: "failed" as const, error: String(e).slice(0, 300) }));
+        const corroboration = await corroborate(after.checked, steps).catch((e) => ({
+          status: "failed" as const,
+          error: String(e).slice(0, 300),
+        }));
         writer.write({ type: "data-corroboration", id: "corroboration", data: corroboration });
       }
       writer.write({ type: "message-metadata", messageMetadata: { ms: Date.now() - startedAt } });

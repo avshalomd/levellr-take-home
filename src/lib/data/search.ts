@@ -38,7 +38,12 @@ export type SearchResult = {
   hits: SearchHit[];
 };
 
-export type Candidate = ConversationRow & { rrf: number; kw_rank: number | null; vec_rank: number | null; context_ids: string[] };
+export type Candidate = ConversationRow & {
+  rrf: number;
+  kw_rank: number | null;
+  vec_rank: number | null;
+  context_ids: string[];
+};
 
 /**
  * Embeddings are on trial (docs/DECISIONS.md D10): RETRIEVAL_EMBEDDINGS=0 turns the vector half off, leaving
@@ -52,7 +57,12 @@ export type Arms = { keywords?: boolean; embeddings?: boolean };
  * Steps 1-3: the fused candidate list, before the rerank. Exported for the eval, which scores each arm on its own
  * (keywords only, embeddings only, both) with and without the rerank - eval/retrieval.ts.
  */
-export async function candidates(q: string, filters: Filters = {}, arms: Arms = {}, limit = CANDIDATES): Promise<Candidate[]> {
+export async function candidates(
+  q: string,
+  filters: Filters = {},
+  arms: Arms = {},
+  limit = CANDIDATES,
+): Promise<Candidate[]> {
   const useKw = arms.keywords ?? true;
   const useVec = arms.embeddings ?? embeddingsOn();
   const vector = useVec ? await embedQuery(q) : null;
@@ -98,29 +108,42 @@ export async function searchConversations(
     .sort((a, b) => (b.relevance ?? 0) - (a.relevance ?? 0) || b.rrf - a.rrf)
     .slice(0, k);
 
-  const messages = await messagesFor(ranked.map((r) => r.id), ranked.flatMap((r) => r.context_ids));
+  const messages = await messagesFor(
+    ranked.map((r) => r.id),
+    ranked.flatMap((r) => r.context_ids),
+  );
   const hits: SearchHit[] = ranked.map(({ context_ids, ...r }) => ({
     ...r,
     messages: messages.filter((m) => m.conversation_id === r.id || context_ids.includes(m.id)),
   }));
-  return { query: q, filters, candidates: rows.length, rerank: ok ? "jev" : "unavailable", embeddings: useVec, hits };
+  return {
+    query: q,
+    filters,
+    candidates: rows.length,
+    rerank: ok ? "jev" : "unavailable",
+    embeddings: useVec,
+    hits,
+  };
 }
 
 /** Jev, one request per candidate, all in parallel. On any failure the fused order stands and the result says so. */
-export async function rerank(question: string, rows: { transcript: string }[]): Promise<{ scores: number[]; ok: boolean }> {
+export async function rerank(
+  question: string,
+  rows: { transcript: string }[],
+): Promise<{ scores: number[]; ok: boolean }> {
   try {
     const scores = await mapPool(rows, 24, async (r) => {
-        const res = await decide({
-          state: { question, conversation: r.transcript.slice(0, 12_000) },
-          questions: {
-            helps: noul(
-              "Does `conversation` contain information that helps answer `question` - a direct answer, an opinion, " +
-                "a report or an experience that bears on it? A conversation that only shares a word with the " +
-                "question does not help.",
-            ),
-          },
-        });
-        return res.answers.helps.noul;
+      const res = await decide({
+        state: { question, conversation: r.transcript.slice(0, 12_000) },
+        questions: {
+          helps: noul(
+            "Does `conversation` contain information that helps answer `question` - a direct answer, an opinion, " +
+              "a report or an experience that bears on it? A conversation that only shares a word with the " +
+              "question does not help.",
+          ),
+        },
+      });
+      return res.answers.helps.noul;
     });
     return { scores, ok: true };
   } catch {

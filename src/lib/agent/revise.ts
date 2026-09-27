@@ -7,7 +7,14 @@ import { flattenForAnswer } from "./agent";
 import { textModel } from "./model";
 import { claimsOf } from "@/lib/claims";
 import { figuresIn, rateMismatches, toolFigures, type KnownRate, type RateCheck } from "./rates";
-import { countMismatches, directionMismatches, pctWords, toolTrends, type ChangeRow, type DirectionCheck } from "./trends";
+import {
+  countMismatches,
+  directionMismatches,
+  pctWords,
+  toolTrends,
+  type ChangeRow,
+  type DirectionCheck,
+} from "./trends";
 import { SUPPORTED, unbackedFigures, verify, type ClaimCheck, type Verification } from "./verify";
 
 // Check, then correct once. The verifier finds the claims whose citations do not hold up; instead of showing the
@@ -25,7 +32,13 @@ export type RevisionPart =
   | { status: "running"; weak: number; cite?: boolean; counts?: boolean; text?: string }
   // `cite` on done: the kept text is the cite pass's, which added citations and changed no wording (review 2026-09-26:
   // it had read "Some wording was tightened")
-  | { status: "done"; kept: boolean; text: string; before: { supported: number; cited: number }; cite?: boolean }
+  | {
+      status: "done";
+      kept: boolean;
+      text: string;
+      before: { supported: number; cited: number };
+      cite?: boolean;
+    }
   | { status: "failed"; error: string };
 
 export type Checked = { text: string; verification: Verification; revision?: RevisionPart };
@@ -79,7 +92,12 @@ export async function checkAndRevise(
     const wrongAfter = (second.rates?.length ?? 0) + directionMismatches(text, trends).length;
     const fewerRates = weak.length ? wrongAfter <= wrongBefore : wrongAfter < wrongBefore;
     const kept = rate(second) >= rate(first) && second.cited > 0 && fewerRates;
-    const revision: RevisionPart = { status: "done", kept, text, before: { supported: first.supported, cited: first.cited } };
+    const revision: RevisionPart = {
+      status: "done",
+      kept,
+      text,
+      before: { supported: first.supported, cited: first.cited },
+    };
     on.revision?.(revision);
     return kept ? { text, verification: second, revision } : { text: answer, verification: first, revision };
   } catch (e) {
@@ -99,7 +117,10 @@ async function rewrite(
 ): Promise<string> {
   const cited = [...new Set(weak.flatMap((c) => c.citations.map((x) => x.id)))];
   const texts = new Map(
-    (await getMessagesByRef(cited.map(refOfTag).filter((r): r is number => r !== null))).map((m) => [`msg${m.ref}`, m.text]),
+    (await getMessagesByRef(cited.map(refOfTag).filter((r): r is number => r !== null))).map((m) => [
+      `msg${m.ref}`,
+      m.text,
+    ]),
   );
   const flagged = weak
     .map((c) => {
@@ -130,7 +151,10 @@ async function rewrite(
   const directionSection = directions.length
     ? "A CHECK FOUND THESE CHANGES STATED THE WRONG WAY ROUND:\n" +
       directions
-        .map((d) => `- CLAIM: ${d.claim}\n  It says ${d.name} ${d.said}; the counts give ${d.name} ${pctWords(d.pct)} per day.`)
+        .map(
+          (d) =>
+            `- CLAIM: ${d.claim}\n  It says ${d.name} ${d.said}; the counts give ${d.name} ${pctWords(d.pct)} per day.`,
+        )
         .join("\n") +
       "\nFor each, state the change the counts give, or remove it."
     : "";
@@ -148,7 +172,11 @@ async function rewrite(
     prompt:
       brief.replace(/\n\nWrite the answer to the last QUESTION now, from these results only\.$/, "") +
       `\n\nTHE ANSWER THAT WAS WRITTEN:\n${answer}\n\n` +
-      [weak.length ? `A CHECK FOUND THESE CLAIMS NOT SUPPORTED BY WHAT THEY CITE:\n${flagged}` : "", rateSection, directionSection]
+      [
+        weak.length ? `A CHECK FOUND THESE CLAIMS NOT SUPPORTED BY WHAT THEY CITE:\n${flagged}` : "",
+        rateSection,
+        directionSection,
+      ]
         .filter(Boolean)
         .join("\n\n") +
       "\n\n" +
@@ -156,7 +184,9 @@ async function rewrite(
       "do say it; narrow the claim to what its cited messages actually say; or remove it. Leave every other sentence " +
       "and citation exactly as it is. Never cite a message you did not see in the RESULTS." +
       // (open item 2026-09-26) An uncited answer's rewrite is not checked against messages, so it may not start citing.
-      (uncited ? " This answer cites no messages: add no citations, and state no figure the counts above do not give." : ""),
+      (uncited
+        ? " This answer cites no messages: add no citations, and state no figure the counts above do not give."
+        : ""),
   });
   return text;
 }
@@ -187,7 +217,9 @@ export function keepCountsRewrite(
   if (claims.some((c) => c.ids.length)) return false;
   const given = [...figures, ...figuresIn(answer).map((f) => f.value)];
   if (unbackedFigures(text, [], new Map(), given).length) return false;
-  const flagged = new Set([...rateMismatches(answer, known), ...directionMismatches(answer, trends)].map((m) => m.claim)).size;
+  const flagged = new Set(
+    [...rateMismatches(answer, known), ...directionMismatches(answer, trends)].map((m) => m.claim),
+  ).size;
   return claims.length >= claimsOf(answer).length - flagged;
 }
 
@@ -205,7 +237,11 @@ export async function correctCounts(
   const rates = rateMismatches(answer, known);
   const directions = directionMismatches(answer, trends);
   const unchanged = (revision: RevisionPart): CountsChecked => ({ text: answer, rates, revision });
-  on.revision?.({ status: "running", weak: new Set([...rates, ...directions].map((m) => m.claim)).size, counts: true });
+  on.revision?.({
+    status: "running",
+    weak: new Set([...rates, ...directions].map((m) => m.claim)).size,
+    counts: true,
+  });
   try {
     const text = proseMarks(normalizeCitations(await rewrite(answer, [], history, rates, directions, true)));
     const kept = keepCountsRewrite(answer, text, known, trends, toolFigures(history));
@@ -238,7 +274,11 @@ export const MAX_CITE_REFS = 80;
  *  Review 2026-09-26: listed in the order the tools returned them, one long thread (patch notes) filled all 80 places,
  *  most of them past the cut the model read, while the prompt asked for refs each from a different conversation.
  *  `byConv` is each conversation's refs, by its handle (conv12), for a citation written as a handle. */
-export function citableRefs(history: ReadonlyArray<ModelMessage>, retrieved: ReadonlySet<string>, max = MAX_CITE_REFS): { refs: string[]; byConv: Map<string, string[]> } {
+export function citableRefs(
+  history: ReadonlyArray<ModelMessage>,
+  retrieved: ReadonlySet<string>,
+  max = MAX_CITE_REFS,
+): { refs: string[]; byConv: Map<string, string[]> } {
   // A read_conversation result has no "## conversation" header: its handle is the call's own input.
   const handleOfCall = new Map<string, string>();
   for (const m of history)
@@ -246,7 +286,8 @@ export function citableRefs(history: ReadonlyArray<ModelMessage>, retrieved: Rea
       for (const p of m.content as Array<{ type: string; toolCallId?: string; input?: unknown }>)
         if (p.type === "tool-call" && p.toolCallId) {
           const id = (p.input as { id?: unknown } | undefined)?.id;
-          if (typeof id === "string" && /^conv\d+$/i.test(id)) handleOfCall.set(p.toolCallId, id.toLowerCase());
+          if (typeof id === "string" && /^conv\d+$/i.test(id))
+            handleOfCall.set(p.toolCallId, id.toLowerCase());
         }
 
   const groups = new Map<string, string[]>();
@@ -281,13 +322,19 @@ export function citableRefs(history: ReadonlyArray<ModelMessage>, retrieved: Rea
 
 // A citation group made only of handles and ids: [conv12], (conv12, msg40), [t3_abc123].
 const HANDLE = String.raw`(?:conv\d+|msg\d+|t[13]_[a-z0-9]{4,})`;
-const HANDLE_GROUP = new RegExp(String.raw`([[(])(\s*${HANDLE}(?:\s*[,;/&]\s*(?:and\s+)?${HANDLE})*\s*)([\])])`, "gi");
+const HANDLE_GROUP = new RegExp(
+  String.raw`([[(])(\s*${HANDLE}(?:\s*[,;/&]\s*(?:and\s+)?${HANDLE})*\s*)([\])])`,
+  "gi",
+);
 
 /** A citation written as a conversation handle becomes a message of that conversation the model read; one naming a
  *  conversation it did not read, or a raw Reddit id, cannot be placed and is reported (normalizeCitations then drops
  *  it). Review 2026-09-26: normalizeCitations had deleted them silently, so a pass that cited conversations looked
  *  like one that cited nothing. */
-export function placeHandles(text: string, byConv: ReadonlyMap<string, string[]>): { text: string; placed: number; rejected: string[] } {
+export function placeHandles(
+  text: string,
+  byConv: ReadonlyMap<string, string[]>,
+): { text: string; placed: number; rejected: string[] } {
   let placed = 0;
   const out = text.replace(HANDLE_GROUP, (_all, open: string, inner: string, close: string) => {
     const mapped = inner.replace(/\bconv\d+\b/gi, (h) => {
@@ -306,7 +353,10 @@ export function citePrompt(brief: string, answer: string, refs: readonly string[
   // The refs are listed again at the end: buried in a long brief, the one live cite pass wrote its answer back with
   // none (QA 2026-09-26, "Did people complain more in July or in September?", 10 refs in its results).
   const list = refs.length
-    ? `\n\nThe message refs in the RESULTS, the only ones you may cite: ${refs.slice(0, MAX_CITE_REFS).map((r) => `[${r}]`).join(", ")}.`
+    ? `\n\nThe message refs in the RESULTS, the only ones you may cite: ${refs
+        .slice(0, MAX_CITE_REFS)
+        .map((r) => `[${r}]`)
+        .join(", ")}.`
     : "";
   return (
     brief.replace(/\n\nWrite the answer to the last QUESTION now, from these results only\.$/, "") +
@@ -321,9 +371,20 @@ export function citePrompt(brief: string, answer: string, refs: readonly string[
 
 /** What the cite pass gave back: `text`, ready to show; `raw`, the model's own words, and why it stopped, for the log
  *  when it cited nothing; how many refs it was offered, and the handles it wrote that could and could not be placed. */
-export type Cited = { text: string; raw: string; finishReason: string; offered: number; placed: number; rejected: string[] };
+export type Cited = {
+  text: string;
+  raw: string;
+  finishReason: string;
+  offered: number;
+  placed: number;
+  rejected: string[];
+};
 
-export async function citeAnswer(answer: string, history: ModelMessage[], retrieved: ReadonlySet<string>): Promise<Cited> {
+export async function citeAnswer(
+  answer: string,
+  history: ModelMessage[],
+  retrieved: ReadonlySet<string>,
+): Promise<Cited> {
   const brief = flattenForAnswer(history)[0].content as string;
   const { refs, byConv } = citableRefs(history, retrieved);
   const { text: raw, finishReason } = await generateText({
@@ -335,5 +396,12 @@ export async function citeAnswer(answer: string, history: ModelMessage[], retrie
     prompt: citePrompt(brief, answer, refs),
   });
   const placed = placeHandles(raw, byConv);
-  return { text: proseMarks(normalizeCitations(placed.text)), raw, finishReason: String(finishReason), offered: refs.length, placed: placed.placed, rejected: placed.rejected };
+  return {
+    text: proseMarks(normalizeCitations(placed.text)),
+    raw,
+    finishReason: String(finishReason),
+    offered: refs.length,
+    placed: placed.placed,
+    rejected: placed.rejected,
+  };
 }

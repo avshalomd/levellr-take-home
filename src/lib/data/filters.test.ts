@@ -10,7 +10,10 @@ describe("whereOf", () => {
 
   it("numbers every value as a parameter, in order", () => {
     const params: unknown[] = [];
-    const sql = whereOf({ channel: "Discussion", topic: "maps", since: "2026-09-01", until: "2026-09-08", flag: "bug" }, params);
+    const sql = whereOf(
+      { channel: "Discussion", topic: "maps", since: "2026-09-01", until: "2026-09-08", flag: "bug" },
+      params,
+    );
     expect(sql).toBe(
       "c.channel = $1 AND $2 = ANY(c.topics) AND c.started_at >= $3::timestamptz AND c.started_at < $4::timestamptz" +
         ` AND c.p_bug >= ${FLAG_THRESHOLD}`,
@@ -39,9 +42,17 @@ describe("whereOf", () => {
 // Review 2026-09-26: "July 2026" reached Postgres's ::timestamptz and threw.
 describe("isIsoDate", () => {
   it("takes a day, with or without a time and zone, that the calendar has", () => {
-    for (const s of ["2026-07-01", "2026-07-01T00:00:00Z", "2026-07-01T10:30", "2026-07-01 10:30:00+02", "2024-02-29"]) expect(isIsoDate(s), s).toBe(true);
+    for (const s of [
+      "2026-07-01",
+      "2026-07-01T00:00:00Z",
+      "2026-07-01T10:30",
+      "2026-07-01 10:30:00+02",
+      "2024-02-29",
+    ])
+      expect(isIsoDate(s), s).toBe(true);
   });
   it("refuses words, a month alone and a day the calendar lacks", () => {
-    for (const s of ["July 2026", "2026-07", "07/01/2026", "2026-02-30", "2026-13-01", ""]) expect(isIsoDate(s), s).toBe(false);
+    for (const s of ["July 2026", "2026-07", "07/01/2026", "2026-02-30", "2026-13-01", ""])
+      expect(isIsoDate(s), s).toBe(false);
   });
 });

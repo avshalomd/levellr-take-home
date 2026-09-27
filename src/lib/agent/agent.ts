@@ -23,7 +23,8 @@ type StepLike = { toolResults: ReadonlyArray<{ toolName: string; output: unknown
 export const answeredOffTopic = ({ steps }: { steps: ReadonlyArray<StepLike> }) =>
   steps.at(-1)?.toolResults.some((r) => isOffTopic(r.output)) ?? false;
 /** Once turned down, out_of_scope is not offered again this turn, so the model cannot ask the same thing twice. */
-export const scopeTurnedDown = (steps: ReadonlyArray<StepLike>) => steps.some((s) => s.toolResults.some((r) => isInScope(r.output)));
+export const scopeTurnedDown = (steps: ReadonlyArray<StepLike>) =>
+  steps.some((s) => s.toolResults.some((r) => isInScope(r.output)));
 
 export async function makeAgent(writer?: UIMessageStreamWriter) {
   const p = await profile();
@@ -90,16 +91,29 @@ export function flattenForAnswer(messages: ModelMessage[]): ModelMessage[] {
   for (const m of messages) {
     if (m.role === "system") continue;
     const parts = typeof m.content === "string" ? [{ type: "text" as const, text: m.content }] : m.content;
-    for (const p of parts as Array<{ type: string; text?: string; toolName?: string; input?: unknown; output?: unknown }>) {
+    for (const p of parts as Array<{
+      type: string;
+      text?: string;
+      toolName?: string;
+      input?: unknown;
+      output?: unknown;
+    }>) {
       if (p.type === "text" && p.text?.trim()) out.push(m.role === "user" ? `QUESTION: ${p.text}` : p.text);
       else if (p.type === "tool-call") out.push(`LOOKED UP (${p.toolName}): ${JSON.stringify(p.input)}`);
       else if (p.type === "tool-result") {
         const o = p.output as { type?: string; value?: unknown } | undefined;
-        out.push(`RESULT (${p.toolName}):\n${typeof o?.value === "string" ? o.value : JSON.stringify(o?.value ?? o)}`);
+        out.push(
+          `RESULT (${p.toolName}):\n${typeof o?.value === "string" ? o.value : JSON.stringify(o?.value ?? o)}`,
+        );
       }
     }
   }
-  return [{ role: "user", content: out.join("\n\n") + "\n\nWrite the answer to the last QUESTION now, from these results only." }];
+  return [
+    {
+      role: "user",
+      content: out.join("\n\n") + "\n\nWrite the answer to the last QUESTION now, from these results only.",
+    },
+  ];
 }
 
 /** Every message id the agent was shown this turn: a citation to anything else was not read, whatever it says. */

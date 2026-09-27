@@ -19,6 +19,11 @@ export type VerificationPart =
 // "checks" when the answer was written and only its claim checks were cut short.
 export type ChatMessage = UIMessage<
   { model?: string; startedAt?: number; ms?: number; stopped?: boolean | "checks" },
-  { scanProgress: ScanProgress & { toolCallId: string }; verification: VerificationPart; revision: RevisionPart; corroboration: CorroborationPart },
+  {
+    scanProgress: ScanProgress & { toolCallId: string };
+    verification: VerificationPart;
+    revision: RevisionPart;
+    corroboration: CorroborationPart;
+  },
   InferUITools<AgentTools>
 >;

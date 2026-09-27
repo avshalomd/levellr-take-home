@@ -8,9 +8,20 @@ import { starterQuestions } from "@/lib/starters";
 // asks a bulleted question when the answer cites nothing). The questions are Home's own (lib/starters.ts), so they are
 // written from the loaded data and every one can be answered.
 
-type Topic = { key: string; name: string; n: number };
-
-const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
 
 /** "18 June 2026"; the year only on the second date of a range in the same year: "18 June to 24 September 2026". */
 export function spanInWords(from: string, to: string): string {
@@ -25,9 +36,9 @@ export function spanInWords(from: string, to: string): string {
 // The reply names no subject (QA 2026-09-26, production): "The conversations can't tell you about the weather in Oslo"
 // repeated the model's own words for the question back to the reader, and read as the app misunderstanding it. It says
 // plainly that it cannot answer and what it does know, built from the loaded dataset's name and dates, never hard-coded.
-export function offTopicReply(p: { community: string; from: string; to: string }, topics: Topic[] = []): string {
+export function offTopicReply(p: { community: string; from: string; to: string }): string {
   const span = spanInWords(p.from, p.to);
-  const questions = starterQuestions(topics).slice(0, 3);
+  const questions = starterQuestions();
   return (
     `I can't answer that. I only know what ${p.community} talked about${span ? ` ${span}` : ""}. You could ask:\n\n` +
     questions.map((q) => `- ${q}`).join("\n")

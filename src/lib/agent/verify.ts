@@ -14,12 +14,22 @@ import { figuresIn, rateMismatches, type KnownRate, type RateCheck } from "./rat
 
 export const SUPPORTED = 0.5;
 
-export type CitationCheck = { id: string; status: "ok" | "unknown-id" | "not-retrieved"; support: number | null };
+export type CitationCheck = {
+  id: string;
+  status: "ok" | "unknown-id" | "not-retrieved";
+  support: number | null;
+};
 // `notes`: why a claim fails beyond its citations' scores, in words for the rewrite (revise.ts): a figure none of its
 // messages and no count gives, or a side of the sentence with no citation of its own.
 // `unchecked`: Jev never answered for this claim (busy, rate-limited, down), so nothing is known about its support. It
 // is counted apart and never sent for a rewrite (QA 2026-09-27: one failed call read as "0 of 9 claims are backed").
-export type ClaimCheck = { claim: string; citations: CitationCheck[]; support: number | null; notes?: string[]; unchecked?: true };
+export type ClaimCheck = {
+  claim: string;
+  citations: CitationCheck[];
+  support: number | null;
+  notes?: string[];
+  unchecked?: true;
+};
 export type Verification = {
   claims: ClaimCheck[];
   supported: number; // claims whose best citation this turn read is at or above SUPPORTED
@@ -62,7 +72,9 @@ export async function verify(
     // One side, the sentence, keyed by the ref as before; two or more, each ref asked about the side it is written in.
     const sides = clauses ?? [{ claim, ids }];
     const asks = sides.flatMap((side, k) =>
-      side.ids.filter((id) => messages.has(id)).map((id) => ({ key: clauses ? `c${k}_${id}` : id, id, side: k })),
+      side.ids
+        .filter((id) => messages.has(id))
+        .map((id) => ({ key: clauses ? `c${k}_${id}` : id, id, side: k })),
     );
     let answers: Record<string, number> = {};
     let failed = false;
@@ -74,9 +86,13 @@ export async function verify(
           : { claim, evidence };
         const res = await decide({
           state,
-          questions: Object.fromEntries(asks.map((a) => [a.key, noul(SUPPORT_QUESTION(a.id, clauses ? `clauses.c${a.side}` : "claim"))])),
+          questions: Object.fromEntries(
+            asks.map((a) => [a.key, noul(SUPPORT_QUESTION(a.id, clauses ? `clauses.c${a.side}` : "claim"))]),
+          ),
         });
-        answers = Object.fromEntries(asks.map((a) => [a.key, (res.answers as Record<string, { noul: number }>)[a.key].noul]));
+        answers = Object.fromEntries(
+          asks.map((a) => [a.key, (res.answers as Record<string, { noul: number }>)[a.key].noul]),
+        );
       } catch (e) {
         // Said to the reader as "could not be checked"; the reason goes to the server log, never to the page.
         console.warn(`claim check failed: ${e instanceof Error ? e.message : String(e)}`);
@@ -97,7 +113,9 @@ export async function verify(
     // never shown to the agent, is checked and reported, but "backed" never rests on it.
     const read = (id: string) => retrieved.has(id) && messages.has(id);
     const best = (side: number, sideIds: string[]) => {
-      const s = asks.filter((a) => a.side === side && read(a.id) && answers[a.key] !== undefined).map((a) => answers[a.key]);
+      const s = asks
+        .filter((a) => a.side === side && read(a.id) && answers[a.key] !== undefined)
+        .map((a) => answers[a.key]);
       return s.length ? Math.max(...s) : sideIds.length ? null : 0;
     };
     // A sentence with two sides is as backed as its weaker side, and a side with no citation of its own is not backed.
@@ -105,15 +123,23 @@ export async function verify(
     let support = perSide.some((s) => s === null) ? null : Math.min(...(perSide as number[]));
     const notes: string[] = [];
     if (clauses)
-      for (const side of sides) if (!side.ids.length) notes.push(`The part "${side.claim}" has no citation of its own.`);
+      for (const side of sides)
+        if (!side.ids.length) notes.push(`The part "${side.claim}" has no citation of its own.`);
 
     const unbacked = figures ? unbackedFigures(claim, ids, messages, figures) : [];
-    for (const f of unbacked) notes.push(`It states ${f}, which none of its cited messages and none of the counts gives.`);
+    for (const f of unbacked)
+      notes.push(`It states ${f}, which none of its cited messages and none of the counts gives.`);
     if (unbacked.length) support = 0;
     // A figure no source gives fails the claim whatever Jev would have said, so only a claim with nothing else against
     // it is left unchecked.
     const unchecked = failed && !unbacked.length;
-    return { claim, citations, support, ...(notes.length ? { notes } : {}), ...(unchecked ? { unchecked: true as const } : {}) };
+    return {
+      claim,
+      citations,
+      support,
+      ...(notes.length ? { notes } : {}),
+      ...(unchecked ? { unchecked: true as const } : {}),
+    };
   });
 
   const cited = checked.filter((c) => c.citations.length);
@@ -123,7 +149,9 @@ export async function verify(
     unchecked: cited.filter((c) => c.unchecked).length,
     supported: cited.filter((c) => (c.support ?? 0) >= SUPPORTED).length,
     invalidIds: allIds.filter((id) => !messages.has(id)),
-    uncitedSentences: checked.filter((c) => !c.citations.length && /\b(people|players|users|many|some|most|several)\b/i.test(c.claim)).length,
+    uncitedSentences: checked.filter(
+      (c) => !c.citations.length && /\b(people|players|users|many|some|most|several)\b/i.test(c.claim),
+    ).length,
     ...(known ? { rates: rateMismatches(answer, known) } : {}),
   };
 }

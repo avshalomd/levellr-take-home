@@ -2,11 +2,26 @@ import "server-only";
 import { tool, type JSONValue, type ModelMessage, type UIMessageStreamWriter } from "ai";
 import { z } from "zod";
 import { aggregate, GROUPINGS, METRICS, type AggregateResult } from "@/lib/data/aggregate";
-import { conversationIdOf, getConversation, getOverview, topicLabels as storedTopicLabels } from "@/lib/data/read";
+import {
+  conversationIdOf,
+  getConversation,
+  getOverview,
+  topicLabels as storedTopicLabels,
+} from "@/lib/data/read";
 import { msgTag } from "@/lib/refs";
 import type { Profile } from "@/lib/data/profile";
 import { followUpContext, isRefusal, lastQuestion, questionsOf, unaskedFlag, type Refusal } from "./flags";
-import { aggregateForModel, conversationsForModel, failedWords, FLAG_WORDS, periodOf, refusalWords, scanForModel, voicesForModel, type ScanExtras } from "./for-model";
+import {
+  aggregateForModel,
+  conversationsForModel,
+  failedWords,
+  FLAG_WORDS,
+  periodOf,
+  refusalWords,
+  scanForModel,
+  voicesForModel,
+  type ScanExtras,
+} from "./for-model";
 import { changeAgainst, type CountLike } from "./trends";
 import type { SliceFilters } from "./slices";
 import { OFF_TOPIC_MODEL_WORDS, offTopicReply, type OffTopic } from "./off-topic";
@@ -27,7 +42,10 @@ import { isIsoDate } from "@/lib/data/filters";
 // error and correct the date).
 const isoDate = z
   .string()
-  .refine(isIsoDate, { error: (i) => `${JSON.stringify(i.input)} is not a date the tools read: write an ISO date, e.g. 2026-07-01 (a month is since 2026-07-01, until 2026-08-01)` });
+  .refine(isIsoDate, {
+    error: (i) =>
+      `${JSON.stringify(i.input)} is not a date the tools read: write an ISO date, e.g. 2026-07-01 (a month is since 2026-07-01, until 2026-08-01)`,
+  });
 
 const filters = z
   .object({
@@ -41,7 +59,9 @@ const filters = z
     channel: z
       .string()
       .optional()
-      .describe("one Discord channel by its exact name, e.g. new-release-general, remaster-discussion; dataset_overview lists them"),
+      .describe(
+        "one Discord channel by its exact name, e.g. new-release-general, remaster-discussion; dataset_overview lists them",
+      ),
     since: isoDate.optional().describe("ISO date, inclusive, e.g. 2026-09-09"),
     until: isoDate.optional().describe("ISO date, exclusive, e.g. 2026-10-01"),
     flag: z
@@ -52,7 +72,10 @@ const filters = z
           "excites or frustrates people, what to post about, or about bugs, requests or help; never for how people " +
           "feel about one thing, react or take part. A call with a flag the question does not name is refused",
       ),
-    author: z.string().optional().describe("only conversations this person wrote in, by their username exactly as the tools print it"),
+    author: z
+      .string()
+      .optional()
+      .describe("only conversations this person wrote in, by their username exactly as the tools print it"),
   })
   .describe("the slice of conversations: every field narrows it");
 
@@ -62,7 +85,9 @@ const filters = z
 const about = z
   .string()
   .optional()
-  .describe("always give it: what this is about, in 2-6 plain words for the reader, e.g. 'the Rondo changes', 'lag after the update'");
+  .describe(
+    "always give it: what this is about, in 2-6 plain words for the reader, e.g. 'the Rondo changes', 'lag after the update'",
+  );
 
 // A call narrowed by a flag the reader's question (read with the one it follows up) never named is refused before it
 // reads anything: the model is told why and reads again without the flag (for-model.ts refusalWords). A note beside
@@ -76,13 +101,17 @@ function refusalOf(f: Filters | undefined, messages: ModelMessage[]): Refusal | 
 /** What the model reads back: a refusal's words, else the tool's own compact text. */
 const modelOutput =
   <T>(text: (o: T) => string) =>
-  ({ output }: { output: unknown }) => ({ type: "text" as const, value: isRefusal(output) ? output.words : readBack(output, text) });
+  ({ output }: { output: unknown }) => ({
+    type: "text" as const,
+    value: isRefusal(output) ? output.words : readBack(output, text),
+  });
 
 // (sanity QA 2026-09-26) Every earlier turn's results pass through here again on the next turn, from the chat the
 // browser sends (route.ts convertToModelMessages), so a result saved in a shape the text no longer expects threw and
 // failed the whole follow-up ("chat failed TypeError ... reading 'slice'", a seeded find hit). for-model.ts reads the
 // hit fields defensively; this is the net under every other shape: the result is said to be unreadable, and logged.
-export const UNREADABLE_RESULT = "This earlier result could not be read back. Read the conversations again if the answer needs them.";
+export const UNREADABLE_RESULT =
+  "This earlier result could not be read back. Read the conversations again if the answer needs them.";
 function readBack<T>(output: unknown, text: (o: T) => string): string {
   try {
     return text(output as T);
@@ -120,12 +149,19 @@ export async function once<T>(tool: Parameters<typeof failedWords>[0], run: () =
 // What a dropped connection, a timeout or a busy provider looks like: Node's socket codes, Postgres's connection,
 // resource and cancel classes (08, 53, 57), an AI SDK error that says it may be retried, and the words these carry
 // when only a message survives. Anything else (a data or syntax error, 22xxx or 42xxx, our own errors) is not.
-const TRANSIENT_CODES = /^(?:ECONNRESET|ECONNREFUSED|ECONNABORTED|ETIMEDOUT|EPIPE|EAI_AGAIN|UND_ERR_\w+|08\w{3}|53\w{3}|57P0\d|57014|40001|40P01)$/;
+const TRANSIENT_CODES =
+  /^(?:ECONNRESET|ECONNREFUSED|ECONNABORTED|ETIMEDOUT|EPIPE|EAI_AGAIN|UND_ERR_\w+|08\w{3}|53\w{3}|57P0\d|57014|40001|40P01)$/;
 const TRANSIENT_WORDS =
   /\b(?:time[d ]?out|timeout|socket hang up|fetch failed|network error|connection (?:terminated|closed|reset|refused|error)|ECONNRESET|ECONNREFUSED|ETIMEDOUT|too many (?:requests|connections)|rate limit\w*|overloaded|429|502|503|504)\b/i;
 export function isTransient(e: unknown, depth = 0): boolean {
   if (!e || typeof e !== "object" || e instanceof UnknownTopic || depth > 3) return false;
-  const o = e as { name?: unknown; code?: unknown; isRetryable?: unknown; message?: unknown; cause?: unknown };
+  const o = e as {
+    name?: unknown;
+    code?: unknown;
+    isRetryable?: unknown;
+    message?: unknown;
+    cause?: unknown;
+  };
   if (o.name === "AbortError" || o.name === "TimeoutError" || o.isRetryable === true) return true;
   if (typeof o.code === "string" && TRANSIENT_CODES.test(o.code)) return true;
   if (typeof o.message === "string" && TRANSIENT_WORDS.test(o.message)) return true;
@@ -161,7 +197,8 @@ async function checked(f: Filters | undefined, keys: () => Promise<string[]>): P
   const out = clean(f);
   if (out.topic) {
     const known = await keys();
-    if (!known.includes(out.topic)) throw new UnknownTopic(`No topic "${out.topic}". The topic labels are: ${known.join(", ")}.`);
+    if (!known.includes(out.topic))
+      throw new UnknownTopic(`No topic "${out.topic}". The topic labels are: ${known.join(", ")}.`);
   }
   return out;
 }
@@ -195,10 +232,18 @@ export function makeTools(writer?: UIMessageStreamWriter, p?: Profile) {
         `report. Use it for "what are people saying about X", "how many complain about Y", "why". Slices over ${MAX_SCAN} ` +
         "conversations are refused with a breakdown by topic and week so you can narrow.",
       inputSchema: z.object({
-        question: z.string().describe("a precise relevance question, e.g. 'Does anyone report stutter or FPS drops?'"),
+        question: z
+          .string()
+          .describe("a precise relevance question, e.g. 'Does anyone report stutter or FPS drops?'"),
         about,
         filters: filters.optional(),
-        top: z.number().int().min(1).max(15).optional().describe("how many conversations to return (default 10)"),
+        top: z
+          .number()
+          .int()
+          .min(1)
+          .max(15)
+          .optional()
+          .describe("how many conversations to return (default 10)"),
       }),
       execute: async ({ question, filters: f, top }, { toolCallId, messages }) => {
         const refused = refusalOf(f, messages);
@@ -207,13 +252,19 @@ export function makeTools(writer?: UIMessageStreamWriter, p?: Profile) {
         const read: ScanResult = await once("scan", () =>
           scan(readQuestion(question, messages), slice, {
             top,
-            onProgress: (p) => writer?.write({ type: "data-scanProgress", id: toolCallId, data: { ...p, toolCallId } }),
+            onProgress: (p) =>
+              writer?.write({ type: "data-scanProgress", id: toolCallId, data: { ...p, toolCallId } }),
           }),
         );
         if (read.status !== "ok") return read;
         const note = releaseNote(lastQuestion(messages), slice);
         // The days the read covers travel with it, like a count's, so its counts can be given per day (for-model.ts).
-        return { ...read, sliceMood: await sliceMood(slice), period: periodOf(slice, window), ...(note ? { notes: [note] } : {}) };
+        return {
+          ...read,
+          sliceMood: await sliceMood(slice),
+          period: periodOf(slice, window),
+          ...(note ? { notes: [note] } : {}),
+        };
       },
       toModelOutput: modelOutput<ScanResult & ScanExtras>((o) => scanForModel(o, MAX_SCAN)),
     }),
@@ -245,7 +296,8 @@ export function makeTools(writer?: UIMessageStreamWriter, p?: Profile) {
     aggregate: tool({
       description:
         "Exact numbers from the labels: counts of conversations, their messages, people and reactions, engagement " +
-        "(distinct authors + replies + reactions: what resonates), sentiment and label shares, grouped by day, week, " + "month, topic or channel. Use for trends, comparisons and what resonates. Every number you " +
+        "(distinct authors + replies + reactions: what resonates), sentiment and label shares, grouped by day, week, " +
+        "month, topic or channel. Use for trends, comparisons and what resonates. Every number you " +
         "state must come from here or from a scan count. The unit is the conversation, dated by the day it starts. By " +
         "topic, a conversation counts under every topic it touches, so the rows overlap and shares by topic can add up " +
         "to more than 100%.",
@@ -265,7 +317,15 @@ export function makeTools(writer?: UIMessageStreamWriter, p?: Profile) {
         // (production QA 2026-09-26: +124% stated for +121%). Named as the reader knows each row.
         const names = new Map((await topicLabels()).map((l) => [l.key, l.name]));
         const nameOf = (key: string, sf: SliceFilters) =>
-          group_by === "topic" ? (names.get(key) ?? key) : group_by !== "none" ? key : sf.topic ? (names.get(sf.topic) ?? sf.topic) : sf.flag ? (FLAG_WORDS[sf.flag] ?? sf.flag) : "all conversations";
+          group_by === "topic"
+            ? (names.get(key) ?? key)
+            : group_by !== "none"
+              ? key
+              : sf.topic
+                ? (names.get(sf.topic) ?? sf.topic)
+                : sf.flag
+                  ? (FLAG_WORDS[sf.flag] ?? sf.flag)
+                  : "all conversations";
         const change = changeAgainst(counts, withDays, nameOf);
         counts.push(withDays);
         return change ? { ...withDays, change } : withDays;
@@ -304,7 +364,14 @@ export function makeTools(writer?: UIMessageStreamWriter, p?: Profile) {
       toModelOutput: ({ output }: { output: unknown }) => {
         const c = output as Awaited<ReturnType<typeof getConversation>>;
         return c
-          ? { type: "text", value: `${c.thread_title}\n` + c.messages.map((m) => `[${msgTag(m.ref)}] ${m.author} ${m.ts.slice(0, 16)}: ${m.text}`).join("\n") }
+          ? {
+              type: "text",
+              value:
+                `${c.thread_title}\n` +
+                c.messages
+                  .map((m) => `[${msgTag(m.ref)}] ${m.author} ${m.ts.slice(0, 16)}: ${m.text}`)
+                  .join("\n"),
+            }
           : { type: "text", value: "No such conversation." };
       },
     }),
@@ -322,11 +389,13 @@ export function makeTools(writer?: UIMessageStreamWriter, p?: Profile) {
         // from them. A check that could not be made takes the model's call as it stands.
         const bears = p ? await bearsOn(lastQuestion(messages), p) : null;
         if (bears !== null && bears >= SCOPE_BAR) return { status: "in-scope", bears };
-        const o = await getOverview().catch(() => null);
         const who = p ?? { community: "the community", from: "", to: "" };
-        return { status: "off-topic", text: offTopicReply(who, o?.topics ?? []) };
+        return { status: "off-topic", text: offTopicReply(who) };
       },
-      toModelOutput: ({ output }: { output: unknown }) => ({ type: "text" as const, value: isInScope(output) ? IN_SCOPE_WORDS : OFF_TOPIC_MODEL_WORDS }),
+      toModelOutput: ({ output }: { output: unknown }) => ({
+        type: "text" as const,
+        value: isInScope(output) ? IN_SCOPE_WORDS : OFF_TOPIC_MODEL_WORDS,
+      }),
     }),
   };
 }
@@ -348,7 +417,9 @@ async function sliceMood(f: Filters): Promise<number | null> {
 async function knownTopics(): Promise<{ key: string; name: string }[]> {
   const stored = await storedTopicLabels();
   if (stored.length) return stored;
-  const rows = await query<{ key: string }>(`SELECT DISTINCT unnest(topics) AS key FROM conversations ORDER BY 1`);
+  const rows = await query<{ key: string }>(
+    `SELECT DISTINCT unnest(topics) AS key FROM conversations ORDER BY 1`,
+  );
   return rows.map((r) => ({ key: r.key, name: r.key }));
 }
 

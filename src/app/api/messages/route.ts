@@ -6,7 +6,9 @@ export async function GET(req: Request) {
   const params = new URL(req.url).searchParams;
   const list = (k: string) => (params.get(k) ?? "").split(",").filter(Boolean).slice(0, 50);
   // A ref is a Postgres integer: anything outside it is simply not a message (and would overflow the query).
-  const refs = list("refs").map(Number).filter((n) => Number.isInteger(n) && n > 0 && n <= 2_147_483_647);
+  const refs = list("refs")
+    .map(Number)
+    .filter((n) => Number.isInteger(n) && n > 0 && n <= 2_147_483_647);
   try {
     return Response.json(refs.length ? await getMessagesByRef(refs) : await getMessages(list("ids")));
   } catch (e) {

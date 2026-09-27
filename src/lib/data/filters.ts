@@ -19,7 +19,8 @@ export const FLAG_THRESHOLD = 0.5;
 // A date filter goes to Postgres as `::timestamptz`, which throws on "July 2026" or "2026-02-30". The tools check the
 // shape first, so the model is told plainly what to send instead of seeing a database error, or a retry hiding one
 // (review 2026-09-26). A day, optionally with a time and zone: "2026-07-01", "2026-07-01T00:00:00Z".
-const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}(?::?\d{2})?)?)?$/;
+const ISO_DATE =
+  /^(\d{4})-(\d{2})-(\d{2})(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}(?::?\d{2})?)?)?$/;
 
 /** Whether a date filter is an ISO date Postgres reads: the right shape, and a day the calendar has. */
 export function isIsoDate(s: string): boolean {
@@ -51,9 +52,13 @@ export const CONV_COLUMNS = `c.id, c.ref, c.channel, c.kind, c.started_at, c.end
   c.p_excited, c.p_frustrated, c.p_bug, c.p_feature, c.p_help, c.p_noise`;
 
 /** The columns every message read selects, as MessageRow. `thread_id` is the conversation the message belongs to: the
- * evidence panel opens a conversation as its thread tree (there are no Discord threads in the export). */
+ * evidence panel opens a conversation as its thread tree (there are no Discord threads in the export). The panel's
+ * components come from the reference build, so the fields it reads there are given here in this data's terms: `score`
+ * is the message's reactions, every message is a "message" (no thread-opening post), and none is removed, a bot's or
+ * from before the window (the export has none of these, docs/DESIGN.md). */
 export const MSG_COLUMNS = (text = "m.text") =>
-  `m.id, m.ref, m.channel, m.conversation_id AS thread_id, m.reply_to, m.conversation_id, m.author, m.ts, ${text} AS text, m.n_reactions`;
+  `m.id, m.ref, m.channel, m.conversation_id AS thread_id, m.reply_to, m.conversation_id, m.author, m.ts, ${text} AS text,
+   m.n_reactions, m.n_reactions AS score, 'message' AS kind, false AS removed, false AS is_bot, true AS in_window`;
 
 export function whereOf(f: Filters, params: unknown[], alias = "c"): string {
   const parts: string[] = [];
@@ -70,6 +75,8 @@ export function whereOf(f: Filters, params: unknown[], alias = "c"): string {
   if (f.flag) parts.push(`${alias}.${FLAG_COLUMN[f.flag]} >= ${FLAG_THRESHOLD}`);
   // A person: every conversation they wrote at least one message in (messages_author_idx serves the lookup).
   if (f.author)
-    parts.push(`EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = ${alias}.id AND m.author = ${p(f.author)})`);
+    parts.push(
+      `EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = ${alias}.id AND m.author = ${p(f.author)})`,
+    );
   return parts.length ? parts.join(" AND ") : "TRUE";
 }

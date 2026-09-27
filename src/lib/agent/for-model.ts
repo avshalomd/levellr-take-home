@@ -93,7 +93,11 @@ export function periodOf(f: Filters, w?: DataWindow): { since: string; until: st
   const start = Math.max(f.since ? dayOf(f.since) : -Infinity, w?.from ? dayOf(w.from) : -Infinity);
   const end = Math.min(f.until ? dayOf(f.until) : Infinity, w?.to ? dayOf(w.to) + DAY : Infinity);
   if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
-  return { since: isoOf(start), until: isoOf(Math.max(start, end)), days: Math.max(0, Math.round((end - start) / DAY)) };
+  return {
+    since: isoOf(start),
+    until: isoOf(Math.max(start, end)),
+    days: Math.max(0, Math.round((end - start) / DAY)),
+  };
 }
 
 const perDay = (n: number, days: number) => (n / days).toFixed(1);
@@ -108,22 +112,35 @@ export const COUNTS_ONLY =
  *  and gives a per-day rate: comparing July (31 days) with 1-24 September by raw counts, an answer called 144 against 109
  *  "the biggest shift" when per day it was flat, 4.6 against 4.5 (QA 2026-09-26). `period` is the days the tool
  *  worked out (tools.ts), clipped to the data. */
-export function aggregateForModel(o: AggregateResult & { period?: { since: string; until: string; days: number } | null; change?: Change }): string {
+export function aggregateForModel(
+  o: AggregateResult & { period?: { since: string; until: string; days: number } | null; change?: Change },
+): string {
   const isMood = o.metric === "avg_sentiment";
   const name = isMood
     ? "average mood (0-100, the scale the app shows; say it as e.g. 24/100)"
     : o.metric === "engagement"
       ? "engagement (distinct authors + replies + reactions, summed over the conversations)"
       : o.metric;
-  const summed = o.metric === "conversations" || o.metric === "messages" || o.metric === "engagement" || o.metric === "reactions";
+  const summed =
+    o.metric === "conversations" ||
+    o.metric === "messages" ||
+    o.metric === "engagement" ||
+    o.metric === "reactions";
   const rated = summed && o.period && o.period.days > 0 && o.groupBy !== "day";
   const days = o.period?.days ?? 0;
   const value = (r: { key: string; value: number }) => {
     if (isMood) return mood(r.value);
     if (!rated) return String(r.value);
     // A week row holds only the days of its week inside the period (a partial first or last week).
-    const d = o.groupBy === "week" ? weekDaysIn(r.key, o.period!) : o.groupBy === "month" ? monthDaysIn(r.key, o.period!) : days;
-    return d > 0 ? `${r.value}, ${perDay(r.value, d)} per day over ${d} ${d === 1 ? "day" : "days"}` : String(r.value);
+    const d =
+      o.groupBy === "week"
+        ? weekDaysIn(r.key, o.period!)
+        : o.groupBy === "month"
+          ? monthDaysIn(r.key, o.period!)
+          : days;
+    return d > 0
+      ? `${r.value}, ${perDay(r.value, d)} per day over ${d} ${d === 1 ? "day" : "days"}`
+      : String(r.value);
   };
   // A count by day or by week also gets its total and rate for the whole period (review 2026-09-26, live): asked how
   // September's daily rate compared with July's, the agent counted both months by day, got no rate, and worked out
@@ -139,7 +156,7 @@ export function aggregateForModel(o: AggregateResult & { period?: { since: strin
       inAll +
       (rated || inAll
         ? " To compare periods of different lengths, compare the per-day rates, never the raw counts, and give the " +
-          "rate with its days (\"4.6 per day over 31 days\")."
+          'rate with its days ("4.6 per day over 31 days").'
         : "")
     : "";
   return (
@@ -207,8 +224,11 @@ function conversationForModel(hit: Hit): string {
     .map((m) => `[msg${m.ref}] ${str(m.author) || "?"} · ${str(m.ts).slice(0, 10) || "?"}: ${m.text}`);
   const text = str(h.transcript) || [str(h.thread_title), ...previews].filter(Boolean).join("\n");
   // Every topic the conversation touches, primary first (D46); a hit saved before topics were multi-label has only one.
-  const topics = Array.isArray(h.topics) ? (h.topics as unknown[]).filter((t): t is string => typeof t === "string" && t !== "") : [];
-  const topicLine = topics.length > 1 ? `topics ${topics.join(", ")}` : `topic ${topics[0] ?? (str(h.topic) || "?")}`;
+  const topics = Array.isArray(h.topics)
+    ? (h.topics as unknown[]).filter((t): t is string => typeof t === "string" && t !== "")
+    : [];
+  const topicLine =
+    topics.length > 1 ? `topics ${topics.join(", ")}` : `topic ${topics[0] ?? (str(h.topic) || "?")}`;
   const engagement = typeof h.engagement === "number" ? ` · engagement ${h.engagement}` : "";
   return (
     `## conversation ${handle} · ${str(h.channel) || "?"} · ${topicLine} · ` +
@@ -218,7 +238,11 @@ function conversationForModel(hit: Hit): string {
 
 /** What a read adds for the model beside the scan itself (tools.ts): the average mood of the slice it read, from the
  *  labels, and notes on how the read was made. */
-export type ScanExtras = { sliceMood?: number | null; notes?: string[]; period?: { since: string; until: string; days: number } | null };
+export type ScanExtras = {
+  sliceMood?: number | null;
+  notes?: string[];
+  period?: { since: string; until: string; days: number } | null;
+};
 
 export function scanForModel(o: ScanResult & ScanExtras, maxScan: number): string {
   if (o.status === "empty") return "No conversations match these filters.";
@@ -292,7 +316,10 @@ export function voicesForModel(o: VoicesResult): string {
     `The ${o.rows.length} most active of ${o.total_authors} people in ${sliceWords(o.filters)} ` +
     `(messages, conversations written in, conversations started, reactions on their messages, first and last message):\n` +
     o.rows
-      .map((v) => `${v.author}: ${v.messages} messages in ${v.conversations} conversations, started ${v.started}, ${v.reactions} reactions, ${v.first_ts.slice(0, 10)} to ${v.last_ts.slice(0, 10)}`)
+      .map(
+        (v) =>
+          `${v.author}: ${v.messages} messages in ${v.conversations} conversations, started ${v.started}, ${v.reactions} reactions, ${v.first_ts.slice(0, 10)} to ${v.last_ts.slice(0, 10)}`,
+      )
       .join("\n")
   );
 }

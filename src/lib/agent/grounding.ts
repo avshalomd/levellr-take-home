@@ -20,7 +20,11 @@ const READS = new Set(["scan", "find", "read_conversation"]);
 const COUNTS = new Set(["aggregate", "voices"]);
 
 /** The tools a turn used and got a real result from: a refusal read nothing, and an error returned nothing. */
-export function toolsUsed(steps: ReadonlyArray<StepLike>): { read: boolean; counted: boolean; offTopic: string | null } {
+export function toolsUsed(steps: ReadonlyArray<StepLike>): {
+  read: boolean;
+  counted: boolean;
+  offTopic: string | null;
+} {
   let read = false;
   let counted = false;
   let offTopic: string | null = null;
@@ -32,7 +36,8 @@ export function toolsUsed(steps: ReadonlyArray<StepLike>): { read: boolean; coun
       else if (p.toolName === "scan") read ||= (p.output as { status?: string } | null)?.status === "ok";
       // A search that found nothing read nothing (review 2026-09-26): it had counted as a read, so an answer resting
       // on counts and an empty search was sent to the cite pass and read as "not checked" rather than "counts only".
-      else if (p.toolName === "find") read ||= ((p.output as { hits?: unknown[] } | null)?.hits?.length ?? 0) > 0;
+      else if (p.toolName === "find")
+        read ||= ((p.output as { hits?: unknown[] } | null)?.hits?.length ?? 0) > 0;
       else if (READS.has(p.toolName)) read ||= Boolean(p.output);
       else if (COUNTS.has(p.toolName)) counted = true;
     }
@@ -49,7 +54,12 @@ export const asksWhatPeopleSay = (question: string) => !NUMBERS_ONLY.test(questi
 /** Whether the turn has tried to read at all: any call to a reading tool, whatever came of it (a refusal, a failure,
  *  an empty or too-broad slice). */
 export function triedToRead(steps: ReadonlyArray<StepLike>): boolean {
-  return steps.some((s) => s.content.some((part) => READS.has((part as Part).toolName ?? "") && /^tool-(?:call|result|error)$/.test((part as Part).type)));
+  return steps.some((s) =>
+    s.content.some(
+      (part) =>
+        READS.has((part as Part).toolName ?? "") && /^tool-(?:call|result|error)$/.test((part as Part).type),
+    ),
+  );
 }
 
 /** Whether the next step must read before answering: the turn has counted, has not tried to read, and the question
@@ -61,7 +71,11 @@ export function needsRead(steps: ReadonlyArray<StepLike>, question: string): boo
   return used.counted && !used.read && !used.offTopic && !triedToRead(steps) && asksWhatPeopleSay(question);
 }
 
-export type Grounding = { kind: "cited" } | { kind: "off-topic"; text: string } | { kind: "uncited"; read: boolean } | { kind: "none" };
+export type Grounding =
+  | { kind: "cited" }
+  | { kind: "off-topic"; text: string }
+  | { kind: "uncited"; read: boolean }
+  | { kind: "none" };
 
 /** How an answer stands. `cites` is whether it has citations. An answer that used no tool (a question back, a greeting)
  *  has nothing that could have been cited, and says nothing under it. */

@@ -84,8 +84,10 @@ export function flagsNamed(text: string): Set<string> {
 // "Short" alone was not a follow-up either: "How do players feel?" and "Who is most active?" are four words. A short
 // fragment is, when it does not open with a question word ("In July?", "September?"), or is one or two words ("Why?").
 const FOLLOW_UP = /^\s*(?:and|also|same|what about|how about|og|hva med|samme)\b/i;
-const QUESTION_WORD = /^\s*(?:how|who|what|why|which|when|where|is|are|was|were|do|does|did|can|could|has|have|will|would|should|hvordan|hvem|hva|hvorfor|hvilke|hvilken|når|hvor|er|var|har|kan|vil)\b/i;
-const ABOUT_PEOPLE = /\b(?:feel\w*|react\w*|mood|think\w*|opinions?|views?|sentiment|who|whom|føl\w*|reag\w*|stemning\w*|synes|mener|tenk\w*|hvem)\b/i;
+const QUESTION_WORD =
+  /^\s*(?:how|who|what|why|which|when|where|is|are|was|were|do|does|did|can|could|has|have|will|would|should|hvordan|hvem|hva|hvorfor|hvilke|hvilken|når|hvor|er|var|har|kan|vil)\b/i;
+const ABOUT_PEOPLE =
+  /\b(?:feel\w*|react\w*|mood|think\w*|opinions?|views?|sentiment|who|whom|føl\w*|reag\w*|stemning\w*|synes|mener|tenk\w*|hvem)\b/i;
 /** Whether a question leans on the one before it by its form alone: it opens with a follow-up word, or is a short
  *  fragment. What a read looks for uses this (followUpContext). */
 function leansOnBefore(q: string): boolean {
@@ -121,7 +123,9 @@ export function followUpContext(questions: ReadonlyArray<string>): string {
 }
 
 const textOf = (m: ModelMessage) =>
-  typeof m.content === "string" ? m.content : m.content.map((p) => (p.type === "text" ? p.text : "")).join(" ");
+  typeof m.content === "string"
+    ? m.content
+    : m.content.map((p) => (p.type === "text" ? p.text : "")).join(" ");
 
 /** The reader's questions, oldest first, from the messages a tool call was made in. */
 export function questionsOf(messages: ReadonlyArray<ModelMessage>): string[] {
@@ -135,7 +139,10 @@ export function lastQuestion(messages: ReadonlyArray<ModelMessage>): string {
 
 /** The flag a call narrowed to that the question (read with the one it follows up) never named, if any. The tools
  *  refuse such a call (lib/agent/tools.ts). */
-export function unaskedFlag(flag: string | undefined, messages: ReadonlyArray<ModelMessage>): string | undefined {
+export function unaskedFlag(
+  flag: string | undefined,
+  messages: ReadonlyArray<ModelMessage>,
+): string | undefined {
   return flag && !flagsNamed(questionInContext(questionsOf(messages))).has(flag) ? flag : undefined;
 }
 

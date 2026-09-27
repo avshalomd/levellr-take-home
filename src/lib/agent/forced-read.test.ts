@@ -8,21 +8,45 @@ import { MockLanguageModelV4 } from "ai/test";
 
 const scanMock = vi.fn();
 vi.mock("@/lib/data/profile", () => ({
-  profile: async () => ({ community: "r/PUBATTLEGROUNDS", platform: "Reddit", about: "", from: "2026-06-18", to: "2026-09-24", events: null }),
+  profile: async () => ({
+    community: "r/PUBATTLEGROUNDS",
+    platform: "Reddit",
+    about: "",
+    from: "2026-06-18",
+    to: "2026-09-24",
+    events: null,
+  }),
 }));
 vi.mock("@/lib/data/scan", () => ({ scan: (...a: unknown[]) => scanMock(...a), MAX_SCAN: 2500 }));
 vi.mock("@/lib/data/search", () => ({ searchConversations: vi.fn() }));
 vi.mock("@/lib/data/voices", () => ({ topVoices: vi.fn() }));
 vi.mock("@/lib/data/aggregate", () => ({
-  aggregate: vi.fn(async () => ({ metric: "conversations", groupBy: "none", filters: {}, rows: [{ key: "all", value: 202, n: 202 }] })),
+  aggregate: vi.fn(async () => ({
+    metric: "conversations",
+    groupBy: "none",
+    filters: {},
+    rows: [{ key: "all", value: 202, n: 202 }],
+  })),
   METRICS: { conversations: {} },
   GROUPINGS: { none: {} },
 }));
-vi.mock("@/lib/data/read", () => ({ conversationIdOf: vi.fn(), getConversation: vi.fn(), getOverview: vi.fn() }));
+vi.mock("@/lib/data/read", () => ({
+  conversationIdOf: vi.fn(),
+  getConversation: vi.fn(),
+  getOverview: vi.fn(),
+}));
 vi.mock("@/lib/labels/store", () => ({ active: async () => ({ labels: [] }) }));
 
-const usage = { inputTokens: { total: 1, noCache: 1, cacheRead: undefined, cacheWrite: undefined }, outputTokens: { total: 1, text: 1, reasoning: undefined } };
-const call = (id: string, toolName: string, input: object) => ({ type: "tool-call" as const, toolCallId: id, toolName, input: JSON.stringify(input) });
+const usage = {
+  inputTokens: { total: 1, noCache: 1, cacheRead: undefined, cacheWrite: undefined },
+  outputTokens: { total: 1, text: 1, reasoning: undefined },
+};
+const call = (id: string, toolName: string, input: object) => ({
+  type: "tool-call" as const,
+  toolCallId: id,
+  toolName,
+  input: JSON.stringify(input),
+});
 // The model counts, then reads whenever it is made to, then answers when it is not.
 const choices: unknown[] = [];
 let n = 0;
@@ -37,7 +61,12 @@ const model = new MockLanguageModelV4({
           ? [call(`s${i}`, "scan", { question: "What do people complain about?" })]
           : [{ type: "text" as const, text: "One read didn't finish, so this covers only the counts." }];
     const calls = content.some((c) => c.type === "tool-call");
-    return { content, finishReason: { unified: calls ? "tool-calls" : "stop", raw: undefined }, usage, warnings: [] };
+    return {
+      content,
+      finishReason: { unified: calls ? "tool-calls" : "stop", raw: undefined },
+      usage,
+      warnings: [],
+    };
   },
 });
 vi.mock("./model", () => ({ chatModel: () => model, answerModel: () => model }));

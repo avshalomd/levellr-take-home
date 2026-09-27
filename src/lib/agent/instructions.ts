@@ -11,7 +11,8 @@ export const CHANNELS = `- new-release-discussion, new-release-spoilers: Bushido
 
 const DAY = 86_400_000;
 /** The day `days` before now, as the tools take a date: "the last 3 days" is since this day. */
-export const daysBefore = (now: string, days: number) => new Date(Date.parse(now) - days * DAY).toISOString().slice(0, 10);
+export const daysBefore = (now: string, days: number) =>
+  new Date(Date.parse(now) - days * DAY).toISOString().slice(0, 10);
 
 // The agent's standing instructions. Kept short and concrete: every rule here is one the eval checks. Nothing in them
 // is about one community: who the community is comes from the dataset's profile, the topic labels from the team's

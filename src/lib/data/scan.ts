@@ -35,7 +35,14 @@ export type ScanResult =
       relevantIds: string[]; // every relevant conversation, most relevant first, up to RELEVANT_IDS: the pool a claim is checked against
       hits: ScanHit[];
     }
-  | { status: "too-broad"; question: string; filters: Filters; total: number; byTopic: Facet[]; byWeek: Facet[] }
+  | {
+      status: "too-broad";
+      question: string;
+      filters: Filters;
+      total: number;
+      byTopic: Facet[];
+      byWeek: Facet[];
+    }
   | { status: "empty"; question: string; filters: Filters };
 
 export type ScanProgress = { done: number; total: number; relevant: number };
@@ -48,7 +55,10 @@ export async function scan(
   const top = opts.top ?? 10;
   const params: unknown[] = [];
   const where = whereOf(filters, params);
-  const [{ n }] = await query<{ n: number }>(`SELECT count(*)::int AS n FROM conversations c WHERE ${where}`, params);
+  const [{ n }] = await query<{ n: number }>(
+    `SELECT count(*)::int AS n FROM conversations c WHERE ${where}`,
+    params,
+  );
   if (n === 0) return { status: "empty", question, filters };
   if (n > MAX_SCAN) {
     const [byTopic, byWeek] = await Promise.all([
@@ -58,7 +68,10 @@ export async function scan(
          WHERE ${where} GROUP BY 1 ORDER BY 2 DESC`,
         params,
       ),
-      query<Facet>(`SELECT to_char(date_trunc('week', started_at), 'YYYY-MM-DD') AS key, count(*)::int AS n FROM conversations c WHERE ${where} GROUP BY 1 ORDER BY 1`, params),
+      query<Facet>(
+        `SELECT to_char(date_trunc('week', started_at), 'YYYY-MM-DD') AS key, count(*)::int AS n FROM conversations c WHERE ${where} GROUP BY 1 ORDER BY 1`,
+        params,
+      ),
     ]);
     return { status: "too-broad", question, filters, total: n, byTopic, byWeek };
   }
@@ -78,14 +91,18 @@ export async function scan(
   const scores = await mapPool(rows, IN_FLIGHT, async (r) => {
     let p: number | null = null;
     try {
-      const res = await decide({ state: { question, conversation: r.transcript.slice(0, 12_000) }, questions: { q } });
+      const res = await decide({
+        state: { question, conversation: r.transcript.slice(0, 12_000) },
+        questions: { q },
+      });
       p = res.answers.q.noul;
     } catch {
       failed++;
     }
     done++;
     if (p !== null && p >= RELEVANT) relevantSoFar++;
-    if (opts.onProgress && (done % 25 === 0 || done === rows.length)) opts.onProgress({ done, total: rows.length, relevant: relevantSoFar });
+    if (opts.onProgress && (done % 25 === 0 || done === rows.length))
+      opts.onProgress({ done, total: rows.length, relevant: relevantSoFar });
     return p;
   });
 
@@ -108,7 +125,10 @@ export async function scan(
     .filter((r) => r.relevance >= RELEVANT * 0.6)
     .sort((a, b) => b.relevance - a.relevance || b.engagement - a.engagement)
     .slice(0, top);
-  const messages = await messagesFor(best.map((r) => r.id), best.flatMap((r) => r.context_ids));
+  const messages = await messagesFor(
+    best.map((r) => r.id),
+    best.flatMap((r) => r.context_ids),
+  );
   return {
     status: "ok",
     question,

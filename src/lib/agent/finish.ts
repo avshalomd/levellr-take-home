@@ -35,7 +35,9 @@ type StepLike = { content: ReadonlyArray<unknown> };
 export function stepsText(steps: ReadonlyArray<StepLike>): string {
   return answerText(
     steps.map((s) =>
-      s.content.map((p) => ((p as { type?: string }).type === "text" ? ((p as { text?: string }).text ?? "") : "")).join(""),
+      s.content
+        .map((p) => ((p as { type?: string }).type === "text" ? ((p as { text?: string }).text ?? "") : ""))
+        .join(""),
     ),
   );
 }

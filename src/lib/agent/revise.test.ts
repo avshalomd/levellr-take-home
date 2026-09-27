@@ -5,20 +5,44 @@ import type { Verification } from "./verify";
 // The check-and-correct pass, with the verifier and the rewriting model stubbed: what matters here is the decision
 // logic - when a rewrite is asked for, what it is told, and when its result is kept.
 
-const verifyMock = vi.fn<(answer: string, retrieved: Set<string>, known?: unknown) => Promise<Verification>>();
+const verifyMock =
+  vi.fn<(answer: string, retrieved: Set<string>, known?: unknown) => Promise<Verification>>();
 const generateTextMock = vi.fn();
 
-vi.mock("./verify", async (orig) => ({ ...(await orig<typeof import("./verify")>()), verify: (a: string, r: Set<string>, k?: unknown) => verifyMock(a, r, k) }));
-vi.mock("ai", async (orig) => ({ ...(await orig<typeof import("ai")>()), generateText: (o: unknown) => generateTextMock(o) }));
-vi.mock("./model", () => ({ answerModel: () => "stub-model" }));
-vi.mock("./agent", () => ({ flattenForAnswer: () => [{ role: "user", content: "QUESTION: q\n\nRESULT (find):\nstuff" }] }));
+vi.mock("./verify", async (orig) => ({
+  ...(await orig<typeof import("./verify")>()),
+  verify: (a: string, r: Set<string>, k?: unknown) => verifyMock(a, r, k),
+}));
+vi.mock("ai", async (orig) => ({
+  ...(await orig<typeof import("ai")>()),
+  generateText: (o: unknown) => generateTextMock(o),
+}));
+vi.mock("./model", () => ({ textModel: () => "stub-model" }));
+vi.mock("./agent", () => ({
+  flattenForAnswer: () => [{ role: "user", content: "QUESTION: q\n\nRESULT (find):\nstuff" }],
+}));
 vi.mock("@/lib/data/read", () => ({
   getMessagesByRef: async (refs: number[]) => refs.map((ref) => ({ ref, text: `text of message ${ref}` })),
 }));
 
-const { checkAndRevise, citableRefs, citeAnswer, correctCounts, keepCountsRewrite, placeHandles, weakClaims } = await import("./revise");
+const {
+  checkAndRevise,
+  citableRefs,
+  citeAnswer,
+  correctCounts,
+  keepCountsRewrite,
+  placeHandles,
+  weakClaims,
+} = await import("./revise");
 
-const v = (claims: { claim: string; ids: string[]; support: number | null; status?: "ok" | "unknown-id" | "not-retrieved" }[]): Verification => ({
+const v = (
+  claims: {
+    claim: string;
+    ids: string[];
+    support: number | null;
+    status?: "ok" | "unknown-id" | "not-retrieved";
+  }[],
+): Verification => ({
   claims: claims.map((c) => ({
     claim: c.claim,
     support: c.support,
@@ -69,8 +93,18 @@ describe("checkAndRevise", () => {
 
   it("sends the weak claims with the text of what they cite, and keeps a better-supported rewrite", async () => {
     verifyMock
-      .mockResolvedValueOnce(v([{ claim: "good", ids: ["msg1"], support: 0.9 }, { claim: "weak", ids: ["msg2"], support: 0.1 }]))
-      .mockResolvedValueOnce(v([{ claim: "good", ids: ["msg1"], support: 0.9 }, { claim: "fixed", ids: ["msg5"], support: 0.8 }]));
+      .mockResolvedValueOnce(
+        v([
+          { claim: "good", ids: ["msg1"], support: 0.9 },
+          { claim: "weak", ids: ["msg2"], support: 0.1 },
+        ]),
+      )
+      .mockResolvedValueOnce(
+        v([
+          { claim: "good", ids: ["msg1"], support: 0.9 },
+          { claim: "fixed", ids: ["msg5"], support: 0.8 },
+        ]),
+      );
     generateTextMock.mockResolvedValueOnce({ text: "Good [msg1]. Fixed (msg5)." });
     const events: string[] = [];
     const r = await checkAndRevise("Good [msg1]. Weak [msg2].", new Set(["msg1", "msg2", "msg5"]), [], {
@@ -89,8 +123,18 @@ describe("checkAndRevise", () => {
 
   it("keeps the original when the rewrite is worse supported", async () => {
     verifyMock
-      .mockResolvedValueOnce(v([{ claim: "a", ids: ["msg1"], support: 0.9 }, { claim: "b", ids: ["msg2"], support: 0.1 }]))
-      .mockResolvedValueOnce(v([{ claim: "a", ids: ["msg1"], support: 0.2 }, { claim: "b", ids: ["msg2"], support: 0.1 }]));
+      .mockResolvedValueOnce(
+        v([
+          { claim: "a", ids: ["msg1"], support: 0.9 },
+          { claim: "b", ids: ["msg2"], support: 0.1 },
+        ]),
+      )
+      .mockResolvedValueOnce(
+        v([
+          { claim: "a", ids: ["msg1"], support: 0.2 },
+          { claim: "b", ids: ["msg2"], support: 0.1 },
+        ]),
+      );
     generateTextMock.mockResolvedValueOnce({ text: "Worse [msg1]. Still [msg2]." });
     const r = await checkAndRevise("A [msg1]. B [msg2].", new Set(["msg1", "msg2"]), []);
     expect(r.text).toBe("A [msg1]. B [msg2].");
@@ -111,19 +155,37 @@ describe("checkAndRevise", () => {
 // corrected like a weak claim, and the correction is told the rates the counts did give.
 describe("checkAndRevise, a per-day rate no count gave", () => {
   const known = [{ value: 11.3, words: "11.3 per day over 24 days" }];
-  const rateCheck = { claim: "September ran about 9 per day [msg1].", stated: "9", known: ["11.3 per day over 24 days"] };
+  const rateCheck = {
+    claim: "September ran about 9 per day [msg1].",
+    stated: "9",
+    known: ["11.3 per day over 24 days"],
+  };
 
   it("sends it back with the real rates, and keeps a rewrite that fixes it", async () => {
     verifyMock
-      .mockResolvedValueOnce({ ...v([{ claim: rateCheck.claim, ids: ["msg1"], support: 0.9 }]), rates: [rateCheck] })
-      .mockResolvedValueOnce({ ...v([{ claim: "September ran 11.3 per day [msg1].", ids: ["msg1"], support: 0.9 }]), rates: [] });
+      .mockResolvedValueOnce({
+        ...v([{ claim: rateCheck.claim, ids: ["msg1"], support: 0.9 }]),
+        rates: [rateCheck],
+      })
+      .mockResolvedValueOnce({
+        ...v([{ claim: "September ran 11.3 per day [msg1].", ids: ["msg1"], support: 0.9 }]),
+        rates: [],
+      });
     generateTextMock.mockResolvedValueOnce({ text: "September ran 11.3 per day over its 24 days [msg1]." });
     const events: unknown[] = [];
-    const r = await checkAndRevise(rateCheck.claim, new Set(["msg1"]), [], { revision: (x) => events.push(x) }, known);
+    const r = await checkAndRevise(
+      rateCheck.claim,
+      new Set(["msg1"]),
+      [],
+      { revision: (x) => events.push(x) },
+      known,
+    );
 
     expect(verifyMock.mock.calls[0][2]).toBe(known);
     const prompt = (generateTextMock.mock.calls[0][0] as { prompt: string }).prompt;
-    expect(prompt).toContain("A CHECK FOUND THESE PER-DAY RATES THAT NO COUNT GAVE:\n- CLAIM: September ran about 9 per day [msg1].\n  It gives 9 per day, which no count gave.");
+    expect(prompt).toContain(
+      "A CHECK FOUND THESE PER-DAY RATES THAT NO COUNT GAVE:\n- CLAIM: September ran about 9 per day [msg1].\n  It gives 9 per day, which no count gave.",
+    );
     expect(prompt).toContain("The per-day rates the counts gave: 11.3 per day over 24 days.");
     expect(prompt).not.toContain("NOT SUPPORTED BY WHAT THEY CITE");
     expect(events[0]).toEqual({ status: "running", weak: 1 });
@@ -134,7 +196,10 @@ describe("checkAndRevise, a per-day rate no count gave", () => {
   it("keeps the original when the rewrite states more unmatched rates", async () => {
     verifyMock
       .mockResolvedValueOnce({ ...v([{ claim: "a", ids: ["msg1"], support: 0.9 }]), rates: [rateCheck] })
-      .mockResolvedValueOnce({ ...v([{ claim: "a", ids: ["msg1"], support: 0.9 }]), rates: [rateCheck, { ...rateCheck, stated: "5" }] });
+      .mockResolvedValueOnce({
+        ...v([{ claim: "a", ids: ["msg1"], support: 0.9 }]),
+        rates: [rateCheck, { ...rateCheck, stated: "5" }],
+      });
     generateTextMock.mockResolvedValueOnce({ text: "Worse [msg1]." });
     const r = await checkAndRevise("A [msg1].", new Set(["msg1"]), [], {}, known);
     expect(r.text).toBe("A [msg1].");
@@ -170,18 +235,33 @@ describe("checkAndRevise, a change stated the wrong way round", () => {
   const change =
     "Change in conversations per day, 2026-08-01 to 2026-08-31 against 2026-09-01 to 2026-09-24: Performance & Access +121%; Updates & Feedback −6%.";
   const history: ModelMessage[] = [
-    { role: "tool", content: [{ type: "tool-result", toolCallId: "t1", toolName: "aggregate", output: { type: "text", value: change } }] },
+    {
+      role: "tool",
+      content: [
+        {
+          type: "tool-result",
+          toolCallId: "t1",
+          toolName: "aggregate",
+          output: { type: "text", value: change },
+        },
+      ],
+    },
   ];
-  const qa = "The September lift in Performance & Access and Updates & Feedback coincides with the 43.1 release [aggregate].";
+  const qa =
+    "The September lift in Performance & Access and Updates & Feedback coincides with the 43.1 release [aggregate].";
   const good = v([{ claim: "x", ids: ["msg1"], support: 0.9 }]);
 
   it("sends it back with the change the counts give, and keeps a rewrite that states it right", async () => {
     verifyMock.mockResolvedValue(good);
-    generateTextMock.mockResolvedValueOnce({ text: "Performance & Access rose 121% while Updates & Feedback fell 6% [aggregate] [msg1]." });
+    generateTextMock.mockResolvedValueOnce({
+      text: "Performance & Access rose 121% while Updates & Feedback fell 6% [aggregate] [msg1].",
+    });
     const events: unknown[] = [];
     const r = await checkAndRevise(qa, new Set(["msg1"]), history, { revision: (x) => events.push(x) });
     const prompt = (generateTextMock.mock.calls[0][0] as { prompt: string }).prompt;
-    expect(prompt).toContain(`A CHECK FOUND THESE CHANGES STATED THE WRONG WAY ROUND:\n- CLAIM: ${qa}\n  It says Updates & Feedback rose; the counts give Updates & Feedback −6% per day.`);
+    expect(prompt).toContain(
+      `A CHECK FOUND THESE CHANGES STATED THE WRONG WAY ROUND:\n- CLAIM: ${qa}\n  It says Updates & Feedback rose; the counts give Updates & Feedback −6% per day.`,
+    );
     expect(events[0]).toEqual({ status: "running", weak: 1 });
     expect(r.revision).toMatchObject({ status: "done", kept: true });
     expect(r.text).toMatch(/Updates & Feedback fell 6%/);
@@ -208,9 +288,20 @@ describe("checkAndRevise, a change stated the wrong way round", () => {
 describe("keepCountsRewrite and correctCounts, an answer that cites nothing", () => {
   const change =
     "Change in conversations per day, 2026-08-01 to 2026-08-31 against 2026-09-01 to 2026-09-24: Updates & Feedback +121%; Performance & Access −5%.";
-  const counts = "updates: 113, 4.7 per day over 24 days (n=113)\nperf: 227, 9.5 per day over 24 days (n=227)";
+  const counts =
+    "updates: 113, 4.7 per day over 24 days (n=113)\nperf: 227, 9.5 per day over 24 days (n=227)";
   const history: ModelMessage[] = [
-    { role: "tool", content: [{ type: "tool-result", toolCallId: "t1", toolName: "aggregate", output: { type: "text", value: `${counts}\n${change}` } }] },
+    {
+      role: "tool",
+      content: [
+        {
+          type: "tool-result",
+          toolCallId: "t1",
+          toolName: "aggregate",
+          output: { type: "text", value: `${counts}\n${change}` },
+        },
+      ],
+    },
   ];
   const known = [
     { value: 4.7, words: "4.7 per day over 24 days" },
@@ -221,26 +312,50 @@ describe("keepCountsRewrite and correctCounts, an answer that cites nothing", ()
     { name: "Performance & Access", pct: -5 },
   ];
   const figures = [113, 4.7, 24, 227, 9.5, 121, 5];
-  const wrong = "Updates & Feedback grew the most, to 3.8 per day. Performance & Access held at 9.5 per day. It is the biggest shift this summer.";
-  const fixed = "Updates & Feedback grew the most, to 4.7 per day over 24 days. Performance & Access held at 9.5 per day. It is the biggest shift this summer.";
+  const wrong =
+    "Updates & Feedback grew the most, to 3.8 per day. Performance & Access held at 9.5 per day. It is the biggest shift this summer.";
+  const fixed =
+    "Updates & Feedback grew the most, to 4.7 per day over 24 days. Performance & Access held at 9.5 per day. It is the biggest shift this summer.";
 
   it("keeps a rewrite with fewer mismatches, no citations, no new figure and its substance", () => {
     expect(keepCountsRewrite(wrong, fixed, known, trends, figures)).toBe(true);
   });
   it("does not keep one that adds a citation, which nothing would check", () => {
-    expect(keepCountsRewrite(wrong, fixed.replace("24 days.", "24 days [msg1]."), known, trends, figures)).toBe(false);
+    expect(
+      keepCountsRewrite(wrong, fixed.replace("24 days.", "24 days [msg1]."), known, trends, figures),
+    ).toBe(false);
   });
   it("does not keep one that states a figure neither the answer nor a tool gave", () => {
-    expect(keepCountsRewrite(wrong, fixed.replace("this summer", "in 14 months"), known, trends, figures)).toBe(false);
+    expect(
+      keepCountsRewrite(wrong, fixed.replace("this summer", "in 14 months"), known, trends, figures),
+    ).toBe(false);
   });
   it("does not keep one that drops a sentence it was not asked to fix", () => {
-    expect(keepCountsRewrite(wrong, "Updates & Feedback grew the most, to 4.7 per day over 24 days.", known, trends, figures)).toBe(false);
+    expect(
+      keepCountsRewrite(
+        wrong,
+        "Updates & Feedback grew the most, to 4.7 per day over 24 days.",
+        known,
+        trends,
+        figures,
+      ),
+    ).toBe(false);
   });
   it("keeps one that drops only the flagged sentence", () => {
-    expect(keepCountsRewrite(wrong, "Performance & Access held at 9.5 per day. It is the biggest shift this summer.", known, trends, figures)).toBe(true);
+    expect(
+      keepCountsRewrite(
+        wrong,
+        "Performance & Access held at 9.5 per day. It is the biggest shift this summer.",
+        known,
+        trends,
+        figures,
+      ),
+    ).toBe(true);
   });
   it("does not keep one that fixes nothing, or comes back empty", () => {
-    expect(keepCountsRewrite(wrong, wrong.replace("grew the most", "grew fastest"), known, trends, figures)).toBe(false);
+    expect(
+      keepCountsRewrite(wrong, wrong.replace("grew the most", "grew fastest"), known, trends, figures),
+    ).toBe(false);
     expect(keepCountsRewrite(wrong, "  ", known, trends, figures)).toBe(false);
   });
 
@@ -271,10 +386,16 @@ describe("citeAnswer", () => {
     const out = await citeAnswer("Cheating leads, traced to AWS server congestion.", [], new Set());
     expect(out.text).toBe("Cheating leads [msg12, msg40].");
     const call = generateTextMock.mock.calls[0][0] as { system: string; prompt: string };
-    expect(call.system).toMatch(/^You add citations to an analyst's answer so every claim about what people said points to the messages it rests on/);
+    expect(call.system).toMatch(
+      /^You add citations to an analyst's answer so every claim about what people said points to the messages it rests on/,
+    );
     expect(call.prompt).toContain("QUESTION: q\n\nRESULT (find):\nstuff");
-    expect(call.prompt).toContain("THE ANSWER THAT WAS WRITTEN (it cites no messages):\nCheating leads, traced to AWS server congestion.");
-    expect(call.prompt).toContain("Remove any claim no result supports: a thread named, a cause, an example or a quote that is not in the RESULTS goes.");
+    expect(call.prompt).toContain(
+      "THE ANSWER THAT WAS WRITTEN (it cites no messages):\nCheating leads, traced to AWS server congestion.",
+    );
+    expect(call.prompt).toContain(
+      "Remove any claim no result supports: a thread named, a cause, an example or a quote that is not in the RESULTS goes.",
+    );
     expect(call.prompt).toContain("Never cite a message you did not see in the RESULTS.");
   });
 
@@ -282,26 +403,48 @@ describe("citeAnswer", () => {
     generateTextMock.mockResolvedValue({ text: "Cheating leads [msg12].", finishReason: "stop" });
     await citeAnswer("Cheating leads.", [scanResult("c1", conv(12, [12, 40]))], new Set(["msg12", "msg40"]));
     const call = generateTextMock.mock.calls.at(-1)![0] as { prompt: string };
-    expect(call.prompt.endsWith("\n\nThe message refs in the RESULTS, the only ones you may cite: [msg12], [msg40].")).toBe(true);
+    expect(
+      call.prompt.endsWith(
+        "\n\nThe message refs in the RESULTS, the only ones you may cite: [msg12], [msg40].",
+      ),
+    ).toBe(true);
   });
 
   // Review 2026-09-26: normalizeCitations deleted [convN] and raw ids silently, so a pass that cited conversations
   // looked like one that cited nothing, and the log showed the tidied text without why the model stopped.
   it("places a citation written as a conversation handle on a message of that conversation, and reports what it cannot place", async () => {
-    generateTextMock.mockResolvedValue({ text: "Lag is back [conv2]. Queues are long (conv1, msg3). Servers died [conv9] [t3_abc123].", finishReason: "length" });
+    generateTextMock.mockResolvedValue({
+      text: "Lag is back [conv2]. Queues are long (conv1, msg3). Servers died [conv9] [t3_abc123].",
+      finishReason: "length",
+    });
     const history = [scanResult("c1", conv(1, [1, 3]) + "\n\n" + conv(2, [10, 11]))];
     const out = await citeAnswer("Lag is back.", history, new Set(["msg1", "msg3", "msg10", "msg11"]));
     expect(out.text).toBe("Lag is back [msg10]. Queues are long [msg1, msg3]. Servers died.");
-    expect(out).toMatchObject({ finishReason: "length", placed: 2, rejected: ["conv9", "t3_abc123"], offered: 4 });
-    expect(out.raw).toBe("Lag is back [conv2]. Queues are long (conv1, msg3). Servers died [conv9] [t3_abc123].");
+    expect(out).toMatchObject({
+      finishReason: "length",
+      placed: 2,
+      rejected: ["conv9", "t3_abc123"],
+      offered: 4,
+    });
+    expect(out.raw).toBe(
+      "Lag is back [conv2]. Queues are long (conv1, msg3). Servers died [conv9] [t3_abc123].",
+    );
   });
 });
 
 const conv = (handle: number, refs: number[]) =>
-  `## conversation conv${handle} · Discussion · topic patch · relevance 90% · 2026-07-01\n` + refs.map((r) => `[msg${r}] someone · 2026-07-01 · 3: words`).join("\n");
+  `## conversation conv${handle} · Discussion · topic patch · relevance 90% · 2026-07-01\n` +
+  refs.map((r) => `[msg${r}] someone · 2026-07-01 · 3: words`).join("\n");
 const scanResult = (toolCallId: string, value: string): ModelMessage => ({
   role: "tool",
-  content: [{ type: "tool-result", toolCallId, toolName: "scan", output: { type: "text", value: `Scanned 40 conversations.\n\n${value}` } }],
+  content: [
+    {
+      type: "tool-result",
+      toolCallId,
+      toolName: "scan",
+      output: { type: "text", value: `Scanned 40 conversations.\n\n${value}` },
+    },
+  ],
 });
 
 // Review 2026-09-26: listed in the order the tools returned them, one long thread (patch notes) filled all 80 places,
@@ -329,8 +472,26 @@ describe("citableRefs", () => {
 
   it("files a thread opened in full under its own handle", () => {
     const history: ModelMessage[] = [
-      { role: "assistant", content: [{ type: "tool-call", toolCallId: "r1", toolName: "read_conversation", input: { id: "conv7" } }] },
-      { role: "tool", content: [{ type: "tool-result", toolCallId: "r1", toolName: "read_conversation", output: { type: "text", value: "Title [Discussion]\n[msg70] a 2026-07-01: x\n[msg71] b 2026-07-01: y" } }] },
+      {
+        role: "assistant",
+        content: [
+          { type: "tool-call", toolCallId: "r1", toolName: "read_conversation", input: { id: "conv7" } },
+        ],
+      },
+      {
+        role: "tool",
+        content: [
+          {
+            type: "tool-result",
+            toolCallId: "r1",
+            toolName: "read_conversation",
+            output: {
+              type: "text",
+              value: "Title [Discussion]\n[msg70] a 2026-07-01: x\n[msg71] b 2026-07-01: y",
+            },
+          },
+        ],
+      },
     ];
     const { refs, byConv } = citableRefs(history, new Set(["msg70", "msg71"]));
     expect(refs).toEqual(["msg70", "msg71"]);
@@ -340,6 +501,10 @@ describe("citableRefs", () => {
 
 describe("placeHandles", () => {
   it("leaves prose and message citations alone", () => {
-    expect(placeHandles("Lag [msg1] in the conversation.", new Map())).toEqual({ text: "Lag [msg1] in the conversation.", placed: 0, rejected: [] });
+    expect(placeHandles("Lag [msg1] in the conversation.", new Map())).toEqual({
+      text: "Lag [msg1] in the conversation.",
+      placed: 0,
+      rejected: [],
+    });
   });
 });

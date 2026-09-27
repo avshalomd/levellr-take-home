@@ -46,6 +46,8 @@ export function profileOf(m: Meta): Profile {
 }
 
 async function load(): Promise<Profile> {
-  const rows = await query<{ key: string; value: unknown }>(`SELECT key, value FROM dataset_meta WHERE key IN ('source', 'window', 'now')`);
+  const rows = await query<{ key: string; value: unknown }>(
+    `SELECT key, value FROM dataset_meta WHERE key IN ('source', 'window', 'now')`,
+  );
   return profileOf(Object.fromEntries(rows.map((r) => [r.key, r.value])));
 }
