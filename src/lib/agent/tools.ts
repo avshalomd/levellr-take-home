@@ -21,6 +21,7 @@ import {
   scanForModel,
   voicesForModel,
   type ScanExtras,
+  type TopicNames,
 } from "./for-model";
 import { changeAgainst, type CountLike } from "./trends";
 import type { SliceFilters } from "./slices";
@@ -101,11 +102,13 @@ function refusalOf(f: Filters | undefined, messages: ModelMessage[]): Refusal | 
 }
 /** What the model reads back: a refusal's words, else the tool's own compact text. */
 const modelOutput =
-  <T>(text: (o: T) => string) =>
-  ({ output }: { output: unknown }) => ({
-    type: "text" as const,
-    value: isRefusal(output) ? output.words : readBack(output, text),
-  });
+  <T>(text: (o: T, names: TopicNames) => string, names: () => Promise<TopicNames> = async () => new Map()) =>
+  async ({ output }: { output: unknown }) => {
+    if (isRefusal(output)) return { type: "text" as const, value: output.words };
+    // Topics by the names the reader knows (for-model.ts TopicNames); keys only if the names cannot be had.
+    const known = await names().catch(() => new Map<string, string>());
+    return { type: "text" as const, value: readBack<T>(output, (o) => text(o, known)) };
+  };
 
 // (sanity QA 2026-09-26) Every earlier turn's results pass through here again on the next turn, from the chat the
 // browser sends (route.ts convertToModelMessages), so a result saved in a shape the text no longer expects threw and
@@ -194,10 +197,16 @@ export function releaseNote(question: string, f: Filters): string | undefined {
 // Topic labels are data (they are discovered per community and the customer can change them), so the schema cannot
 // list them. An unknown key is answered with the real ones rather than an empty result the model would believe.
 class UnknownTopic extends Error {}
-async function checked(f: Filters | undefined, keys: () => Promise<string[]>): Promise<Filters> {
+async function checked(f: Filters | undefined, keys: () => Promise<string[]>, names?: () => Promise<TopicNames>): Promise<Filters> {
   const out = clean(f);
   if (out.topic) {
     const known = await keys();
+    // The model reads topics by name (for-model.ts), so a name is taken for its key.
+    if (!known.includes(out.topic) && names) {
+      const want = out.topic.trim().toLowerCase();
+      const key = [...(await names())].find(([, n]) => n.trim().toLowerCase() === want)?.[0];
+      if (key) out.topic = key;
+    }
     if (!known.includes(out.topic))
       throw new UnknownTopic(`No topic "${out.topic}". The topic labels are: ${known.join(", ")}.`);
   }
@@ -211,6 +220,7 @@ export function makeTools(writer?: UIMessageStreamWriter, p?: Profile) {
   let labels: Promise<{ key: string; name: string }[]> | undefined;
   const topicLabels = () => (labels ??= knownTopics());
   const topicKeys = () => topicLabels().then((l) => l.map((x) => x.key));
+  const topicNames = (): Promise<TopicNames> => topicLabels().then((l) => new Map(l.map((x) => [x.key, x.name])));
   // This turn's counts, so a count of the same slice over another period is handed its change per day (trends.ts).
   const counts: CountLike[] = [];
   return {
@@ -249,7 +259,7 @@ export function makeTools(writer?: UIMessageStreamWriter, p?: Profile) {
       execute: async ({ question, filters: f, top }, { toolCallId, messages }) => {
         const refused = refusalOf(f, messages);
         if (refused) return refused;
-        const slice = await checked(f, topicKeys);
+        const slice = await checked(f, topicKeys, topicNames);
         const read: ScanResult = await once("scan", () =>
           scan(readQuestion(question, messages), slice, {
             top,
@@ -267,7 +277,7 @@ export function makeTools(writer?: UIMessageStreamWriter, p?: Profile) {
           ...(note ? { notes: [note] } : {}),
         };
       },
-      toModelOutput: modelOutput<ScanResult & ScanExtras>((o) => scanForModel(o, MAX_SCAN)),
+      toModelOutput: modelOutput<ScanResult & ScanExtras>((o, n) => scanForModel(o, MAX_SCAN, n), topicNames),
     }),
 
     find: tool({
@@ -284,13 +294,15 @@ export function makeTools(writer?: UIMessageStreamWriter, p?: Profile) {
       execute: async ({ query, filters: f, k }, { messages }) => {
         const refused = refusalOf(f, messages);
         if (refused) return refused;
-        const slice = await checked(f, topicKeys);
+        const slice = await checked(f, topicKeys, topicNames);
         return once("find", () => searchConversations(readQuestion(query, messages), slice, k ?? 8));
       },
-      toModelOutput: modelOutput<SearchResult>((o) =>
-        o.hits.length
-          ? `${o.hits.length} relevant conversations${typeof o.candidates === "number" ? ` (of ${o.candidates} candidates)` : ""}.\n\n${conversationsForModel(o.hits)}`
-          : `Nothing relevant found (${o.candidates} candidates read).`,
+      toModelOutput: modelOutput<SearchResult>(
+        (o, n) =>
+          o.hits.length
+            ? `${o.hits.length} relevant conversations${typeof o.candidates === "number" ? ` (of ${o.candidates} candidates)` : ""}.\n\n${conversationsForModel(o.hits, n)}`
+            : `Nothing relevant found (${o.candidates} candidates read).`,
+        topicNames,
       ),
     }),
 
@@ -310,7 +322,7 @@ export function makeTools(writer?: UIMessageStreamWriter, p?: Profile) {
       execute: async ({ metric, group_by, filters: f }, { messages }) => {
         const refused = refusalOf(f, messages);
         if (refused) return refused;
-        const slice = await checked(f, topicKeys);
+        const slice = await checked(f, topicKeys, topicNames);
         const counted = await once("aggregate", () => aggregate(metric, group_by, slice));
         // The days the count covers travel with it, so a comparison of periods can be made per day (for-model.ts).
         const withDays = { ...counted, period: periodOf(slice, window) };
@@ -331,7 +343,7 @@ export function makeTools(writer?: UIMessageStreamWriter, p?: Profile) {
         counts.push(withDays);
         return change ? { ...withDays, change } : withDays;
       },
-      toModelOutput: modelOutput<AggregateResult>(aggregateForModel),
+      toModelOutput: modelOutput<AggregateResult>(aggregateForModel, topicNames),
     }),
 
     voices: tool({
@@ -347,10 +359,10 @@ export function makeTools(writer?: UIMessageStreamWriter, p?: Profile) {
       execute: async ({ filters: f, limit }, { messages }) => {
         const refused = refusalOf(f, messages);
         if (refused) return refused;
-        const slice = await checked(f, topicKeys);
+        const slice = await checked(f, topicKeys, topicNames);
         return once("voices", () => topVoices(slice, limit ?? 10));
       },
-      toModelOutput: modelOutput<VoicesResult>(voicesForModel),
+      toModelOutput: modelOutput<VoicesResult>(voicesForModel, topicNames),
     }),
 
     read_conversation: tool({

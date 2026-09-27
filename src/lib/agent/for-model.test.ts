@@ -29,7 +29,7 @@ describe("what the model reads back", () => {
   it("gives mood on the app's 0-100 scale and names the slice", () => {
     const t = aggregateForModel(agg("avg_sentiment", 0.238));
     expect(t).toContain("2026-08-24: 24/100 (n=51)");
-    expect(t).toContain("over conversations touching topic cheating, from 2026-08-24, before 2026-08-31");
+    expect(t).toContain("over conversations touching the topic \"cheating\", from 2026-08-24, before 2026-08-31");
     expect(t).not.toContain("0.238");
   });
 
@@ -53,7 +53,7 @@ describe("what the model reads back", () => {
   it("says a flag-filtered count is a share of the flagged slice, not of the topic", () => {
     const t = scanForModel(ok("frustrated"), 400);
     expect(t).toContain(
-      "Scanned 129 conversations (conversations touching topic updates, only frustrated conversations); 80 relevant",
+      "Scanned 129 conversations (conversations touching the topic \"updates\", only frustrated conversations); 80 relevant",
     );
     expect(t).toContain("All 129 were already frustrated conversations");
     expect(t).toContain("use aggregate");
@@ -91,14 +91,14 @@ describe("voicesForModel", () => {
         },
       ],
     });
-    expect(out).toContain("The 1 most active of 312 people in conversations touching topic updates");
+    expect(out).toContain("The 1 most active of 312 people in conversations touching the topic \"updates\"");
     expect(out).toContain(
       "Deep-Pen420: 40 messages in 12 conversations, started 2, 3 reactions, 2026-07-01 to 2026-09-20",
     );
   });
   it("says plainly when nobody wrote", () => {
     expect(voicesForModel({ ...base, rows: [] })).toBe(
-      "Nobody wrote in conversations touching topic updates.",
+      "Nobody wrote in conversations touching the topic \"updates\".",
     );
   });
   it("names an author filter in the slice", () => {
@@ -429,6 +429,17 @@ describe("counts in the one unit, the conversation", () => {
     );
   });
 
+  // QA 2026-09-27: the answer wrote "other-games-off-topic" and "2753" beside a chart saying "Other games" and 2,753.
+  it("names topics as the reader knows them, and writes big numbers with a thousands comma", () => {
+    const t = aggregateForModel(
+      { metric: "conversations", groupBy: "topic", rows: [{ key: "other-games", value: 2753, n: 2753 }], filters: { topic: "other-games" }, sql: "", params: [] },
+      new Map([["other-games", "Other games"]]),
+    );
+    expect(t).toContain("Other games: 2,753");
+    expect(t).toContain('touching the topic "Other games"');
+    expect(t).not.toContain("other-games");
+  });
+
   it("names engagement, and gives it per day over the period like any count", () => {
     const t = out("engagement", "none", [{ key: "all", value: 3100, n: 200 }], {
       since: "2026-09-01",
@@ -437,7 +448,7 @@ describe("counts in the one unit, the conversation", () => {
     expect(t).toContain(
       "engagement (distinct authors + replies + reactions, summed over the conversations) by none",
     );
-    expect(t).toContain("all: engagement score 3100, 310.0 per day over 10 days (a score, not a count; from 200 conversations)");
+    expect(t).toContain("all: engagement score 3,100, 310.0 per day over 10 days (a score, not a count; from 200 conversations)");
     // QA 2026-09-27: "Tides Remastered: 253" was written as "253 conversations".
     expect(t).toContain("An engagement score is never a number of conversations or people");
   });
@@ -447,8 +458,8 @@ describe("counts in the one unit, the conversation", () => {
       { key: "2026-07", value: 3100, n: 3100 },
       { key: "2026-09", value: 2400, n: 2400 },
     ]);
-    expect(t).toContain("2026-07: 3100, 100.0 per day over 31 days");
-    expect(t).toContain("2026-09: 2400, 100.0 per day over 24 days");
+    expect(t).toContain("2026-07: 3,100, 100.0 per day over 31 days");
+    expect(t).toContain("2026-09: 2,400, 100.0 per day over 24 days");
     expect(t).toContain("The first and last periods of the conversations are partial");
   });
 });

@@ -21,13 +21,20 @@ export const FLAG_WORDS: Record<string, string> = {
 
 /** 0-1 sentiment as the app's 0-100 mood. */
 export const mood = (x: number | null) => (x === null ? "?" : `${Math.round(x * 100)}/100`);
+/** Topic keys to the names the reader knows (dataset_meta.topics). The model reads and writes topics by name; the
+ *  tools take a name or a key (tools.ts checked), so no key needs to reach the answer (QA 2026-09-27: an answer wrote
+ *  "other-games-off-topic"). */
+export type TopicNames = ReadonlyMap<string, string>;
+const topicName = (key: string, names?: TopicNames) => names?.get(key) ?? key;
+/** A whole number as the chart writes it: "2,753" (QA 2026-09-27: the answer wrote "2753" beside a chart's 2,753). */
+export const num = (n: number) => (Number.isInteger(n) ? n.toLocaleString("en-GB") : String(n));
 const pct = (x: number | null) => (x === null ? "?" : `${Math.round(x * 100)}%`);
 
 /** The filters in words, so a count can be read against the right denominator. A topic filter is membership (D46):
  *  every conversation touching the topic, whatever else it is about. */
-export function sliceWords(f: Filters): string {
+export function sliceWords(f: Filters, names?: TopicNames): string {
   const bits = [
-    f.topic && `conversations touching topic ${f.topic}`,
+    f.topic && `conversations touching the topic "${topicName(f.topic, names)}"`,
     f.channel && `channel ${f.channel}`,
     f.flag && `only ${FLAG_WORDS[f.flag] ?? f.flag}`,
     f.since && `from ${f.since.slice(0, 10)}`,
@@ -115,6 +122,7 @@ export const COUNTS_ONLY =
  *  worked out (tools.ts), clipped to the data. */
 export function aggregateForModel(
   o: AggregateResult & { period?: { since: string; until: string; days: number } | null; change?: Change },
+  names?: TopicNames,
 ): string {
   const isMood = o.metric === "avg_sentiment";
   const isEngagement = o.metric === "engagement" || o.metric === "avg_engagement";
@@ -132,7 +140,7 @@ export function aggregateForModel(
   const days = o.period?.days ?? 0;
   const value = (r: { key: string; value: number }) => {
     if (isMood) return mood(r.value);
-    if (!rated) return String(r.value);
+    if (!rated) return num(r.value);
     // A week row holds only the days of its week inside the period (a partial first or last week).
     const d =
       o.groupBy === "week"
@@ -141,8 +149,8 @@ export function aggregateForModel(
           ? monthDaysIn(r.key, o.period!)
           : days;
     return d > 0
-      ? `${r.value}, ${perDay(r.value, d)} per day over ${d} ${d === 1 ? "day" : "days"}`
-      : String(r.value);
+      ? `${num(r.value)}, ${perDay(r.value, d)} per day over ${d} ${d === 1 ? "day" : "days"}`
+      : num(r.value);
   };
   // A count by day or by week also gets its total and rate for the whole period (review 2026-09-26, live): asked how
   // September's daily rate compared with July's, the agent counted both months by day, got no rate, and worked out
@@ -151,7 +159,7 @@ export function aggregateForModel(
   const total = o.rows.reduce((sum, r) => sum + r.value, 0);
   const inAll =
     counted && (o.groupBy === "day" || o.groupBy === "week" || o.groupBy === "month")
-      ? ` In all: ${total}, ${perDay(total, days)} per day over ${days} ${days === 1 ? "day" : "days"}.`
+      ? ` In all: ${num(total)}, ${perDay(total, days)} per day over ${days} ${days === 1 ? "day" : "days"}.`
       : "";
   const span = o.period
     ? `\nPeriod: ${o.period.since} to ${isoOf(dayOf(o.period.until) - DAY)}, ${days} ${days === 1 ? "day" : "days"}.` +
@@ -162,14 +170,15 @@ export function aggregateForModel(
         : "")
     : "";
   return (
-    `${name} by ${o.groupBy}, over ${sliceWords(o.filters)}:\n` +
+    `${name} by ${o.groupBy}, over ${sliceWords(o.filters, names)}:\n` +
     // An engagement figure is a score, and its row says so, with the conversations behind it: bare, "Tides Remastered:
     // 253" was written as "253 conversations" when 34 were counted (QA 2026-09-27).
     o.rows
+      .map((r) => ({ ...r, key: o.groupBy === "topic" ? topicName(r.key, names) : r.key }))
       .map((r) =>
         isEngagement
-          ? `${r.key}: engagement score ${value(r)} (a score, not a count; from ${r.n} ${r.n === 1 ? "conversation" : "conversations"})`
-          : `${r.key}: ${value(r)} (n=${r.n})`,
+          ? `${r.key}: engagement score ${value(r)} (a score, not a count; from ${num(r.n)} ${r.n === 1 ? "conversation" : "conversations"})`
+          : `${r.key}: ${value(r)} (n=${num(r.n)})`,
       )
       .join("\n") +
     overlapWords(o.total) +
@@ -187,7 +196,7 @@ export function overlapWords(total: number | undefined): string {
   if (total === undefined) return "";
   return (
     `\nA conversation can have several topics, so it is counted under each: these rows overlap and add up to more ` +
-    `than the ${total} conversations in the slice. Never add them up; shares by topic can add up to more than 100%.`
+    `than the ${num(total)} conversations in the slice. Never add them up; shares by topic can add up to more than 100%.`
   );
 }
 
@@ -212,8 +221,8 @@ type Hit = SearchResult["hits"][number] | Extract<ScanResult, { status: "ok" }>[
 /** The conversations a read or a search returned, each with its handle, topics and relevance. No mood per conversation:
  *  handed ten of them, the answer said "the ten conversations shown in the scan ranged from 11/100 to 87/100", a
  *  sample the reader never saw standing in for 119 (QA 2026-09-26). The mood of the whole set is given once, above. */
-export function conversationsForModel(hits: Hit[]): string {
-  return (Array.isArray(hits) ? hits : []).map(conversationForModel).join("\n\n");
+export function conversationsForModel(hits: Hit[], names?: TopicNames): string {
+  return (Array.isArray(hits) ? hits : []).map((h) => conversationForModel(h, names)).join("\n\n");
 }
 
 // (sanity QA 2026-09-26: "chat failed TypeError: Cannot read properties of undefined (reading 'slice')" on a follow-up.)
@@ -225,7 +234,7 @@ export function conversationsForModel(hits: Hit[]): string {
 type LooseHit = { [K in keyof Hit]?: unknown } & { messages?: unknown };
 type LooseMessage = { ref?: unknown; author?: unknown; ts?: unknown; text?: unknown };
 const str = (x: unknown) => (typeof x === "string" ? x : "");
-function conversationForModel(hit: Hit): string {
+function conversationForModel(hit: Hit, names?: TopicNames): string {
   const h = (hit ?? {}) as LooseHit;
   const handle = typeof h.ref === "number" ? convTag(h.ref) : "(no handle)";
   const relevance = typeof h.relevance === "number" ? pct(h.relevance) : "?";
@@ -235,10 +244,10 @@ function conversationForModel(hit: Hit): string {
   const text = str(h.transcript) || [str(h.thread_title), ...previews].filter(Boolean).join("\n");
   // Every topic the conversation touches, primary first (D46); a hit saved before topics were multi-label has only one.
   const topics = Array.isArray(h.topics)
-    ? (h.topics as unknown[]).filter((t): t is string => typeof t === "string" && t !== "")
+    ? (h.topics as unknown[]).filter((t): t is string => typeof t === "string" && t !== "").map((t) => topicName(t, names))
     : [];
   const topicLine =
-    topics.length > 1 ? `topics ${topics.join(", ")}` : `topic ${topics[0] ?? (str(h.topic) || "?")}`;
+    topics.length > 1 ? `topics ${topics.join(", ")}` : `topic ${topics[0] ?? (str(h.topic) ? topicName(str(h.topic), names) : "?")}`;
   const engagement = typeof h.engagement === "number" ? ` · engagement ${h.engagement}` : "";
   return (
     `## conversation ${handle} · ${str(h.channel) || "?"} · ${topicLine} · ` +
@@ -254,13 +263,13 @@ export type ScanExtras = {
   period?: { since: string; until: string; days: number } | null;
 };
 
-export function scanForModel(o: ScanResult & ScanExtras, maxScan: number): string {
+export function scanForModel(o: ScanResult & ScanExtras, maxScan: number, names?: TopicNames): string {
   if (o.status === "empty") return "No conversations match these filters.";
   if (o.status === "too-broad")
     return (
       `Slice too broad: ${o.total} conversations (max ${maxScan}). Narrow it.\nBy topic (a conversation counts under each ` +
       "topic it touches, so these add up to more): " +
-      o.byTopic.map((t) => `${t.key} ${t.n}`).join(", ") +
+      o.byTopic.map((t) => `${topicName(t.key, names)} ${num(t.n)}`).join(", ") +
       "\nBy week: " +
       o.byWeek.map((t) => `${t.key} ${t.n}`).join(", ")
     );
@@ -297,13 +306,13 @@ export function scanForModel(o: ScanResult & ScanExtras, maxScan: number): strin
   return (
     // "Relevant" is spelt out: the count is every conversation that bears on the question, for or against, and read as
     // "how many said yes" it put a yes/no question's count behind an answer that said the opposite (QA 2026-09-26).
-    `Scanned ${o.scanned} conversations (${sliceWords(o.filters)}); ${o.relevant} relevant to the question ` +
+    `Scanned ${num(o.scanned)} conversations (${sliceWords(o.filters, names)}); ${num(o.relevant)} relevant to the question ` +
     "(they bear on it, whichever way they lean; Jev probability >= 50%)" +
     (o.failed ? `; ${o.failed} could not be judged` : "") +
     `.${filtered}${shares}${moodLine}${period}${notes}\nRelevant by week: ${o.relevantByWeek.map((w) => `${w.key} ${w.n}`).join(", ") || "none"}` +
-    `\nRelevant by topic: ${o.relevantByTopic.map((w) => `${w.key} ${w.n}`).join(", ") || "none"}\n\n` +
+    `\nRelevant by topic: ${o.relevantByTopic.map((w) => `${topicName(w.key, names)} ${w.n}`).join(", ") || "none"}\n\n` +
     `The ${o.hits.length} most relevant, with message refs to cite:\n\n` +
-    conversationsForModel(o.hits)
+    conversationsForModel(o.hits, names)
   );
 }
 
@@ -320,10 +329,10 @@ export function failedWords(tool: "scan" | "find" | "aggregate" | "voices"): str
 }
 
 /** The most active people in a slice, one line each, with the slice's head count as the denominator. */
-export function voicesForModel(o: VoicesResult): string {
-  if (!o.rows.length) return `Nobody wrote in ${sliceWords(o.filters)}.`;
+export function voicesForModel(o: VoicesResult, names?: TopicNames): string {
+  if (!o.rows.length) return `Nobody wrote in ${sliceWords(o.filters, names)}.`;
   return (
-    `The ${o.rows.length} most active of ${o.total_authors} people in ${sliceWords(o.filters)} ` +
+    `The ${o.rows.length} most active of ${num(o.total_authors)} people in ${sliceWords(o.filters, names)} ` +
     `(messages, conversations written in, conversations started, reactions on their messages, first and last message):\n` +
     o.rows
       .map(
