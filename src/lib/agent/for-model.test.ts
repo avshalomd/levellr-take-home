@@ -7,6 +7,7 @@ import {
   conversationsForModel,
   COUNTS_ONLY,
   failedWords,
+  outsideWords,
   periodOf,
   refusalWords,
   scanForModel,
@@ -37,7 +38,7 @@ describe("what the model reads back", () => {
     expect(aggregateForModel(agg("conversations", 51))).toContain("2026-08-24: 51 (n=51)");
   });
 
-  const ok = (flag?: "frustrated"): ScanResult => ({
+  const ok = (flag?: "frustrated"): Extract<ScanResult, { status: "ok" }> => ({
     status: "ok",
     question: "q",
     filters: { topic: "updates", ...(flag ? { flag } : {}) },
@@ -48,6 +49,18 @@ describe("what the model reads back", () => {
     relevantByTopic: [],
     relevantIds: [],
     hits: [],
+  });
+
+  // Production QA 2026-09-27 (P2, P6): a read about what frustrates or excites people says how many conversations it left
+  // out as being about other games, and keeps the answer to the community's own games.
+  it("says what a read kept to the community's own games left out", () => {
+    const games = "the Veil of Ages games and their developer";
+    const t = scanForModel({ ...ok("frustrated"), own: { games, elsewhere: 14 } }, 400);
+    expect(t).toContain(
+      `14 more bore on the question but were about other games or things outside ${games}: they are left out of the 80`,
+    );
+    expect(t).toContain(`Keep the answer to ${games}`);
+    expect(scanForModel({ ...ok("frustrated"), own: { games, elsewhere: 0 } }, 400)).not.toContain("more bore on");
   });
 
   it("says a flag-filtered count is a share of the flagged slice, not of the topic", () => {
@@ -461,5 +474,45 @@ describe("counts in the one unit, the conversation", () => {
     expect(t).toContain("2026-07: 3,100, 100.0 per day over 31 days");
     expect(t).toContain("2026-09: 2,400, 100.0 per day over 24 days");
     expect(t).toContain("The first and last periods of the conversations are partial");
+  });
+});
+
+// Production QA 2026-09-27 (P10): "pricing last month" (August, before the first conversation) was answered "there are
+// no conversations about pricing from last month", as if August had been read and found empty.
+describe("outsideWords", () => {
+  const w = { from: "2026-09-13", to: "2026-09-27" };
+  it("says a period wholly outside the conversations cannot be counted, which is not none", () => {
+    const t = outsideWords({ since: "2026-08-01", until: "2026-09-01" }, w)!;
+    expect(t).toContain("The conversations run from 2026-09-13 to 2026-09-27, so the period asked for (from 2026-08-01 to before 2026-09-01) is outside them");
+    expect(t).toContain("not the same as none");
+    expect(t).toContain("never that there were none");
+    expect(outsideWords({ since: "2026-10-01" }, w)).toMatch(/is outside them/);
+  });
+  it("says what part of a period partly outside was not counted", () => {
+    expect(outsideWords({ since: "2026-09-01", until: "2026-10-01" }, w)).toMatch(
+      /the part of the period asked for before 2026-09-13 and after 2026-09-27 is outside them/,
+    );
+  });
+  it("says nothing of a period inside the conversations, or one that runs to now", () => {
+    expect(outsideWords({ since: "2026-09-20T19:30Z" }, w)).toBeUndefined();
+    expect(outsideWords({ since: "2026-09-13", until: "2026-09-28" }, w)).toBeUndefined();
+    expect(outsideWords({}, w)).toBeUndefined();
+    expect(outsideWords({ since: "2026-08-01" })).toBeUndefined();
+  });
+  it("is said before the rows of a count, and with an empty read", () => {
+    const note = outsideWords({ since: "2026-08-01", until: "2026-09-01" }, w)!;
+    const agg = aggregateForModel({
+      metric: "conversations",
+      groupBy: "none",
+      filters: { since: "2026-08-01", until: "2026-09-01", topic: "pricing-and-editions" },
+      rows: [],
+      sql: "",
+      params: [],
+      outside: note,
+    });
+    expect(agg.startsWith(`Note: ${note}\n`)).toBe(true);
+    expect(scanForModel({ status: "empty", question: "q", filters: {}, notes: [note] }, 2500)).toBe(
+      `No conversations match these filters.\nNote: ${note}`,
+    );
   });
 });

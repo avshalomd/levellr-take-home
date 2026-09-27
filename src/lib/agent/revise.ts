@@ -70,13 +70,16 @@ export async function checkAndRevise(
   known?: ReadonlyArray<KnownRate>,
   // The tools that gave a result in this chat (agent.ts toolsRan): a figure tagged with one that never ran fails.
   ran?: ReadonlySet<string>,
+  // The community's own games, for a question D20 keeps to them (finish.ts ownGames): a claim resting only on messages
+  // about other games fails, and its rewrite is asked to drop it or cite messages about these games.
+  own?: string,
 ): Promise<Checked> {
   // Every number the tools worked out: a cited claim's figure must be one of these or in its messages (verify.ts).
   const figures = toolFigures(history);
   // The changes between periods the tools gave (trends.ts): "rose" about a topic whose rate fell is corrected like a
   // wrong rate (production QA 2026-09-26: "the September lift in … Updates & Feedback", which fell 6%).
   const trends = toolTrends(history);
-  const first = await verify(answer, retrieved, known, figures, ran);
+  const first = await verify(answer, retrieved, known, figures, ran, own);
   const weak = weakClaims(first);
   const rates = first.rates ?? [];
   const directions = directionMismatches(answer, trends);
@@ -88,7 +91,7 @@ export async function checkAndRevise(
     // The same prose marks as the page (components/chat/evidence.ts proseMarks), so the claims checked are the ones shown.
     const text = proseMarks(normalizeCitations(await rewrite(answer, weak, history, rates, directions)));
     if (!text.trim()) throw new Error("the rewrite came back empty");
-    const second = await verify(text, retrieved, known, figures, ran);
+    const second = await verify(text, retrieved, known, figures, ran, own);
     // Kept only if it is at least as well supported, still cites, and states no more unmatched rates or wrong
     // directions than before. A rewrite asked for only because of those must state FEWER of them (D43; review
     // 2026-09-26: with "<=", a rewrite that fixed nothing replaced the answer, reworded, for the cost of a second check).

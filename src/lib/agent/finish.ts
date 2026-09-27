@@ -3,7 +3,9 @@ import type { ModelMessage, UIMessageStreamWriter } from "ai";
 import { answerText, isToolPart, numberTagsOnly, proseMarks, stripToolMarkup } from "@/components/chat/evidence";
 import { claimsOf } from "@/lib/claims";
 import { normalizeCitations } from "@/lib/refs";
+import { profile } from "@/lib/data/profile";
 import { answerFromTools, retrievedRefs, toolsRan } from "./agent";
+import { aboutOwnGames, questionInContext, questionsOf } from "./flags";
 import { groundingOf, type Grounding } from "./grounding";
 import { knownRates, sourcelessFigures } from "./rates";
 import { checkAndRevise, citeAnswer, correctCounts, type RevisionPart } from "./revise";
@@ -14,8 +16,8 @@ import type { Verification } from "./verify";
 // Everything that happens to an answer after the agent stops, in one place, so the chat route and the eval run exactly
 // the same thing (review 2026-09-26: the off-topic reply and the cite pass lived only in the route, so the eval's
 // out-of-scope questions reached its judge as an empty answer and the cite pass was never evaluated). In order:
-//   1. the answer is tidied (tool markup, citation formats); a turn that used the tools and has no words is answered
-//      once from what they returned (agent.ts answerFromTools);
+//   1. the answer is tidied (tool markup, citation formats); a turn that has no words is answered once from what the
+//      tools returned, if anything (agent.ts answerFromTools);
 //   2. an off-topic question gets the reply written in code (off-topic.ts), and nothing is checked;
 //   3. an answer that read messages and cites none is sent back once to cite them (revise.ts citeAnswer);
 //   4. an answer that cites messages is checked, and its weak claims corrected once (revise.ts checkAndRevise);
@@ -61,6 +63,14 @@ export type AfterAgent = {
 
 const BEFORE_NOTHING = { supported: 0, cited: 0 };
 
+/** The community's own games (profile.ts target), when the question is one D20 keeps to them: what excites or
+ *  frustrates people, what resonates, what to post. The check then fails a claim that rests only on messages about
+ *  other games (verify.ts; production QA 2026-09-27, P2 and P6). Undefined otherwise, or when the data names none. */
+export async function ownGames(history: ReadonlyArray<ModelMessage>): Promise<string | undefined> {
+  if (!aboutOwnGames(questionInContext(questionsOf(history)))) return undefined;
+  return (await profile().catch(() => null))?.target || undefined;
+}
+
 /** A revision the check writes, as the reader is shown it after a kept cite pass: one not kept, or failed, puts the
  *  cited text back, and one still running carries it (review 2026-09-26: written under the same id, "running" replaced
  *  the kept revision, and for the 10-60 s of the rewrite the uncited stream came back and the chips went). */
@@ -92,7 +102,10 @@ export async function afterAgent(
   // would have answered (agent.ts answerFromTools; eval run 7, T04: the model wrote its next tool call as text, which
   // is stripped, and the reader got nothing). Streamed as the answer's text, like the off-topic reply below; then
   // cited and checked like any other answer. If it fails too, the page says the answer is unfinished (chat-state.ts).
-  if (!answer.trim() && (grounding.kind === "uncited" || grounding.kind === "cited")) {
+  // A turn with no tool call and no words is answered the same way (production QA 2026-09-27, P1: an empty first step
+  // ended the loop before the forced last step, and the page said "This answer was not finished"). With nothing read,
+  // the answer model says what it could not establish; it never guesses (agent.ts NO_TOOLS_LEFT).
+  if (!answer.trim() && grounding.kind !== "off-topic") {
     const text = tidy(await answerFromTools(turn.history));
     if (text.trim()) {
       write({ type: "text-start", id: "from-tools" });
@@ -176,6 +189,7 @@ export async function afterAgent(
           { revision: (r) => revise(afterCite(r, cited)) },
           knownRates(turn.history),
           ran,
+          await ownGames(turn.history),
         );
         answer = checked.text;
         out.checked = checked.verification;

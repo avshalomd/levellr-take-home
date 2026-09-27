@@ -8,8 +8,10 @@
 // plus latency and which tools were used. Paraphrase pairs (questions sharing `pair`) are reported as agreeing or not. Results -> eval/results/agent.json.
 //
 // It spends the agent model's quota (one question = up to 8 agent steps), so run it on purpose:
+// A question with `before` is a follow-up: its earlier questions are asked first in the same chat, ungraded.
 // usage: npm run eval:agent [-- --only L01,A02] [-- --concurrency 2] [-- --note "why this run"] [-- --out path] [-- --dump dir]
 import { writeFileSync } from "node:fs";
+import type { ModelMessage } from "ai";
 import { z } from "zod";
 import { makeAgent } from "@/lib/agent/agent";
 import { afterAgent } from "@/lib/agent/finish";
@@ -53,11 +55,12 @@ async function citedMessages(answer: string): Promise<string> {
     .join("\n");
 }
 
-async function judge(q: Q, answer: string, truth: unknown, tools: string) {
+async function judge(q: Q, answer: string, truth: unknown, tools: string, earlier: string[] = []) {
   const cited = await citedMessages(answer);
   const who = await profile();
+  const chat = earlier.length ? `EARLIER IN THE CHAT (not graded):\n${earlier.join("\n\n")}\n\n` : "";
   const input =
-    `QUESTION: ${q.question}\n\nRUBRIC: ${q.expect}\n\nTRUTH: ${truth === undefined ? "(none)" : JSON.stringify(truth)}` +
+    `${chat}QUESTION: ${q.question}\n\nRUBRIC: ${q.expect}\n\nTRUTH: ${truth === undefined ? "(none)" : JSON.stringify(truth)}` +
     `\n\nTOOL OUTPUTS:\n${tools || "(none)"}\n\nCITED MESSAGES:\n${cited || "(none)"}\n\nANSWER:\n${answer}`;
   // --dump <dir>: what the judge read, one file per question, to check a verdict of "invented" by hand.
   if (arg("dump")) writeFileSync(`${arg("dump")}/${q.id}.judge.txt`, input);
@@ -94,19 +97,39 @@ async function main() {
     for (let attempt = 1; ; attempt++) {
       try {
         const { agent, model } = await makeAgent();
-        const input = [{ role: "user" as const, content: q.question }];
+        // A follow-up (q.before): the earlier questions are asked first in the same chat, each answer carried in the
+        // messages the model is sent, as the chat route sends them, and their tool results passed as the chat's earlier
+        // results (finish.ts `earlier`). Only the last question is timed and graded.
+        const chat: ModelMessage[] = [];
+        const earlier: { content: ReadonlyArray<unknown> }[] = [];
+        const said: string[] = [];
+        for (const b of q.before ?? []) {
+          const prior = await agent.generate({
+            messages: [...chat, { role: "user", content: b }],
+            abortSignal: AbortSignal.timeout(240_000),
+          });
+          chat.push({ role: "user", content: b }, ...prior.responseMessages);
+          earlier.push(...prior.steps);
+          said.push(`Q: ${b}\nA: ${prior.text}`);
+        }
+        const t1 = Date.now();
+        const input: ModelMessage[] = [...chat, { role: "user", content: q.question }];
         const r = await agent.generate({ messages: input, abortSignal: AbortSignal.timeout(240_000) });
-        const ms = Date.now() - t0;
+        const ms = Date.now() - (q.before?.length ? t1 : t0);
         const tools = r.steps.flatMap((s) => s.toolCalls.map((c) => ({ tool: c.toolName, input: c.input })));
         // What the reader sees: the chat route's own post-steps, not a copy of them.
         // Every step's messages, as the chat route passes them: in AI SDK 7 `r.response.messages` is the last step's
         // only, so the eval's cite pass and count checks ran without this turn's tool results, unlike production.
         const turn = r.responseMessages;
-        const after = await afterAgent({ steps: r.steps, history: [...input, ...turn] });
+        const after = await afterAgent({
+          steps: r.steps,
+          history: [...input, ...turn],
+          ...(earlier.length ? { earlier } : {}),
+        });
         const v = after.checked ?? null;
         // The same messages for the judge: given the last step's only, it read "(none)" for tool outputs and marked
         // tool-computed figures invented.
-        const j = await judge(q, after.text, truth, toolOutputsForJudge(turn));
+        const j = await judge(q, after.text, truth, toolOutputsForJudge([...chat, ...turn]), said);
         const citations = v?.claims.flatMap((c) => c.citations) ?? [];
         console.log(
           `${q.id.padEnd(4)} ${j.verdict.padEnd(8)} ${String(Math.round(ms / 1000)).padStart(3)}s ${tools.map((t) => t.tool).join(",")}  ${j.reason.slice(0, 110)}`,

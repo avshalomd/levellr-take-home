@@ -1,5 +1,70 @@
 import { describe, expect, it } from "vitest";
-import { flagsNamed, followUpContext, lastQuestion, questionInContext, unaskedFlag } from "./flags";
+import {
+  aboutOwnGames,
+  asksForSlice,
+  asksWhatToPost,
+  flagsNamed,
+  followUpContext,
+  lastQuestion,
+  questionInContext,
+  unaskedFlag,
+} from "./flags";
+
+// Production QA 2026-09-27 (P2, P4, P6): what excites or frustrates people, and what to post, is kept to the
+// community's own games unless the question asks about other games.
+describe("aboutOwnGames and asksWhatToPost", () => {
+  it("reads the questions D20 keeps to the community's own games", () => {
+    for (const q of [
+      "What are the top frustrations players have right now?",
+      "What are people most excited about right now?",
+      "What should we post about this week?",
+      "Give me three post ideas for our Tides Remastered audience.",
+      "What is resonating with players?",
+    ])
+      expect(aboutOwnGames(q), q).toBe(true);
+    expect(aboutOwnGames("What are people excited about in other games?")).toBe(false);
+    expect(aboutOwnGames("How hard is the new Domains mode?")).toBe(false);
+  });
+  it("reads a question about what to post", () => {
+    expect(asksWhatToPost("What should we post about this week?")).toBe(true);
+    expect(asksWhatToPost("Give me three post ideas for our Tides Remastered audience.")).toBe(true);
+    expect(asksWhatToPost("Any ideas for a post on Discord?")).toBe(true);
+    expect(asksWhatToPost("What did people post in #off-topic?")).toBe(false);
+  });
+  it("names the excited kind for every post question, so its read is not refused", () => {
+    for (const q of [
+      "What should we post about this week?",
+      "What post ideas would land best with the community this week?",
+      "Give me three post ideas for our Tides Remastered audience.",
+      "Any ideas for a post on Discord?",
+      "What could we post on Friday?",
+    ]) {
+      expect(asksWhatToPost(q), q).toBe(true);
+      expect(flagsNamed(q).has("excited"), q).toBe(true);
+    }
+  });
+});
+
+// Production QA 2026-09-27 (P3): "Which of those are bugs?" answered from the last answer's words with no tool call.
+describe("asksForSlice", () => {
+  const topics = [
+    { key: "domains", name: "Domains" },
+    { key: "tides-remastered", name: "Tides Remastered" },
+    { key: "other", name: "other" },
+  ];
+  it("reads a kind of conversation, a topic or a period", () => {
+    expect(asksForSlice("Which of those are bugs?", topics)).toBe(true);
+    expect(asksForSlice("What about tides remastered?", topics)).toBe(true);
+    expect(asksForSlice("And only the domains ones?", topics)).toBe(true);
+    expect(asksForSlice("And last week?", topics)).toBe(true);
+    expect(asksForSlice("What about in July?", topics)).toBe(true);
+  });
+  it("reads nothing into a follow-up that names none, or a topic named as a common word", () => {
+    expect(asksForSlice("Tell me more about the second one", topics)).toBe(false);
+    expect(asksForSlice("Any other thoughts?", topics)).toBe(false);
+    expect(asksForSlice("Can you say that more briefly?", topics)).toBe(false);
+  });
+});
 
 describe("flagsNamed", () => {
   it("reads the kinds of conversation a question or a first sentence names", () => {

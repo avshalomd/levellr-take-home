@@ -337,7 +337,7 @@ describe("what the tools add around a call (QA 2026-09-26, round 5)", () => {
       output: sep as never,
     });
     expect((model as { value: string }).value).toContain(
-      "Change in conversations per day, 2026-08-01 to 2026-08-31 against 2026-09-01 to 2026-09-24: updates +121%.",
+      "Change in conversations per day, 2026-08-01 to 2026-08-31 against 2026-09-01 to 2026-09-24: updates up 121%.",
     );
   });
 

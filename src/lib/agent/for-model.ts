@@ -116,6 +116,31 @@ export function periodOf(f: Filters, w?: DataWindow): { since: string; until: st
 
 const perDay = (n: number, days: number) => (n / days).toFixed(1);
 
+/** What the period a call asked for leaves outside the conversations, in words for the model; undefined when it lies
+ *  inside them. Production QA 2026-09-27 (P10): "How many conversations were about pricing last month?" was answered
+ *  "there are no conversations about pricing from last month", as if August had been read and found empty; it is
+ *  before the first conversation. A period that runs to now (no `until`) is never said to run past the data. */
+export function outsideWords(f: Filters, w?: DataWindow): string | undefined {
+  if (!w?.from || !w?.to || (!f.since && !f.until)) return undefined;
+  const first = dayOf(w.from);
+  const end = dayOf(w.to) + DAY;
+  const since = f.since ? timeOf(f.since) : -Infinity;
+  const until = f.until ? timeOf(f.until) : Infinity;
+  const span = `The conversations run from ${w.from} to ${w.to}`;
+  if (until <= first || since >= end)
+    return (
+      `${span}, so the period asked for (${f.since ? `from ${f.since.slice(0, 10)}` : "up"}${f.until ? ` to before ${f.until.slice(0, 10)}` : ""}) ` +
+      "is outside them: nothing in it could be read or counted, which is not the same as none. The answer's FIRST " +
+      "sentence says the conversations do not cover that period (never that there were none), and then gives the " +
+      "nearest count they do cover, the same question over all of them, said as such."
+    );
+  const cut = [since < first && `before ${w.from}`, f.until && until > end && `after ${w.to}`].filter(Boolean);
+  return cut.length
+    ? `${span}: the part of the period asked for ${cut.join(" and ")} is outside them and was not counted. The ` +
+        "answer's FIRST sentence says it covers only the days the conversations have."
+    : undefined;
+}
+
 // Counts carry no messages. An answer resting on counts alone quoted thread titles and a cause ("traced to AWS server
 // congestion") with no citation and no check under it (QA 2026-09-26): what people wrote comes from a read.
 export const COUNTS_ONLY =
@@ -127,7 +152,11 @@ export const COUNTS_ONLY =
  *  "the biggest shift" when per day it was flat, 4.6 against 4.5 (QA 2026-09-26). `period` is the days the tool
  *  worked out (tools.ts), clipped to the data. */
 export function aggregateForModel(
-  o: AggregateResult & { period?: { since: string; until: string; days: number } | null; change?: Change },
+  o: AggregateResult & {
+    period?: { since: string; until: string; days: number } | null;
+    change?: Change;
+    outside?: string;
+  },
   names?: TopicNames,
 ): string {
   const isMood = o.metric === "avg_sentiment";
@@ -176,6 +205,8 @@ export function aggregateForModel(
         : "")
     : "";
   return (
+    // Said first, before any row: read after an empty list, "no rows" was taken for "none" (P10).
+    (o.outside ? `Note: ${o.outside}\n` : "") +
     `${name} by ${o.groupBy}, over ${sliceWords(o.filters, names)}:\n` +
     // An engagement figure is a score, and its row says so, with the conversations behind it: bare, "Tides Remastered:
     // 253" was written as "253 conversations" when 34 were counted (QA 2026-09-27).
@@ -270,7 +301,8 @@ export type ScanExtras = {
 };
 
 export function scanForModel(o: ScanResult & ScanExtras, maxScan: number, names?: TopicNames): string {
-  if (o.status === "empty") return "No conversations match these filters.";
+  if (o.status === "empty")
+    return `No conversations match these filters.${o.notes?.length ? `\nNote: ${o.notes.join(" ")}` : ""}`;
   if (o.status === "too-broad")
     return (
       `Slice too broad: ${o.total} conversations (max ${maxScan}). Narrow it.\nBy topic (a conversation counts under each ` +
@@ -285,6 +317,12 @@ export function scanForModel(o: ScanResult & ScanExtras, maxScan: number, names?
     ? `\nAll ${o.scanned} were already ${FLAG_WORDS[o.filters.flag] ?? o.filters.flag} before the question was asked, so ` +
       `${o.relevant} of ${o.scanned} is a share of those, not of the topic. For how common ${FLAG_WORDS[o.filters.flag] ?? o.filters.flag} ` +
       "are, use aggregate."
+    : "";
+  // D20: a read kept to the community's own games says what it left out (scan.ts own; P2, P6).
+  const own = o.own?.elsewhere
+    ? `\n${num(o.own.elsewhere)} more bore on the question but were about other games or things outside ${o.own.games}: ` +
+      `they are left out of the ${num(o.relevant)} and of the conversations below. Keep the answer to ${o.own.games}; ` +
+      "you may say in one clause that talk about other games was left out."
     : "";
   // The breakdowns below are counts of the relevant conversations, so a share of them is a share of that count. Divided by the
   // number read instead, an answer gave "of 1,232" beside a step saying 1,170 were on the question (QA 2026-09-26).
@@ -315,7 +353,7 @@ export function scanForModel(o: ScanResult & ScanExtras, maxScan: number, names?
     `Scanned ${num(o.scanned)} conversations (${sliceWords(o.filters, names)}); ${num(o.relevant)} relevant to the question ` +
     "(they bear on it, whichever way they lean; Jev probability >= 50%)" +
     (o.failed ? `; ${o.failed} could not be judged` : "") +
-    `.${filtered}${shares}${moodLine}${period}${notes}\nRelevant by week: ${o.relevantByWeek.map((w) => `${w.key} ${w.n}`).join(", ") || "none"}` +
+    `.${filtered}${own}${shares}${moodLine}${period}${notes}\nRelevant by week: ${o.relevantByWeek.map((w) => `${w.key} ${w.n}`).join(", ") || "none"}` +
     `\nRelevant by topic: ${o.relevantByTopic.map((w) => `${topicName(w.key, names)} ${w.n}`).join(", ") || "none"}\n\n` +
     `The ${o.hits.length} most relevant, with message refs to cite:\n\n` +
     conversationsForModel(o.hits, names)

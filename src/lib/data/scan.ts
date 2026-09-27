@@ -34,6 +34,9 @@ export type ScanResult =
       relevantByTopic: Facet[]; // conversations touching each topic: can add up to more than `relevant`
       relevantIds: string[]; // every relevant conversation, most relevant first, up to RELEVANT_IDS: the pool a claim is checked against
       hits: ScanHit[];
+      // For a read kept to the community's own games (opts.own): those games, and how many conversations bore on the
+      // question but were about something else, left out of `relevant` and the hits. Absent on any other read.
+      own?: { games: string; elsewhere: number };
     }
   | {
       status: "too-broad";
@@ -47,10 +50,28 @@ export type ScanResult =
 
 export type ScanProgress = { done: number; total: number; relevant: number };
 
+// Production QA 2026-09-27 (P2, P6): "What are the top frustrations players have right now?" read GTA 6's price talk in
+// #off-topic as a frustration, and an excitement answer listed other games' releases, against D20. A read about what
+// excites or frustrates people, or what to post, asks Jev in the same call whether what the conversation says on the
+// question is about the community's own games (`own`, from dataset_meta.mood_target); one that is not is left out and
+// counted apart. Still one Jev call per conversation.
+const OWN = noul(
+  "Is what `conversation` says on `question` about `games` (the games themselves, their updates, releases, prices, " +
+    "story or the studio behind them)? Answer no when that part is about other games or franchises, films or shows, " +
+    "hardware, or life outside the games, even if `games` are named in passing.",
+);
+
+/** `own`: the community's own games, for a read D20 keeps to them. `rank`: "engagement" puts the most engaged of the
+ *  relevant conversations first (D5, what to post), "relevance" (the default) the most relevant. */
 export async function scan(
   question: string,
   filters: Filters,
-  opts: { top?: number; onProgress?: (p: ScanProgress) => void } = {},
+  opts: {
+    top?: number;
+    onProgress?: (p: ScanProgress) => void;
+    own?: string;
+    rank?: "relevance" | "engagement";
+  } = {},
 ): Promise<ScanResult> {
   const top = opts.top ?? 10;
   const params: unknown[] = [];
@@ -88,14 +109,26 @@ export async function scan(
   let done = 0;
   let relevantSoFar = 0;
   let failed = 0;
+  let elsewhere = 0;
   const scores = await mapPool(rows, IN_FLIGHT, async (r) => {
     let p: number | null = null;
     try {
       const res = await decide({
-        state: { question, conversation: r.transcript.slice(0, 12_000) },
-        questions: { q },
+        state: {
+          question,
+          conversation: r.transcript.slice(0, 12_000),
+          ...(opts.own ? { games: opts.own } : {}),
+        },
+        questions: opts.own ? { q, own: OWN } : { q },
       });
-      p = res.answers.q.noul;
+      const got = res.answers as Record<string, { noul: number } | undefined>;
+      const relevance = got.q!.noul;
+      // Bears on the question, but about something else: left out, and counted apart.
+      const ours = got.own?.noul;
+      if (opts.own && relevance >= RELEVANT && ours !== undefined && ours < RELEVANT) {
+        elsewhere++;
+        p = 0;
+      } else p = relevance;
     } catch {
       failed++;
     }
@@ -121,10 +154,18 @@ export async function scan(
     return d.toISOString().slice(0, 10);
   };
 
-  const best = scored
-    .filter((r) => r.relevance >= RELEVANT * 0.6)
-    .sort((a, b) => b.relevance - a.relevance || b.engagement - a.engagement)
-    .slice(0, top);
+  // Ranked by engagement, the relevant conversations come first, most engaged first, and the nearly relevant only fill
+  // what is left (production QA 2026-09-27, P4: post ideas rested on the most relevant, not what drew people in).
+  const byRelevance = (a: (typeof scored)[number], b: (typeof scored)[number]) =>
+    b.relevance - a.relevance || b.engagement - a.engagement;
+  const best = (
+    opts.rank === "engagement"
+      ? [
+          ...relevantRows.toSorted((a, b) => b.engagement - a.engagement || b.relevance - a.relevance),
+          ...scored.filter((r) => r.relevance >= RELEVANT * 0.6 && r.relevance < RELEVANT).sort(byRelevance),
+        ]
+      : scored.filter((r) => r.relevance >= RELEVANT * 0.6).sort(byRelevance)
+  ).slice(0, top);
   const messages = await messagesFor(
     best.map((r) => r.id),
     best.flatMap((r) => r.context_ids),
@@ -146,5 +187,6 @@ export async function scan(
       ...r,
       messages: messages.filter((m) => m.conversation_id === r.id || context_ids.includes(m.id)),
     })),
+    ...(opts.own ? { own: { games: opts.own, elsewhere } } : {}),
   };
 }

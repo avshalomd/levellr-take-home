@@ -61,10 +61,11 @@ export function changeAgainst(
   return rows.length ? { metric: next.metric, from: a.period!, to: b.period!, rows } : undefined;
 }
 
-// U+2212, a minus sign, not a hyphen (production QA 2026-09-26, F).
+// A direction word and an unsigned figure. Production QA 2026-09-27 (P17): given "+51%", the answer wrote "rose by +51%";
+// the signed form before it had written a hyphen for a minus (2026-09-26, F).
 export const pctWords = (p: number) => {
   const r = Math.round(p);
-  return r === 0 ? "0%" : `${r > 0 ? "+" : "−"}${Math.abs(r)}%`;
+  return r === 0 ? "no change" : `${r > 0 ? "up" : "down"} ${Math.abs(r)}%`;
 };
 
 const DAY = 86_400_000;
@@ -77,7 +78,8 @@ export function changeWords(c: Change): string {
     `Change in ${c.metric} per day, ${c.from.since} to ${lastDay(c.from.until)} against ${c.to.since} to ${lastDay(c.to.until)}: ` +
     c.rows.map((r) => `${r.name} ${pctWords(r.pct)}`).join("; ") +
     ".\nGive a change between these periods as this percentage, worked out from the unrounded rates; never work one out " +
-    "yourself. Say it rose only where it is +, fell only where it is −."
+    "yourself. Say it rose only where it is up and fell only where it is down, with no sign on the figure (\"rose 51%\", " +
+    "\"fell 12%\")."
   );
 }
 
@@ -96,8 +98,11 @@ export function toolTrends(history: ReadonlyArray<ModelMessage>): ChangeRow[] {
         const c = CHANGE_LINE.exec(line);
         if (!c) continue;
         for (const item of c[2].split("; ")) {
-          const r = /^(.+) ([+−]?)(\d+)%$/.exec(item);
-          if (r) out.push({ name: r[1], pct: (r[2] === "−" ? -1 : 1) * Number(r[3]) });
+          // "up 51%", "down 12%", "no change"; a result saved before 2026-09-28 reads "+51%", "−12%", "0%".
+          const r = /^(.+?) (?:(up|down) (\d+)%|([+−]?)(\d+)%|no change)$/.exec(item);
+          if (!r) continue;
+          const sign = r[2] === "down" || r[4] === "−" ? -1 : 1;
+          out.push({ name: r[1], pct: sign * Number(r[3] ?? r[5] ?? 0) });
         }
       }
     }

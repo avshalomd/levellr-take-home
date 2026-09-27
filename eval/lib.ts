@@ -27,6 +27,7 @@ export type Q = {
   gold_messages?: string[]; // message ids read by hand in data/messages.json; retrieval maps them to conversations
   numeric_sql?: string; // the true answer, computed at run time so the gold cannot drift from the data
   pair?: string; // questions sharing a pair ask the same thing in other words: their answers should agree
+  before?: string[]; // questions asked earlier in the same chat, answered first; only the last question is graded
 };
 
 export const questions = (): Q[] =>

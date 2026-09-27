@@ -42,7 +42,23 @@ describe("instructions, this community", () => {
   it("routes the brief's three questions", () => {
     expect(text).toMatch(/"what are people excited about" -> scan with filters.flag excited/);
     expect(text).toMatch(/"what frustrates people" -> scan with filters.flag frustrated/);
-    expect(text).toMatch(/"what should we post \(this week\)"[\s\S]*"Suggestion:"[\s\S]*not findings/);
+    expect(text).toMatch(/"what should we post \(this week\)"[\s\S]*"Suggestion:"[\s\S]*not\s+findings/);
+  });
+  // Production QA 2026-09-27 (P4): post ideas ranked by engagement first, each on two conversations or said to be thin.
+  it("ranks what to post by engagement and grounds each suggestion in two conversations", () => {
+    expect(text).toMatch(/"what should we post \(this week\)" -> first aggregate engagement by topic/);
+    expect(text).toMatch(/at least\s+two different conversations/);
+    expect(text).toMatch(/only one\s+conversation shows this/);
+  });
+  // P3, P8, P10, P12, P17.
+  it("reads a follow-up's slice, keeps message dates as written, and says when a period is outside", () => {
+    expect(text).toMatch(/"which of those are bugs\?"[\s\S]*is a new read/);
+    expect(text).toMatch(/quote it as the message writes it/);
+    expect(text).toMatch(/never call it upcoming, past/);
+    expect(text).toMatch(/is still counted or read with the tools over the period asked/);
+    expect(text).toMatch(/says the conversations do not cover that period, never that there were none/);
+    expect(text).toMatch(/Each point once/);
+    expect(text).toMatch(/"rose 51%", never "rose by \+51%"/);
   });
   it("measures what resonates as engagement, never reactions alone", () => {
     expect(text).toMatch(/Engagement is\s+distinct authors \+ replies \+ reactions per conversation/);
