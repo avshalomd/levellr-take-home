@@ -18,6 +18,7 @@
     "format": "prettier --write .",
     "test:int": "dotenv -e .env.local -- env VITEST_INT=1 vitest run",
     "sql": "dotenv -e .env.local -- tsx scripts/sql.ts",
+    "labels": "dotenv -e .env.local -- tsx --conditions=react-server scripts/labels.ts",
     "eval:retrieval": "dotenv -e .env.local -- tsx --conditions=react-server eval/retrieval.ts",
     "eval:agent": "dotenv -e .env.local -- tsx --conditions=react-server eval/agent.ts",
     "eval:report": "tsx eval/report.ts"

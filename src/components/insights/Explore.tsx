@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   EMPTY_AGG,
@@ -26,6 +27,8 @@ import { Grid } from "./Grid";
 import { sheetInsets } from "./placement";
 import { Segmented, type Option } from "./Segmented";
 import { BottomSheet, SelectionBody, SelectionPeek, SideColumn, type Detail, type Draft } from "./SelectionPanel";
+import { TopicsPanel } from "./TopicsPanel";
+import { useTaxonomy } from "./use-taxonomy";
 
 const RES_OPTIONS: Option<Resolution>[] = [
   { value: "day", label: "Days" },
@@ -39,6 +42,9 @@ const METRIC_OPTIONS: Option<Metric>[] = [
   { value: "activity", label: METRIC_NAMES.activity, hint: "How many conversations" },
   { value: "mood", label: METRIC_NAMES.mood, hint: "How positive they sound" },
 ];
+
+/** A grid's topic keys, top row first. */
+const topicKeys = (g: GridData) => g.topics.map((t) => t.key);
 
 const WIDE = 1040; // content width (padding excluded); below this the detail moves from a side column into a bottom sheet
 const NARROW = 640; // below this the topic column slims down
@@ -126,13 +132,31 @@ export function Explore({ initial, initialNames }: { initial: GridData; initialN
     setCleared("");
   }, []);
 
-  // The names the page was rendered with (the loader's topics); a name made from the key only for a topic it lacks.
+  // The order the topics editor lists topics in: the grid's rows as the page opened with them. It is taken again only
+  // when the labels change underneath (below), never on a resolution switch or a background load, so the list does not
+  // re-order under someone reading or editing it. A new array on every render also re-sorted the list each time.
+  const [editorOrder, setEditorOrder] = useState(() => topicKeys(initial));
+
+  /** After the labels changed underneath (a combine, a finished relabel): drop every grid held here and re-read. The
+   * server needs no telling: every label change writes a new taxonomy version, which is part of its cache key. */
+  const refreshGrids = useCallback(async () => {
+    setSelection(EMPTY_SELECTION);
+    setGrids({});
+    const g = await load(res, true);
+    if (g) setEditorOrder(topicKeys(g));
+  }, [load, res]);
+
+  const taxonomy = useTaxonomy({ onLabelsChanged: refreshGrids });
+
+  // The live labels once loaded (they follow renames); until then the names the page was rendered with; a name made
+  // from the key only for a topic neither has.
   const names = useMemo(() => {
     const m = new Map<string, string>();
-    for (const [key, name] of Object.entries(initialNames)) m.set(key, name);
+    for (const l of taxonomy.tax?.active.labels ?? []) m.set(l.key, l.name);
+    for (const [key, name] of Object.entries(initialNames)) if (!m.has(key)) m.set(key, name);
     for (const t of shown.topics) if (!m.has(t.key)) m.set(t.key, humanizeKey(t.key));
     return m;
-  }, [initialNames, shown.topics]);
+  }, [taxonomy.tax, initialNames, shown.topics]);
 
   // ---------- the selection ----------
 
@@ -320,6 +344,12 @@ export function Explore({ initial, initialNames }: { initial: GridData; initialN
             what was said there and ask about it.
           </p>
         </div>
+        <a
+          href="#topics"
+          className="pressable shrink-0 self-start rounded-full border border-foreground/10 px-3.5 py-1.5 text-[14px] font-medium whitespace-nowrap text-foreground hover:bg-foreground/[0.04] sm:self-auto"
+        >
+          Edit topics
+        </a>
       </header>
 
       <section aria-label="Topics over time" className="flex flex-col gap-4">
@@ -384,6 +414,14 @@ export function Explore({ initial, initialNames }: { initial: GridData; initialN
           </BottomSheet>
         )}
       </section>
+
+      <TopicsPanel
+        taxonomy={taxonomy}
+        onError={(m) => toast.error(m)}
+        onDone={(m) => toast.success(m)}
+        totalConversations={shown.norm.n}
+        gridOrder={editorOrder}
+      />
     </div>
   );
 }

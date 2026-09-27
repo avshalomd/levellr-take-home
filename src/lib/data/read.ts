@@ -96,13 +96,32 @@ export function topicLabelsOf(value: unknown): TopicLabel[] {
   });
 }
 
-export async function topicLabels(): Promise<TopicLabel[]> {
+/** The topics as the loader stored them: the set ingest labelled with. */
+export async function loadedTopicLabels(): Promise<TopicLabel[]> {
   const [row] = await query<{ value: unknown }>(`SELECT value FROM dataset_meta WHERE key = 'topics'`);
   return topicLabelsOf(row?.value);
 }
 
+/** The team's edited set (taxonomies, written by Explore's topic editor: src/lib/labels/store.ts), without "other",
+ *  which is never a topic of its own. Empty before the first edit, or where the app tables were never created. */
+async function editedTopicLabels(): Promise<TopicLabel[]> {
+  try {
+    const [row] = await query<{ labels: unknown }>(`SELECT labels FROM taxonomies WHERE active`);
+    return topicLabelsOf(row?.labels).filter((l) => l.key !== "other");
+  } catch {
+    return [];
+  }
+}
+
+/** The topics now in use: the team's edited set when there is one (a renamed, combined, added or removed topic is
+ *  what the conversations now carry), else the loader's. The agent's tools and the overview read this. */
+export async function topicLabels(): Promise<TopicLabel[]> {
+  const edited = await editedTopicLabels();
+  return edited.length ? edited : loadedTopicLabels();
+}
+
 export async function getOverview(): Promise<Overview> {
-  const [meta, topics, channels, [all]] = await Promise.all([
+  const [meta, topics, channels, [all], edited] = await Promise.all([
     query<{ key: string; value: unknown }>(`SELECT key, value FROM dataset_meta`),
     query<{ key: string; n: number; avg_sentiment: number | null }>(
       `SELECT tk.key, count(*)::int AS n, round(avg(c.sentiment)::numeric, 3)::float AS avg_sentiment
@@ -114,13 +133,15 @@ export async function getOverview(): Promise<Overview> {
     query<{ n: number; labelled: number }>(
       `SELECT count(*)::int AS n, count(*) FILTER (WHERE sentiment IS NOT NULL)::int AS labelled FROM conversations`,
     ),
+    editedTopicLabels(),
   ]);
   const m = Object.fromEntries(meta.map((r) => [r.key, r.value])) as Record<string, unknown>;
   // The UI words its engagement by platform ("discord"), in lower case whatever the manifest wrote.
   const source = m.source as { platform?: unknown } | undefined;
   if (source && typeof source.platform === "string")
     m.source = { ...source, platform: source.platform.toLowerCase() };
-  const def = new Map(topicLabelsOf(m.topics).map((l) => [l.key, l]));
+  // Names and definitions from the topics now in use (topicLabels above).
+  const def = new Map((edited.length ? edited : topicLabelsOf(m.topics)).map((l) => [l.key, l]));
   // Everything but the topic list itself, which is given below with its counts.
   delete m.topics;
   return {

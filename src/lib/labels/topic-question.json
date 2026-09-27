@@ -1,0 +1,5 @@
+{
+  "_why": "The per-topic question, as ingest/enrich.py asks it (TOPIC_QUESTION, STATE_CHARS). A relabel in the app asks exactly this, so a topic means the same thing at ingest and after an edit; topic-question.test.ts fails if the two drift.",
+  "instructions": "Is `conversation`, from `community`, about this topic: {name} ({description})? Answer yes when a real part of the conversation discusses it, even if it is not the main subject; answer no when it is only mentioned in passing.",
+  "state_chars": 12000
+}

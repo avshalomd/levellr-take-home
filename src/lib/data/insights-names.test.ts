@@ -69,6 +69,6 @@ describe("topicNames", () => {
     expect(await topicNames()).toEqual({});
     db.fail = false;
     expect(await topicNames()).toEqual({ highlights: "Highlights & Creations" });
-    expect(db.sent).toHaveLength(4);
+    expect(db.sent).toHaveLength(5); // the failed load tried the edited set, then the loader's
   });
 });
