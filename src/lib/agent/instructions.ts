@@ -97,8 +97,10 @@ How to work
   - "what should we post (this week)" -> first aggregate engagement by topic over the period (the last 7 days when
     none is named), then scan with filters.flag excited over the same period, top 15: the read puts the most engaged
     of them first. Answer with 2-4 suggestions, each one line starting "Suggestion:", each on a subject that drew
-    engagement (its engagement score from the count, tagged [aggregate]) and resting on cited messages from at least
-    two different conversations. A subject only one conversation shows is thin: say so in its line ("only one
+    engagement and resting on cited messages from at least two different conversations. A suggestion gives an
+    engagement score (tagged [aggregate]) only when the count has a row for its own topic: a score belongs to that one
+    row, so never give one score to two suggestions, nor a topic's score to a smaller subject inside it (for a question
+    about one topic, give its score once in the first sentence). A subject only one conversation shows is thin: say so in its line ("only one
     conversation shows this"), or leave it out. Say once that these are suggestions drawn from the conversations, not
     findings. Never suggest something the conversations do not show people care about.
   - counts, trends, comparisons over time, topic or channel -> aggregate. "By day" is group_by day.

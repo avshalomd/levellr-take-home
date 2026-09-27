@@ -14,7 +14,7 @@ import { topicLabels } from "@/lib/data/read";
 import { instructions } from "./instructions";
 import { answerModel, chatModel } from "./model";
 import { msgTag } from "@/lib/refs";
-import { asksForSlice, asksWhatToPost, isRefusal, lastQuestion } from "./flags";
+import { asksForSlice, isRefusal, lastQuestion } from "./flags";
 import { asksWhatPeopleSay, needsRead } from "./grounding";
 import { makeTools } from "./tools";
 import { isOffTopic } from "./off-topic";
@@ -46,7 +46,9 @@ const followsUp = (messages: ReadonlyArray<ModelMessage>) => messages.some((m) =
 // was offered tools and free to choose, so the loop goes on to read and then answer. A second empty step is left
 // as it is: the answer is then written from what the tools returned (finish.ts, answerFromTools).
 type CallOptions = Parameters<NonNullable<LanguageModelMiddleware["wrapStream"]>>[0]["params"];
-type Streamed = Awaited<ReturnType<Parameters<NonNullable<LanguageModelMiddleware["wrapStream"]>>[0]["doStream"]>>;
+type Streamed = Awaited<
+  ReturnType<Parameters<NonNullable<LanguageModelMiddleware["wrapStream"]>>[0]["doStream"]>
+>;
 type StreamPart = Streamed["stream"] extends ReadableStream<infer P> ? P : never;
 type Content = Awaited<
   ReturnType<Parameters<NonNullable<LanguageModelMiddleware["wrapGenerate"]>>[0]["doGenerate"]>
@@ -68,7 +70,10 @@ export const retryEmpty: LanguageModelMiddleware = {
   wrapGenerate: async ({ doGenerate, params, model }) => {
     const first = await doGenerate();
     if (first.content.some(isContent)) return first;
-    console.warn("empty model step, asked again", { model: model.modelId, toolChoice: params.toolChoice?.type });
+    console.warn("empty model step, asked again", {
+      model: model.modelId,
+      toolChoice: params.toolChoice?.type,
+    });
     return model.doGenerate(forceTool(params));
   },
   // Streamed, the parts are held until the first one with content: a step with content passes through unchanged,
@@ -91,16 +96,88 @@ export const retryEmpty: LanguageModelMiddleware = {
       });
       return { ...first, stream };
     }
-    console.warn("empty model step, asked again", { model: model.modelId, toolChoice: params.toolChoice?.type });
+    console.warn("empty model step, asked again", {
+      model: model.modelId,
+      toolChoice: params.toolChoice?.type,
+    });
     return model.doStream(forceTool(params));
   },
 };
 
-/** A model whose empty steps are asked again (retryEmpty). A gateway model named by a string is left as it is. */
+// Eval 2026-09-28 (P02): made to call a tool, Gemini 2.5 Flash wrote 1,085 aggregate calls in one turn, 540 of each of
+// two identical ones, and the turn took four minutes. A step keeps each distinct call once, only calls to a tool it
+// was offered, and at most MAX_CALLS of them; the rest are dropped before anything runs. Streamed, a call's input parts
+// are held until the call itself arrives, so a dropped call leaves no half-drawn step on the page.
+export const MAX_CALLS = 6;
+function callFilter(params: CallOptions) {
+  const offered = new Set((params.tools ?? []).map((t) => t.name));
+  const seen = new Set<string>();
+  return (p: { toolName: string; input: string }) => {
+    const key = `${p.toolName} ${p.input}`;
+    if (seen.has(key) || seen.size >= MAX_CALLS || (offered.size && !offered.has(p.toolName))) return false;
+    seen.add(key);
+    return true;
+  };
+}
+export const oneCallEach: LanguageModelMiddleware = {
+  wrapGenerate: async ({ doGenerate, params }) => {
+    const r = await doGenerate();
+    const keep = callFilter(params);
+    const content = r.content.filter((p) => p.type !== "tool-call" || keep(p));
+    if (content.length < r.content.length)
+      console.warn("tool calls dropped", {
+        kept: content.filter((p) => p.type === "tool-call").length,
+        of: r.content.filter((p) => p.type === "tool-call").length,
+      });
+    return { ...r, content };
+  },
+  wrapStream: async ({ doStream, params }) => {
+    const r = await doStream();
+    const keep = callFilter(params);
+    const held = new Map<string, StreamPart[]>();
+    let dropped = 0;
+    const stream = r.stream.pipeThrough(
+      new TransformStream<StreamPart, StreamPart>({
+        transform: (part, c) => {
+          if (
+            part.type === "tool-input-start" ||
+            part.type === "tool-input-delta" ||
+            part.type === "tool-input-end"
+          ) {
+            held.set(part.id, [...(held.get(part.id) ?? []), part]);
+            return;
+          }
+          if (part.type === "tool-call") {
+            const input = held.get(part.toolCallId) ?? [];
+            held.delete(part.toolCallId);
+            if (!keep(part)) {
+              dropped++;
+              return;
+            }
+            input.forEach((x) => c.enqueue(x));
+          }
+          if (part.type === "finish") {
+            held.forEach((parts) => parts.forEach((x) => c.enqueue(x)));
+            held.clear();
+            if (dropped) console.warn("tool calls dropped", { dropped });
+          }
+          c.enqueue(part);
+        },
+      }),
+    );
+    return { ...r, stream };
+  },
+};
+
+/** A model whose steps keep each tool call once (oneCallEach) and whose empty steps are asked again (retryEmpty). A
+ *  gateway model named by a string is left as it is. */
 export const steady = (model: LanguageModel): LanguageModel =>
   typeof model === "string"
     ? model
-    : wrapLanguageModel({ model: model as Parameters<typeof wrapLanguageModel>[0]["model"], middleware: retryEmpty });
+    : wrapLanguageModel({
+        model: model as Parameters<typeof wrapLanguageModel>[0]["model"],
+        middleware: [retryEmpty, oneCallEach],
+      });
 
 export async function makeAgent(writer?: UIMessageStreamWriter) {
   const p = await profile();
@@ -131,19 +208,14 @@ export async function makeAgent(writer?: UIMessageStreamWriter) {
             toolChoice: "none" as const,
             instructions: brief + NO_TOOLS_LEFT,
           }
-        : // What to post is ranked by what resonates (D5, D13): the first step counts engagement by topic, and the
-          // read comes after it. Production QA 2026-09-27 (P4): the answer rested on an excitement read alone, one
-          // message per idea, with nothing to say which subjects drew the most replies and reactions.
-          stepNumber === 0 && asksWhatToPost(lastQuestion(messages))
-          ? { activeTools: ["aggregate"], toolChoice: "required" as const }
-          : // A follow-up that asks for a kind, a topic or a period reads that slice before it answers (P3, flags.ts).
-            stepNumber === 0 && followsUp(messages) && asksForSlice(lastQuestion(messages), topics)
-            ? { activeTools: toolNames.filter((t) => t !== "out_of_scope"), toolChoice: "required" as const }
-            : // A question for a number gets it from a tool (D11). Eval 2026-09-28 (A06): told the data's dates,
-              // "How many conversations were about pricing last month?" was answered with no tool call, and a count
-              // tagged [aggregate] that nothing had counted. out_of_scope stays offered: revenue is a number too.
-              stepNumber === 0 && !asksWhatPeopleSay(lastQuestion(messages))
-              ? { toolChoice: "required" as const }
+        : // A follow-up that asks for a kind, a topic or a period reads that slice before it answers (P3, flags.ts).
+          stepNumber === 0 && followsUp(messages) && asksForSlice(lastQuestion(messages), topics)
+          ? { activeTools: toolNames.filter((t) => t !== "out_of_scope"), toolChoice: "required" as const }
+          : // A question for a number gets it from a tool (D11). Eval 2026-09-28 (A06): told the data's dates,
+            // "How many conversations were about pricing last month?" was answered with no tool call, and a count
+            // tagged [aggregate] that nothing had counted. out_of_scope stays offered: revenue is a number too.
+            stepNumber === 0 && !asksWhatPeopleSay(lastQuestion(messages))
+            ? { toolChoice: "required" as const }
             : // A turn that has only counted may not answer a question about what people say: counts carry no
               // messages, and such an answer quoted threads and a cause with nothing to cite (QA 2026-09-26,
               // grounding.ts). The step must call a reading tool; the step after it answers.
@@ -219,7 +291,8 @@ export function chatToolSteps(
   return messages.map((m) => ({
     content: m.parts.flatMap((part) => {
       const p = part as { type: string; toolName?: string; state?: string; output?: unknown };
-      const name = p.type === "dynamic-tool" ? p.toolName : p.type.startsWith("tool-") ? p.type.slice(5) : undefined;
+      const name =
+        p.type === "dynamic-tool" ? p.toolName : p.type.startsWith("tool-") ? p.type.slice(5) : undefined;
       return name && p.state === "output-available"
         ? [{ type: "tool-result" as const, toolName: name, output: p.output }]
         : [];
